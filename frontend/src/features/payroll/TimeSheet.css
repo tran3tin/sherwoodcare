@@ -1,0 +1,205 @@
+.date-config {
+  background: white;
+  padding: 20px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  border-radius: 8px;
+}
+
+.date-config h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.input-group {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.input-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.input-field label {
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #555;
+}
+
+.input-field input,
+.input-field select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.table-container {
+  overflow: auto;
+  background: white;
+  padding: 15px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+  max-height: 80vh;
+}
+
+.timesheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.timesheet-table th,
+.timesheet-table td {
+  border: 1px solid #000;
+  padding: 0;
+  text-align: center;
+  height: 35px;
+}
+
+.timesheet-table thead tr:nth-child(1) th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: #ff9999;
+}
+
+.timesheet-table thead tr:nth-child(2) th {
+  position: sticky;
+  top: 51px;
+  z-index: 20;
+  background-color: #d9d9d9;
+}
+
+.timesheet-table th {
+  padding: 8px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.timesheet-table .hrs-header {
+  min-width: 90px;
+  width: 90px;
+}
+
+.timesheet-table .hrs-col {
+  min-width: 90px;
+  width: 90px;
+}
+
+.red-text {
+  color: red;
+  font-weight: bold;
+}
+
+.num-col {
+  background-color: #f0f0f0;
+  font-weight: bold;
+  width: 40px;
+}
+
+.note-col {
+  background-color: #e8e8e8;
+  font-weight: bold;
+  text-align: left;
+  padding-left: 10px !important;
+  width: 120px;
+}
+
+.timesheet-table input[type="text"] {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  text-align: center;
+  font-size: 14px;
+  font-family: inherit;
+  display: block;
+  box-sizing: border-box;
+  padding: 5px;
+}
+
+.note-col input[type="text"] {
+  text-align: left;
+  padding-left: 10px;
+  font-weight: bold;
+}
+
+.timesheet-table input[type="text"]:focus {
+  background-color: rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 0 0 2px #007bff;
+  font-weight: bold;
+}
+
+/* Màu luân phiên cho các dòng */
+.timesheet-table tbody tr:nth-child(odd) td:not(.num-col):not(.note-col) {
+  background-color: #f9cb9c;
+}
+
+.timesheet-table tbody tr:nth-child(even) td:not(.num-col):not(.note-col) {
+  background-color: #cfe2f3;
+}
+
+.timesheet-table tbody tr td input[type="text"]:focus {
+  background-color: #fff;
+}
+
+.btn-group {
+  margin-top: 15px;
+  text-align: right;
+}
+
+.btn-action {
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  margin-left: 10px;
+}
+
+.btn-save {
+  background-color: #28a745;
+}
+
+.btn-clear {
+  background-color: #dc3545;
+}
+
+.btn-transform {
+  background-color: #007bff;
+}
+
+.btn-back {
+  background-color: #6c757d;
+}
+
+.btn-generate {
+  background-color: #17a2b8;
+}
+
+.weekend {
+  background-color: #ffe6e6 !important;
+}
+
+.info-box {
+  background-color: #e7f3ff;
+  border-left: 4px solid #2196f3;
+  padding: 12px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+}
+
+.info-box ul {
+  margin: 5px 0;
+  padding-left: 20px;
+}
+
+.info-box li {
+  margin: 3px 0;
+}

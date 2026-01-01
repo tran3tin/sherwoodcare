@@ -1,0 +1,278 @@
+/* Sherwoodcare Global Styles */
+
+/* CSS Variables */
+:root {
+  --primary-color: #042954;
+  --secondary-color: #1890ff;
+  --accent-color: #f0932b;
+  --success-color: #6eb516;
+  --danger-color: #f5365c;
+  --warning-color: #fb6340;
+  --info-color: #11cdef;
+  --dark-color: #212529;
+  --light-color: #f5f7fa;
+  --white-color: #ffffff;
+  --text-color: #646464;
+  --heading-color: #111111;
+  --border-color: #e1e1e1;
+  --sidebar-width: 280px;
+  --header-height: 80px;
+}
+
+/* Reset & Base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Poppins", sans-serif;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text-color);
+  background-color: var(--light-color);
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+ul,
+ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--heading-color);
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+
+/* Utility Classes */
+.mg-b-10 {
+  margin-bottom: 10px !important;
+}
+.mg-b-15 {
+  margin-bottom: 15px !important;
+}
+.mg-b-20 {
+  margin-bottom: 20px !important;
+}
+.mg-b-30 {
+  margin-bottom: 30px !important;
+}
+
+.pd-15 {
+  padding: 15px !important;
+}
+.pd-20 {
+  padding: 20px !important;
+}
+.pd-30 {
+  padding: 30px !important;
+}
+
+/* Dashboard Cards */
+.dashboard-content-one {
+  padding: 30px;
+}
+
+.dashboard-summery-one {
+  margin-bottom: 30px;
+}
+
+.row-cards {
+  display: flex;
+  flex-wrap: wrap;
+  margin: -15px;
+}
+
+.item-box {
+  flex: 0 0 25%;
+  max-width: 25%;
+  padding: 15px;
+}
+
+.ui-card {
+  background: var(--white-color);
+  border-radius: 8px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+  padding: 25px;
+  height: 100%;
+  transition: all 0.3s ease;
+}
+
+.ui-card:hover {
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+}
+
+.ui-card.dashboard-card-one {
+  position: relative;
+  overflow: hidden;
+}
+
+.ui-card.dashboard-card-one::before {
+  content: "";
+  position: absolute;
+  right: -20px;
+  bottom: -20px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  opacity: 0.1;
+}
+
+.ui-card.dashboard-card-one.bg-pink::before {
+  background: #f0932b;
+}
+.ui-card.dashboard-card-one.bg-blue::before {
+  background: #1890ff;
+}
+.ui-card.dashboard-card-one.bg-yellow::before {
+  background: #ffc107;
+}
+.ui-card.dashboard-card-one.bg-lime::before {
+  background: #6eb516;
+}
+
+.card-body {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.item-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.item-icon.bg-light-pink {
+  background: rgba(240, 147, 43, 0.15);
+  color: #f0932b;
+}
+.item-icon.bg-light-blue {
+  background: rgba(24, 144, 255, 0.15);
+  color: #1890ff;
+}
+.item-icon.bg-light-yellow {
+  background: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+}
+.item-icon.bg-light-lime {
+  background: rgba(110, 181, 22, 0.15);
+  color: #6eb516;
+}
+
+.item-content h5 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 5px;
+  color: var(--heading-color);
+}
+
+.item-content p {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 14px;
+}
+
+/* Breadcrumb */
+.breadcrumbs-area {
+  background: var(--white-color);
+  padding: 20px 30px;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.breadcrumbs-area h3 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.breadcrumbs-area ul {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.breadcrumbs-area ul li {
+  color: var(--text-color);
+}
+
+.breadcrumbs-area ul li a {
+  color: var(--secondary-color);
+}
+
+.breadcrumbs-area ul li a:hover {
+  color: var(--primary-color);
+}
+
+/* Footer */
+.footer-wrap-area {
+  padding: 20px 30px;
+  background: var(--white-color);
+  border-top: 1px solid var(--border-color);
+  margin-top: auto;
+}
+
+.footer-wrap-area p {
+  margin: 0;
+  text-align: center;
+  color: var(--text-color);
+}
+
+/* Responsive */
+@media (max-width: 1199px) {
+  .item-box {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --sidebar-width: 260px;
+    --header-height: 70px;
+  }
+
+  .item-box {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .dashboard-content-one {
+    padding: 15px;
+  }
+
+  .breadcrumbs-area {
+    padding: 15px;
+  }
+}
