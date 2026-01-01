@@ -16,7 +16,10 @@ const menuItems = [
   {
     title: "Payroll",
     icon: "flaticon-list",
-    submenu: [{ title: "Time Sheet", path: "/payroll/time-sheet" }],
+    submenu: [
+      { title: "Timesheet List", path: "/payroll/timesheets" },
+      { title: "New Time Sheet", path: "/payroll/time-sheet" },
+    ],
   },
   {
     title: "Teachers",

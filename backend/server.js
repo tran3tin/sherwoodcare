@@ -48,6 +48,10 @@ app.get("/api/db/status", async (req, res) => {
   }
 });
 
+// Timesheet routes
+const timesheetRoutes = require("./routes/timesheets");
+app.use("/api/timesheets", timesheetRoutes);
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

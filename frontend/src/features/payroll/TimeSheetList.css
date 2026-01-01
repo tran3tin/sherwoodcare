@@ -1,0 +1,191 @@
+.timesheet-list-container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.list-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.btn-create-new {
+  padding: 10px 20px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.btn-create-new:hover {
+  background-color: #218838;
+}
+
+.loading-message,
+.error-message {
+  text-align: center;
+  padding: 40px;
+  font-size: 16px;
+}
+
+.error-message {
+  color: #dc3545;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+}
+
+.btn-retry {
+  margin-left: 15px;
+  padding: 8px 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-retry:hover {
+  background-color: #0056b3;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.empty-state p {
+  font-size: 18px;
+  color: #6c757d;
+  margin-bottom: 20px;
+}
+
+.btn-create-first {
+  padding: 12px 24px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.btn-create-first:hover {
+  background-color: #0056b3;
+}
+
+.timesheet-table-wrapper {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.timesheet-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.timesheet-list-table thead {
+  background-color: #f8f9fa;
+}
+
+.timesheet-list-table th {
+  padding: 12px 15px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.timesheet-list-table tbody tr {
+  border-bottom: 1px solid #dee2e6;
+  transition: background-color 0.2s;
+}
+
+.timesheet-list-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.timesheet-list-table td {
+  padding: 12px 15px;
+  color: #333;
+}
+
+.period-name {
+  font-weight: 500;
+  color: #007bff;
+}
+
+.actions-cell {
+  white-space: nowrap;
+}
+
+.btn-edit,
+.btn-delete {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  margin-right: 8px;
+  transition: all 0.3s;
+}
+
+.btn-edit {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-edit:hover {
+  background-color: #0056b3;
+}
+
+.btn-delete {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-delete:hover {
+  background-color: #c82333;
+}
+
+@media (max-width: 768px) {
+  .list-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .timesheet-list-table {
+    font-size: 12px;
+  }
+
+  .timesheet-list-table th,
+  .timesheet-list-table td {
+    padding: 8px 10px;
+  }
+
+  .btn-edit,
+  .btn-delete {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+}

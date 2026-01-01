@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import timesheetService from "../../services/timesheetService";
 import "./Report.css";
 
 const Report = () => {
   const navigate = useNavigate();
+  const { id } = useParams(); // Get period ID from URL if navigated from saved timesheet
   const [reportData, setReportData] = useState(null);
   const [dateHeaders, setDateHeaders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [dayNames] = useState([
     "Sunday",
     "Monday",
@@ -17,6 +20,67 @@ const Report = () => {
   ]);
 
   useEffect(() => {
+    if (id) {
+      // Load from API
+      loadTimesheetReport(id);
+    } else {
+      // Load from localStorage (legacy mode)
+      loadFromLocalStorage();
+    }
+  }, [id]);
+
+  const loadTimesheetReport = async (periodId) => {
+    try {
+      setLoading(true);
+      const response = await timesheetService.fetchTimesheetById(periodId);
+      const { period, entries } = response.data;
+
+      // Generate date headers
+      const startObj = new Date(period.start_date + "T00:00:00");
+      const headers = [];
+
+      for (let i = 0; i < period.num_days; i++) {
+        const currentDate = new Date(startObj);
+        currentDate.setDate(startObj.getDate() + i);
+        const dayOfWeek = currentDate.getDay();
+        headers.push({
+          date: currentDate.toISOString(),
+          display: formatDateDisplay(currentDate.toISOString()),
+          dayName: dayNames[dayOfWeek],
+          isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
+        });
+      }
+      setDateHeaders(headers);
+
+      // Convert entries to rosterData format
+      const rosterData = entries.map((entry) => {
+        const daysArray = Array(period.num_days).fill("");
+        entry.days.forEach((day) => {
+          if (day.day_index >= 0 && day.day_index < period.num_days) {
+            daysArray[day.day_index] = day.staff_name || "";
+          }
+        });
+
+        return {
+          num: entry.row_number,
+          note: entry.note || "",
+          period: entry.period || "",
+          hrs: entry.hrs || "",
+          days: daysArray,
+        };
+      });
+
+      processData(rosterData, headers);
+    } catch (error) {
+      console.error("Error loading timesheet report:", error);
+      alert("Failed to load report. Redirecting...");
+      navigate("/payroll/timesheets");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadFromLocalStorage = () => {
     const storedData = localStorage.getItem("rosterData");
     const storedHeaders = localStorage.getItem("dateHeaders");
 
@@ -25,11 +89,12 @@ const Report = () => {
       const parsedHeaders = JSON.parse(storedHeaders);
       setDateHeaders(parsedHeaders);
       processData(parsedData, parsedHeaders);
+      setLoading(false);
     } else {
       alert("No data found. Please go back to the Time Sheet.");
       navigate("/payroll/time-sheet");
     }
-  }, [navigate]);
+  };
 
   const formatDateDisplay = (dateString) => {
     const date = new Date(dateString);
@@ -157,6 +222,7 @@ const Report = () => {
     );
   };
 
+  if (loading) return <div className="loading-spinner">Loading report...</div>;
   if (!reportData) return <div>Loading...</div>;
 
   return (
@@ -236,7 +302,12 @@ const Report = () => {
                           type="text"
                           value={job.note}
                           onChange={(e) =>
-                            updateJobField(empIndex, jobIndex, "note", e.target.value)
+                            updateJobField(
+                              empIndex,
+                              jobIndex,
+                              "note",
+                              e.target.value
+                            )
                           }
                           style={{
                             width: "100%",
@@ -252,7 +323,12 @@ const Report = () => {
                           type="text"
                           value={job.period}
                           onChange={(e) =>
-                            updateJobField(empIndex, jobIndex, "period", e.target.value)
+                            updateJobField(
+                              empIndex,
+                              jobIndex,
+                              "period",
+                              e.target.value
+                            )
                           }
                           style={{
                             width: "100%",
@@ -267,7 +343,12 @@ const Report = () => {
                           type="text"
                           value={job.hrsValue}
                           onChange={(e) =>
-                            updateJobField(empIndex, jobIndex, "hrsValue", e.target.value)
+                            updateJobField(
+                              empIndex,
+                              jobIndex,
+                              "hrsValue",
+                              e.target.value
+                            )
                           }
                           style={{
                             width: "100%",

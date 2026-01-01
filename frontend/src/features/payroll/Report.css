@@ -4,6 +4,13 @@
   min-height: 100vh;
 }
 
+.loading-spinner {
+  text-align: center;
+  padding: 60px;
+  font-size: 18px;
+  color: #666;
+}
+
 .report-table-container {
   overflow: auto;
   background: white;

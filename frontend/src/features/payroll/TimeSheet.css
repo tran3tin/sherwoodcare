@@ -11,6 +11,34 @@
   color: #333;
 }
 
+.edit-badge {
+  color: #007bff;
+  font-size: 14px;
+  font-weight: normal;
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 60px;
+  font-size: 18px;
+  color: #666;
+}
+
+.btn-save {
+  background-color: #28a745 !important;
+  color: white !important;
+}
+
+.btn-save:hover:not(:disabled) {
+  background-color: #218838 !important;
+}
+
+.btn-save:disabled {
+  background-color: #6c757d !important;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .input-group {
   display: flex;
   gap: 20px;
