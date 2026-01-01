@@ -75,11 +75,86 @@ const Report = () => {
       const jobKeys = Object.keys(jobs);
       return {
         name: name,
-        jobs: jobKeys.map((key) => jobs[key]),
+        jobs: jobKeys.map((key) => {
+          const job = jobs[key];
+          const dayValues = headers.map((_, dayIndex) =>
+            job.workedDays[dayIndex] ? String(job.hrsValue ?? "") : ""
+          );
+
+          return {
+            ...job,
+            dayValues,
+          };
+        }),
       };
     });
 
     setReportData(processed);
+  };
+
+  const calcRowTotal = (dayValues) => {
+    if (!Array.isArray(dayValues)) return 0;
+    return dayValues.reduce((sum, value) => {
+      const n = parseFloat(value);
+      return sum + (Number.isFinite(n) ? n : 0);
+    }, 0);
+  };
+
+  const updateEmployeeField = (empIndex, value) => {
+    setReportData((prev) =>
+      prev.map((employee, index) =>
+        index === empIndex ? { ...employee, name: value } : employee
+      )
+    );
+  };
+
+  const updateJobField = (empIndex, jobIndex, field, value) => {
+    setReportData((prev) =>
+      prev.map((employee, eIndex) => {
+        if (eIndex !== empIndex) return employee;
+
+        return {
+          ...employee,
+          jobs: employee.jobs.map((job, jIndex) => {
+            if (jIndex !== jobIndex) return job;
+
+            if (field === "hrsValue") {
+              const prevHrs = String(job.hrsValue ?? "");
+              const nextHrs = String(value);
+              const nextDayValues = (job.dayValues || []).map((v) =>
+                String(v) === prevHrs ? nextHrs : v
+              );
+
+              return {
+                ...job,
+                hrsValue: nextHrs,
+                dayValues: nextDayValues,
+              };
+            }
+
+            return { ...job, [field]: value };
+          }),
+        };
+      })
+    );
+  };
+
+  const updateJobDayValue = (empIndex, jobIndex, dayIndex, value) => {
+    setReportData((prev) =>
+      prev.map((employee, eIndex) => {
+        if (eIndex !== empIndex) return employee;
+
+        return {
+          ...employee,
+          jobs: employee.jobs.map((job, jIndex) => {
+            if (jIndex !== jobIndex) return job;
+            const nextDayValues = [...(job.dayValues || [])];
+            nextDayValues[dayIndex] = value;
+            return { ...job, dayValues: nextDayValues };
+          }),
+        };
+      })
+    );
   };
 
   if (!reportData) return <div>Loading...</div>;
@@ -133,12 +208,7 @@ const Report = () => {
             {reportData.map((employee, empIndex) => (
               <React.Fragment key={empIndex}>
                 {employee.jobs.map((job, jobIndex) => {
-                  const rowTotal = Object.keys(job.workedDays).reduce(
-                    (acc, dayIndex) => {
-                      return acc + (parseFloat(job.hrsValue) || 0);
-                    },
-                    0
-                  );
+                  const rowTotal = calcRowTotal(job.dayValues);
 
                   return (
                     <tr key={jobIndex}>
@@ -146,7 +216,10 @@ const Report = () => {
                         <td className="name-col" rowSpan={employee.jobs.length}>
                           <input
                             type="text"
-                            defaultValue={employee.name}
+                            value={employee.name}
+                            onChange={(e) =>
+                              updateEmployeeField(empIndex, e.target.value)
+                            }
                             style={{
                               width: "100%",
                               border: "none",
@@ -161,7 +234,10 @@ const Report = () => {
                       <td className="job-col">
                         <input
                           type="text"
-                          defaultValue={job.note}
+                          value={job.note}
+                          onChange={(e) =>
+                            updateJobField(empIndex, jobIndex, "note", e.target.value)
+                          }
                           style={{
                             width: "100%",
                             border: "none",
@@ -174,7 +250,10 @@ const Report = () => {
                       <td>
                         <input
                           type="text"
-                          defaultValue={job.period}
+                          value={job.period}
+                          onChange={(e) =>
+                            updateJobField(empIndex, jobIndex, "period", e.target.value)
+                          }
                           style={{
                             width: "100%",
                             border: "none",
@@ -186,7 +265,10 @@ const Report = () => {
                       <td className="hrs-col">
                         <input
                           type="text"
-                          defaultValue={job.hrsValue}
+                          value={job.hrsValue}
+                          onChange={(e) =>
+                            updateJobField(empIndex, jobIndex, "hrsValue", e.target.value)
+                          }
                           style={{
                             width: "100%",
                             border: "none",
@@ -203,17 +285,20 @@ const Report = () => {
                         >
                           <input
                             type="text"
-                            defaultValue={
-                              job.workedDays[dayIndex] ? job.hrsValue : ""
+                            value={job.dayValues?.[dayIndex] ?? ""}
+                            onChange={(e) =>
+                              updateJobDayValue(
+                                empIndex,
+                                jobIndex,
+                                dayIndex,
+                                e.target.value
+                              )
                             }
                             style={{
                               width: "100%",
                               border: "none",
                               background: "transparent",
                               textAlign: "center",
-                              fontWeight: job.workedDays[dayIndex]
-                                ? "bold"
-                                : "normal",
                             }}
                           />
                         </td>
