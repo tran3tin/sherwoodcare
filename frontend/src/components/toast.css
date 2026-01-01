@@ -1,0 +1,86 @@
+/* Shared toast styles (uses existing CSS variables from app.css) */
+
+.toast-container {
+  position: fixed;
+  top: calc(var(--header-height) + 12px);
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(360px, calc(100vw - 32px));
+}
+
+.toast-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 12px;
+  border-radius: 8px;
+  background: var(--white-color);
+  color: var(--heading-color);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.toast-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.toast-message {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text-color);
+}
+
+.toast-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.toast-action {
+  border: 1px solid var(--border-color);
+  background: var(--white-color);
+  color: var(--heading-color);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.toast-action-primary {
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+}
+
+.toast-close {
+  border: none;
+  background: transparent;
+  color: var(--text-color);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.toast-info {
+  border-left: 4px solid var(--info-color);
+}
+
+.toast-success {
+  border-left: 4px solid var(--success-color);
+}
+
+.toast-warning {
+  border-left: 4px solid var(--warning-color);
+}
+
+.toast-error {
+  border-left: 4px solid var(--danger-color);
+}

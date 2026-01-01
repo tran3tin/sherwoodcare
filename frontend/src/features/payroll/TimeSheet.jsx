@@ -1,11 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import timesheetService from "../../services/timesheetService";
+import { useToast } from "../../components/ToastProvider";
+import {
+  addDaysYMD,
+  formatDMFromYMD,
+  normalizeYMD,
+  weekdayIndexFromYMD,
+} from "../../utils/dateVN";
 import "./TimeSheet.css";
 
 const TimeSheet = () => {
   const navigate = useNavigate();
   const { id } = useParams(); // Get timesheet ID from URL for edit mode
+  const toast = useToast();
   const [startDate, setStartDate] = useState("");
   const [numDays, setNumDays] = useState(14);
   const [numRows, setNumRows] = useState(40);
@@ -26,28 +34,112 @@ const TimeSheet = () => {
     "Saturday",
   ];
 
+  const buildDateHeaders = (startYmd, days) => {
+    const s = normalizeYMD(startYmd);
+    const count = parseInt(days, 10);
+    if (!s || !Number.isFinite(count) || count <= 0) return [];
+
+    const headers = [];
+    for (let i = 0; i < count; i++) {
+      const ymd = addDaysYMD(s, i);
+      const dow = weekdayIndexFromYMD(ymd);
+      headers.push({
+        ymd,
+        display: formatDMFromYMD(ymd),
+        dayName: Number.isFinite(dow) ? dayNames[dow] : "",
+        isWeekend: dow === 0 || dow === 6,
+      });
+    }
+    return headers;
+  };
+
+  const getDraftKey = () => {
+    const key = periodId || id;
+    return key ? String(key) : "new";
+  };
+
+  const saveDraft = (key = getDraftKey()) => {
+    try {
+      const payload = {
+        periodId: periodId || id || null,
+        startDate: normalizeYMD(startDate),
+        numDays,
+        numRows,
+        rows,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(`timesheetDraft:${key}`, JSON.stringify(payload));
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const clearDraft = (key = getDraftKey()) => {
+    try {
+      localStorage.removeItem(`timesheetDraft:${key}`);
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const tryRestoreDraft = (key) => {
+    try {
+      const raw = localStorage.getItem(`timesheetDraft:${key}`);
+      if (!raw) return false;
+      const draft = JSON.parse(raw);
+      if (!draft) return false;
+
+      const s = normalizeYMD(draft.startDate);
+      const d = parseInt(draft.numDays, 10);
+      const r = parseInt(draft.numRows, 10);
+      if (
+        !s ||
+        !Number.isFinite(d) ||
+        !Number.isFinite(r) ||
+        !Array.isArray(draft.rows)
+      ) {
+        return false;
+      }
+
+      setIsEditMode(Boolean(id || draft.periodId));
+      setPeriodId(draft.periodId || id || null);
+      setStartDate(s);
+      setNumDays(d);
+      setNumRows(r);
+      setRows(draft.rows);
+      setDateHeaders(buildDateHeaders(s, d));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (id) {
-      // Edit mode: load existing timesheet
-      loadTimesheet(id);
+      // Edit mode: restore draft if available (e.g., returning from Report), otherwise load from API
+      const restored = tryRestoreDraft(String(id));
+      if (!restored) loadTimesheet(id);
     } else {
-      // New mode: initialize with defaults
-      const today = new Date();
-      const formattedDate = formatDateInput(today);
+      // New mode: restore draft if available, otherwise initialize with defaults
+      const restored = tryRestoreDraft("new");
+      if (!restored) {
+        const today = new Date();
+        const formattedDate = formatDateInput(today);
 
-      const savedDate = localStorage.getItem("startDate");
-      const savedDays = localStorage.getItem("numDays");
-      const savedRows = localStorage.getItem("numRows");
+        const savedDate = localStorage.getItem("startDate");
+        const savedDays = localStorage.getItem("numDays");
+        const savedRows = localStorage.getItem("numRows");
 
-      setStartDate(savedDate || formattedDate);
-      if (savedDays) setNumDays(parseInt(savedDays));
-      if (savedRows) setNumRows(parseInt(savedRows));
+        setStartDate(savedDate || formattedDate);
+        if (savedDays) setNumDays(parseInt(savedDays));
+        if (savedRows) setNumRows(parseInt(savedRows));
 
-      generateTable(
-        savedDate || formattedDate,
-        parseInt(savedDays) || 14,
-        parseInt(savedRows) || 40
-      );
+        generateTable(
+          savedDate || formattedDate,
+          parseInt(savedDays) || 14,
+          parseInt(savedRows) || 40
+        );
+      }
     }
   }, [id]);
 
@@ -59,36 +151,27 @@ const TimeSheet = () => {
 
       setPeriodId(period.period_id);
       setIsEditMode(true);
-      setStartDate(period.start_date);
-      setNumDays(period.num_days);
-      setNumRows(period.num_rows);
+      const startDateOnly = normalizeYMD(period.start_date);
+
+      setStartDate(startDateOnly);
+      setNumDays(parseInt(period.num_days));
+      setNumRows(parseInt(period.num_rows));
 
       // Generate date headers
-      const startObj = new Date(period.start_date + "T00:00:00");
-      const newDateHeaders = [];
-
-      for (let i = 0; i < period.num_days; i++) {
-        const currentDate = new Date(startObj);
-        currentDate.setDate(startObj.getDate() + i);
-        const dayOfWeek = currentDate.getDay();
-        newDateHeaders.push({
-          date: currentDate,
-          display: formatDateDisplay(currentDate),
-          dayName: dayNames[dayOfWeek],
-          isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
-        });
-      }
-      setDateHeaders(newDateHeaders);
+      setDateHeaders(buildDateHeaders(startDateOnly, period.num_days));
 
       // Reconstruct rows from entries
       const newRows = [];
-      for (let r = 1; r <= period.num_rows; r++) {
+      for (let r = 1; r <= parseInt(period.num_rows); r++) {
         const entry = entries.find((e) => e.row_number === r);
-        const dayArray = Array(period.num_days).fill("");
+        const dayArray = Array(parseInt(period.num_days)).fill("");
 
         if (entry && entry.days) {
           entry.days.forEach((day) => {
-            if (day.day_index >= 0 && day.day_index < period.num_days) {
+            if (
+              day.day_index >= 0 &&
+              day.day_index < parseInt(period.num_days)
+            ) {
               dayArray[day.day_index] = day.staff_name || "";
             }
           });
@@ -105,7 +188,7 @@ const TimeSheet = () => {
       setRows(newRows);
     } catch (error) {
       console.error("Error loading timesheet:", error);
-      alert(
+      toast.error(
         error.response?.data?.error ||
           "Failed to load timesheet. Redirecting to list."
       );
@@ -134,7 +217,7 @@ const TimeSheet = () => {
     rowCount = numRows
   ) => {
     if (!start) {
-      alert("Please select a start date!");
+      toast.warning("Please select a start date!");
       return;
     }
 
@@ -142,21 +225,7 @@ const TimeSheet = () => {
     localStorage.setItem("numDays", days);
     localStorage.setItem("numRows", rowCount);
 
-    const startObj = new Date(start + "T00:00:00");
-    const newDateHeaders = [];
-
-    for (let i = 0; i < days; i++) {
-      const currentDate = new Date(startObj);
-      currentDate.setDate(startObj.getDate() + i);
-      const dayOfWeek = currentDate.getDay();
-      newDateHeaders.push({
-        date: currentDate,
-        display: formatDateDisplay(currentDate),
-        dayName: dayNames[dayOfWeek],
-        isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
-      });
-    }
-    setDateHeaders(newDateHeaders);
+    setDateHeaders(buildDateHeaders(start, days));
 
     // Initialize rows if empty or resize
     // We want to preserve data if possible, but the HTML version regenerates.
@@ -300,21 +369,37 @@ const TimeSheet = () => {
   };
 
   const clearData = () => {
-    if (window.confirm("Are you sure you want to clear all data?")) {
-      const newRows = rows.map((row) => ({
-        ...row,
-        note: "",
-        period: "",
-        hrs: "",
-        days: Array(numDays).fill(""),
-      }));
-      setRows(newRows);
-    }
+    toast.warning("Clear all data?", {
+      durationMs: 6000,
+      actions: [
+        {
+          label: "Clear",
+          variant: "primary",
+          onClick: () => {
+            const newRows = rows.map((row) => ({
+              ...row,
+              note: "",
+              period: "",
+              hrs: "",
+              days: Array(numDays).fill(""),
+            }));
+            setRows(newRows);
+            toast.success("Data cleared.");
+          },
+        },
+        {
+          label: "Cancel",
+          onClick: () => {
+            toast.info("Cancelled.");
+          },
+        },
+      ],
+    });
   };
 
   const handleViewReport = () => {
     if (!dateHeaders.length) {
-      alert("Please generate the table first.");
+      toast.warning("Please generate the table first.");
       return;
     }
 
@@ -329,27 +414,38 @@ const TimeSheet = () => {
     localStorage.setItem("rosterData", JSON.stringify(rosterData));
     localStorage.setItem("dateHeaders", JSON.stringify(dateHeaders));
 
+    // Save a snapshot so Back from Report restores the exact filled state (even if not saved).
+    const draftKey = getDraftKey();
+    saveDraft(draftKey);
+
+    const from =
+      periodId || id
+        ? `/payroll/time-sheet/${periodId || id}`
+        : "/payroll/time-sheet";
+
     if (periodId) {
-      navigate(`/payroll/report/${periodId}`);
+      navigate(`/payroll/report/${periodId}`, { state: { from, draftKey } });
     } else {
-      navigate("/payroll/report");
+      navigate("/payroll/report", { state: { from, draftKey } });
     }
   };
 
   const handleSave = async () => {
     if (!startDate) {
-      alert("Please select a start date!");
+      toast.warning("Please select a start date!");
       return;
     }
 
     if (!dateHeaders.length) {
-      alert("Please generate the table first!");
+      toast.warning("Please generate the table first!");
       return;
     }
 
     // Prepare entries data
     const entries = rows
-      .filter((row) => row.note || row.period || row.hrs || row.days.some((d) => d))
+      .filter(
+        (row) => row.note || row.period || row.hrs || row.days.some((d) => d)
+      )
       .map((row) => ({
         row_number: row.id,
         note: row.note,
@@ -363,11 +459,11 @@ const TimeSheet = () => {
           .filter((day) => day.staff_name.trim()),
       }));
 
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + numDays - 1);
-    const timesheetName = `TimeSheet ${formatDateDisplay(
-      new Date(startDate)
-    )} - ${formatDateDisplay(endDate)}`;
+    const startYmd = normalizeYMD(startDate);
+    const endYmd = addDaysYMD(startYmd, parseInt(numDays, 10) - 1);
+    const timesheetName = `TimeSheet ${formatDMFromYMD(
+      startYmd
+    )} - ${formatDMFromYMD(endYmd)}`;
 
     try {
       setSaving(true);
@@ -375,37 +471,55 @@ const TimeSheet = () => {
       if (isEditMode && periodId) {
         // Update existing timesheet
         await timesheetService.updateTimesheet(periodId, {
-          start_date: startDate,
+          start_date: startYmd,
           num_days: numDays,
           num_rows: numRows,
           name: timesheetName,
           entries,
         });
-        alert("Timesheet updated successfully!");
+        clearDraft(String(periodId));
+        toast.success("Timesheet updated successfully!");
       } else {
         // Create new timesheet
         const response = await timesheetService.createTimesheet({
-          start_date: startDate,
+          start_date: startYmd,
           num_days: numDays,
           num_rows: numRows,
           name: timesheetName,
           entries,
         });
+        clearDraft("new");
         setPeriodId(response.period_id);
         setIsEditMode(true);
-        alert("Timesheet saved successfully!");
+        toast.success("Timesheet saved successfully!");
         // Update URL to edit mode
-        navigate(`/payroll/time-sheet/${response.period_id}`, { replace: true });
+        navigate(`/payroll/time-sheet/${response.period_id}`, {
+          replace: true,
+        });
       }
     } catch (error) {
       console.error("Error saving timesheet:", error);
-      alert(
-        error.response?.data?.error || "Failed to save timesheet. Please try again."
+      toast.error(
+        error.response?.data?.error ||
+          "Failed to save timesheet. Please try again."
       );
     } finally {
       setSaving(false);
     }
   };
+
+  const handleCancelEdit = () => {
+    toast.info("Cancelled editing timesheet.");
+    navigate("/payroll/timesheets");
+  };
+
+  useEffect(() => {
+    // In edit mode, allow changing start date and immediately update headers.
+    if (!isEditMode) return;
+    const s = normalizeYMD(startDate);
+    if (!s) return;
+    setDateHeaders(buildDateHeaders(s, numDays));
+  }, [isEditMode, startDate, numDays]);
 
   return (
     <div className="timesheet-container">
@@ -426,7 +540,6 @@ const TimeSheet = () => {
                   id="startDate"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  disabled={isEditMode}
                 />
               </div>
               <div className="input-field">
@@ -484,12 +597,18 @@ const TimeSheet = () => {
                   onClick={handleSave}
                   disabled={saving}
                 >
-                  {saving
-                    ? "Saving..."
-                    : isEditMode
-                    ? "💾 Update"
-                    : "💾 Save"}
+                  {saving ? "Saving..." : isEditMode ? "💾 Update" : "💾 Save"}
                 </button>
+                {isEditMode && (
+                  <button
+                    type="button"
+                    className="btn-action btn-clear"
+                    onClick={handleCancelEdit}
+                    disabled={saving}
+                  >
+                    Cancel
+                  </button>
+                )}
                 <button
                   type="button"
                   className="btn-action btn-clear"
@@ -507,125 +626,136 @@ const TimeSheet = () => {
               </div>
             </div>
 
-        <div className="info-box">
-          <strong>💡 Instructions:</strong>
-          <ul>
-            <li>
-              <strong>Copy/Paste from Excel:</strong> Select data in Excel
-              (multiple cells) → Ctrl+C → Click first cell in table → Ctrl+V
-            </li>
-            <li>
-              <strong>Navigation:</strong> Use Arrow keys ↑ ↓ ← → to move
-              between cells
-            </li>
-            <li>
-              <strong>Tab/Enter:</strong> Tab to move right, Enter to move down
-            </li>
-          </ul>
-        </div>
+            <div className="info-box">
+              <strong>💡 Instructions:</strong>
+              <ul>
+                <li>
+                  <strong>Copy/Paste from Excel:</strong> Select data in Excel
+                  (multiple cells) → Ctrl+C → Click first cell in table → Ctrl+V
+                </li>
+                <li>
+                  <strong>Navigation:</strong> Use Arrow keys ↑ ↓ ← → to move
+                  between cells
+                </li>
+                <li>
+                  <strong>Tab/Enter:</strong> Tab to move right, Enter to move
+                  down
+                </li>
+              </ul>
+            </div>
 
-        <table className="timesheet-table" id="excelTable">
-          <thead>
-            <tr>
-              <th colSpan="4" style={{ backgroundColor: "#ff9999" }}>
-                Date
-              </th>
-              {dateHeaders.map((header, index) => (
-                <th
-                  key={index}
-                  style={{ backgroundColor: "#ff9999" }}
-                  className={header.isWeekend ? "weekend" : ""}
-                >
-                  {header.display}
-                </th>
-              ))}
-            </tr>
-            <tr>
-              <th style={{ width: "40px" }}>#</th>
-              <th style={{ width: "120px" }}>Note</th>
-              <th style={{ width: "120px" }}>Period</th>
-              <th className="hrs-header">Hrs</th>
-              {dateHeaders.map((header, index) => (
-                <th key={index} className={header.isWeekend ? "weekend" : ""}>
-                  {header.dayName}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, rowIndex) => (
-              <tr key={row.id}>
-                <td className="num-col">
-                  <input type="text" value={row.id} readOnly />
-                </td>
-                <td className="note-col">
-                  <input
-                    id={`cell-${rowIndex}-note-0`}
-                    type="text"
-                    value={row.note}
-                    onChange={(e) =>
-                      handleInputChange(rowIndex, "note", e.target.value)
-                    }
-                    onPaste={(e) => handlePaste(e, rowIndex, 0, "note")}
-                    onKeyDown={(e) => handleKeyDown(e, rowIndex, 0, "note")}
-                  />
-                </td>
-                <td>
-                  <input
-                    id={`cell-${rowIndex}-period-0`}
-                    type="text"
-                    value={row.period}
-                    onChange={(e) =>
-                      handleInputChange(rowIndex, "period", e.target.value)
-                    }
-                    onPaste={(e) => handlePaste(e, rowIndex, 0, "period")}
-                    onKeyDown={(e) => handleKeyDown(e, rowIndex, 0, "period")}
-                  />
-                </td>
-                <td className="hrs-col">
-                  <input
-                    id={`cell-${rowIndex}-hrs-0`}
-                    type="text"
-                    value={row.hrs}
-                    onChange={(e) =>
-                      handleInputChange(rowIndex, "hrs", e.target.value)
-                    }
-                    onPaste={(e) => handlePaste(e, rowIndex, 0, "hrs")}
-                    onKeyDown={(e) => handleKeyDown(e, rowIndex, 0, "hrs")}
-                  />
-                </td>
-                {row.days.map((dayValue, dayIndex) => (
-                  <td
-                    key={dayIndex}
-                    className={
-                      dateHeaders[dayIndex]?.isWeekend ? "weekend" : ""
-                    }
-                  >
-                    <input
-                      id={`cell-${rowIndex}-day-${dayIndex}`}
-                      type="text"
-                      value={dayValue}
-                      onChange={(e) =>
-                        handleInputChange(
-                          rowIndex,
-                          "days",
-                          e.target.value,
-                          dayIndex
-                        )
-                      }
-                      onPaste={(e) => handlePaste(e, rowIndex, dayIndex, "day")}
-                      onKeyDown={(e) =>
-                        handleKeyDown(e, rowIndex, dayIndex, "day")
-                      }
-                    />
-                  </td>
+            <table className="timesheet-table" id="excelTable">
+              <thead>
+                <tr>
+                  <th colSpan="4" style={{ backgroundColor: "#ff9999" }}>
+                    Date
+                  </th>
+                  {dateHeaders.map((header, index) => (
+                    <th
+                      key={index}
+                      style={{ backgroundColor: "#ff9999" }}
+                      className={header.isWeekend ? "weekend" : ""}
+                    >
+                      {header.display}
+                    </th>
+                  ))}
+                </tr>
+                <tr>
+                  <th style={{ width: "40px" }}>#</th>
+                  <th style={{ width: "120px" }}>Note</th>
+                  <th style={{ width: "120px" }}>Period</th>
+                  <th className="hrs-header">Hrs</th>
+                  {dateHeaders.map((header, index) => (
+                    <th
+                      key={index}
+                      className={header.isWeekend ? "weekend" : ""}
+                    >
+                      {header.dayName}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, rowIndex) => (
+                  <tr key={row.id}>
+                    <td className="num-col">
+                      <input type="text" value={row.id} readOnly />
+                    </td>
+                    <td className="note-col">
+                      <input
+                        id={`cell-${rowIndex}-note-0`}
+                        type="text"
+                        value={row.note}
+                        onChange={(e) =>
+                          handleInputChange(rowIndex, "note", e.target.value)
+                        }
+                        onPaste={(e) => handlePaste(e, rowIndex, 0, "note")}
+                        onKeyDown={(e) => handleKeyDown(e, rowIndex, 0, "note")}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        id={`cell-${rowIndex}-period-0`}
+                        type="text"
+                        value={row.period}
+                        onChange={(e) =>
+                          handleInputChange(rowIndex, "period", e.target.value)
+                        }
+                        onPaste={(e) => handlePaste(e, rowIndex, 0, "period")}
+                        onKeyDown={(e) =>
+                          handleKeyDown(e, rowIndex, 0, "period")
+                        }
+                      />
+                    </td>
+                    <td className="hrs-col">
+                      <input
+                        id={`cell-${rowIndex}-hrs-0`}
+                        type="text"
+                        value={row.hrs}
+                        onChange={(e) =>
+                          handleInputChange(rowIndex, "hrs", e.target.value)
+                        }
+                        onPaste={(e) => handlePaste(e, rowIndex, 0, "hrs")}
+                        onKeyDown={(e) => handleKeyDown(e, rowIndex, 0, "hrs")}
+                      />
+                    </td>
+                    {row.days.map((dayValue, dayIndex) => (
+                      <td
+                        key={dayIndex}
+                        className={
+                          dateHeaders[dayIndex]?.isWeekend ? "weekend" : ""
+                        }
+                      >
+                        <input
+                          id={`cell-${rowIndex}-day-${dayIndex}`}
+                          type="text"
+                          value={dayValue}
+                          onChange={(e) =>
+                            handleInputChange(
+                              rowIndex,
+                              "days",
+                              e.target.value,
+                              dayIndex
+                            )
+                          }
+                          onPaste={(e) =>
+                            handlePaste(e, rowIndex, dayIndex, "day")
+                          }
+                          onKeyDown={(e) =>
+                            handleKeyDown(e, rowIndex, dayIndex, "day")
+                          }
+                        />
+                      </td>
+                    ))}
+                  </tr>
                 ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      </>
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
+    </div>
+  );
+};
 
 export default TimeSheet;

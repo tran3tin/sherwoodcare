@@ -10,7 +10,12 @@ class TimesheetModel {
         : `INSERT INTO timesheet_periods (start_date, num_days, num_rows, name) 
            VALUES (?, ?, ?, ?)`;
 
-    const { rows } = await db.query(sql, [start_date, num_days, num_rows, name]);
+    const { rows } = await db.query(sql, [
+      start_date,
+      num_days,
+      num_rows,
+      name,
+    ]);
 
     if (db.client === "pg") {
       return rows[0].period_id;
@@ -21,9 +26,30 @@ class TimesheetModel {
 
   // Get all timesheet periods
   static async getAllPeriods() {
-    const sql = `
-      SELECT period_id, start_date, num_days, num_rows, name, created_at, updated_at 
-      FROM timesheet_periods 
+    const sql =
+      db.client === "pg"
+        ? `
+      SELECT 
+        period_id,
+        to_char(start_date, 'YYYY-MM-DD') AS start_date,
+        num_days,
+        num_rows,
+        name,
+        created_at,
+        updated_at
+      FROM timesheet_periods
+      ORDER BY start_date DESC, created_at DESC
+    `
+        : `
+      SELECT 
+        period_id,
+        DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date,
+        num_days,
+        num_rows,
+        name,
+        created_at,
+        updated_at
+      FROM timesheet_periods
       ORDER BY start_date DESC, created_at DESC
     `;
     const { rows } = await db.query(sql);
@@ -34,14 +60,39 @@ class TimesheetModel {
   static async getPeriodById(periodId) {
     const sql =
       db.client === "pg"
-        ? `SELECT * FROM timesheet_periods WHERE period_id = $1`
-        : `SELECT * FROM timesheet_periods WHERE period_id = ?`;
+        ? `
+      SELECT 
+        period_id,
+        to_char(start_date, 'YYYY-MM-DD') AS start_date,
+        num_days,
+        num_rows,
+        name,
+        created_at,
+        updated_at
+      FROM timesheet_periods
+      WHERE period_id = $1
+    `
+        : `
+      SELECT 
+        period_id,
+        DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date,
+        num_days,
+        num_rows,
+        name,
+        created_at,
+        updated_at
+      FROM timesheet_periods
+      WHERE period_id = ?
+    `;
     const { rows } = await db.query(sql, [periodId]);
     return rows[0] || null;
   }
 
   // Update period metadata
-  static async updatePeriod(periodId, { start_date, num_days, num_rows, name }) {
+  static async updatePeriod(
+    periodId,
+    { start_date, num_days, num_rows, name }
+  ) {
     const sql =
       db.client === "pg"
         ? `UPDATE timesheet_periods 
@@ -93,8 +144,7 @@ class TimesheetModel {
         hrs || "",
       ]);
 
-      const entryId =
-        db.client === "pg" ? rows[0].entry_id : rows.insertId;
+      const entryId = db.client === "pg" ? rows[0].entry_id : rows.insertId;
 
       // Insert days for this entry
       if (days && days.length > 0) {

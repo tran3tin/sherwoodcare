@@ -1,5 +1,49 @@
 const TimesheetModel = require("../models/TimesheetModel");
 
+const VN_TZ = "Asia/Ho_Chi_Minh";
+
+function ymdFromDateInTimeZone(date, timeZone = VN_TZ) {
+  const dtf = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = dtf.formatToParts(date);
+  const year = parts.find((p) => p.type === "year")?.value;
+  const month = parts.find((p) => p.type === "month")?.value;
+  const day = parts.find((p) => p.type === "day")?.value;
+  if (!year || !month || !day) return null;
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeDateOnly(value) {
+  if (!value) return value;
+
+  // If it's already date-only (from <input type="date">), keep as-is.
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  // If it's an ISO/timestamp string, convert to Vietnam date.
+  if (typeof value === "string") {
+    const d = new Date(value);
+    if (Number.isFinite(d.getTime())) {
+      return ymdFromDateInTimeZone(d) || value.slice(0, 10);
+    }
+    // Fallback: best-effort slice.
+    return value.slice(0, 10);
+  }
+
+  try {
+    const d = new Date(value);
+    if (!Number.isFinite(d.getTime())) return value;
+    return ymdFromDateInTimeZone(d) || value;
+  } catch {
+    return value;
+  }
+}
+
 // Create new timesheet
 exports.createTimesheet = async (req, res) => {
   try {
@@ -13,7 +57,7 @@ exports.createTimesheet = async (req, res) => {
 
     // Create period
     const periodId = await TimesheetModel.createPeriod({
-      start_date,
+      start_date: normalizeDateOnly(start_date),
       num_days,
       num_rows,
       name: name || null,
@@ -86,7 +130,7 @@ exports.updateTimesheet = async (req, res) => {
     // Update period metadata
     if (start_date || num_days || num_rows || name !== undefined) {
       await TimesheetModel.updatePeriod(id, {
-        start_date: start_date || period.start_date,
+        start_date: normalizeDateOnly(start_date || period.start_date),
         num_days: num_days || period.num_days,
         num_rows: num_rows || period.num_rows,
         name: name !== undefined ? name : period.name,

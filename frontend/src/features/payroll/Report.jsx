@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import timesheetService from "../../services/timesheetService";
+import { useToast } from "../../components/ToastProvider";
+import {
+  addDaysYMD,
+  formatDMFromYMD,
+  normalizeYMD,
+  weekdayIndexFromYMD,
+} from "../../utils/dateVN";
 import "./Report.css";
 
 const Report = () => {
+  const location = useLocation();
   const navigate = useNavigate();
   const { id } = useParams(); // Get period ID from URL if navigated from saved timesheet
+  const toast = useToast();
   const [reportData, setReportData] = useState(null);
   const [dateHeaders, setDateHeaders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +27,45 @@ const Report = () => {
     "Friday",
     "Saturday",
   ]);
+
+  const buildDateHeaders = (startYmd, days) => {
+    const s = normalizeYMD(startYmd);
+    const count = parseInt(days, 10);
+    if (!s || !Number.isFinite(count) || count <= 0) return [];
+
+    const headers = [];
+    for (let i = 0; i < count; i++) {
+      const ymd = addDaysYMD(s, i);
+      const dow = weekdayIndexFromYMD(ymd);
+      headers.push({
+        ymd,
+        display: formatDMFromYMD(ymd),
+        dayName: Number.isFinite(dow) ? dayNames[dow] : "",
+        isWeekend: dow === 0 || dow === 6,
+      });
+    }
+    return headers;
+  };
+
+  const normalizeHeaders = (headers) => {
+    if (!Array.isArray(headers)) return [];
+    return headers
+      .map((h) => {
+        const ymd = normalizeYMD(h?.ymd || h?.date || h);
+        if (!ymd) return null;
+        const dow = weekdayIndexFromYMD(ymd);
+        return {
+          ymd,
+          display: h?.display || formatDMFromYMD(ymd),
+          dayName: h?.dayName || (Number.isFinite(dow) ? dayNames[dow] : ""),
+          isWeekend:
+            typeof h?.isWeekend === "boolean"
+              ? h.isWeekend
+              : dow === 0 || dow === 6,
+        };
+      })
+      .filter(Boolean);
+  };
 
   useEffect(() => {
     if (id) {
@@ -36,27 +84,15 @@ const Report = () => {
       const { period, entries } = response.data;
 
       // Generate date headers
-      const startObj = new Date(period.start_date + "T00:00:00");
-      const headers = [];
-
-      for (let i = 0; i < period.num_days; i++) {
-        const currentDate = new Date(startObj);
-        currentDate.setDate(startObj.getDate() + i);
-        const dayOfWeek = currentDate.getDay();
-        headers.push({
-          date: currentDate.toISOString(),
-          display: formatDateDisplay(currentDate.toISOString()),
-          dayName: dayNames[dayOfWeek],
-          isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
-        });
-      }
+      const startYmd = normalizeYMD(period.start_date);
+      const headers = buildDateHeaders(startYmd, period.num_days);
       setDateHeaders(headers);
 
       // Convert entries to rosterData format
       const rosterData = entries.map((entry) => {
-        const daysArray = Array(period.num_days).fill("");
+        const daysArray = Array(parseInt(period.num_days)).fill("");
         entry.days.forEach((day) => {
-          if (day.day_index >= 0 && day.day_index < period.num_days) {
+          if (day.day_index >= 0 && day.day_index < parseInt(period.num_days)) {
             daysArray[day.day_index] = day.staff_name || "";
           }
         });
@@ -73,7 +109,7 @@ const Report = () => {
       processData(rosterData, headers);
     } catch (error) {
       console.error("Error loading timesheet report:", error);
-      alert("Failed to load report. Redirecting...");
+      toast.error("Failed to load report. Redirecting...");
       navigate("/payroll/timesheets");
     } finally {
       setLoading(false);
@@ -87,20 +123,19 @@ const Report = () => {
     if (storedData && storedHeaders) {
       const parsedData = JSON.parse(storedData);
       const parsedHeaders = JSON.parse(storedHeaders);
-      setDateHeaders(parsedHeaders);
-      processData(parsedData, parsedHeaders);
+      const normalizedHeaders = normalizeHeaders(parsedHeaders);
+      setDateHeaders(normalizedHeaders);
+      processData(parsedData, normalizedHeaders);
       setLoading(false);
     } else {
-      alert("No data found. Please go back to the Time Sheet.");
+      toast.warning("No data found. Please go back to the Time Sheet.");
       navigate("/payroll/time-sheet");
     }
   };
 
   const formatDateDisplay = (dateString) => {
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    return `${day}/${month}`;
+    // dateString can be ISO or YYYY-MM-DD; normalize then format.
+    return formatDMFromYMD(normalizeYMD(dateString));
   };
 
   const processData = (data, headers) => {
@@ -239,7 +274,20 @@ const Report = () => {
         <button
           type="button"
           className="btn-back"
-          onClick={() => navigate("/payroll/time-sheet")}
+          onClick={() => {
+            const from = location.state?.from;
+            if (typeof from === "string" && from.length > 0) {
+              navigate(from);
+              return;
+            }
+
+            if (id) {
+              navigate(`/payroll/time-sheet/${id}`);
+              return;
+            }
+
+            navigate("/payroll/time-sheet");
+          }}
         >
           ← Back to Time Sheet
         </button>
@@ -252,7 +300,8 @@ const Report = () => {
               <th colSpan="4">Date</th>
               {dateHeaders.map((header, index) => (
                 <th key={index} className={header.isWeekend ? "weekend" : ""}>
-                  {formatDateDisplay(header.date)}
+                  {header.display ||
+                    formatDateDisplay(header.ymd || header.date)}
                 </th>
               ))}
               <th className="total-col">TOTAL</th>
@@ -264,7 +313,7 @@ const Report = () => {
               <th className="hrs-header">Hrs</th>
               {dateHeaders.map((header, index) => (
                 <th key={index} className={header.isWeekend ? "weekend" : ""}>
-                  {dayNames[new Date(header.date).getDay()]}
+                  {header.dayName || ""}
                 </th>
               ))}
               <th className="total-col">TOTAL</th>

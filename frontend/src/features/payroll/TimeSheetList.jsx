@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import timesheetService from "../../services/timesheetService";
+import { useToast } from "../../components/ToastProvider";
+import {
+  addDaysYMD,
+  formatDMYFromYMD,
+  formatDateVN,
+  normalizeYMD,
+} from "../../utils/dateVN";
 import "./TimeSheetList.css";
 
 const TimeSheetList = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [timesheets, setTimesheets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -21,7 +29,9 @@ const TimeSheetList = () => {
       setTimesheets(response.data || []);
     } catch (err) {
       console.error("Error loading timesheets:", err);
-      setError(err.response?.data?.error || err.message || "Failed to load timesheets");
+      setError(
+        err.response?.data?.error || err.message || "Failed to load timesheets"
+      );
     } finally {
       setLoading(false);
     }
@@ -32,34 +42,43 @@ const TimeSheetList = () => {
       ? `Are you sure you want to delete "${name}"?`
       : "Are you sure you want to delete this timesheet?";
 
-    if (!window.confirm(confirmMsg)) return;
-
-    try {
-      await timesheetService.deleteTimesheet(id);
-      setTimesheets(timesheets.filter((ts) => ts.period_id !== id));
-    } catch (err) {
-      console.error("Error deleting timesheet:", err);
-      alert(err.response?.data?.error || "Failed to delete timesheet");
-    }
-  };
-
-  const formatDateDisplay = (dateString) => {
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+    toast.warning(confirmMsg, {
+      durationMs: 7000,
+      actions: [
+        {
+          label: "Delete",
+          variant: "primary",
+          onClick: async () => {
+            try {
+              await timesheetService.deleteTimesheet(id);
+              setTimesheets((prev) => prev.filter((ts) => ts.period_id !== id));
+              toast.success("Timesheet deleted.");
+            } catch (err) {
+              console.error("Error deleting timesheet:", err);
+              toast.error(
+                err.response?.data?.error || "Failed to delete timesheet"
+              );
+            }
+          },
+        },
+        {
+          label: "Cancel",
+          onClick: () => {
+            toast.info("Cancelled.");
+          },
+        },
+      ],
+    });
   };
 
   const calculateEndDate = (startDate, numDays) => {
-    const start = new Date(startDate);
-    const end = new Date(start);
-    end.setDate(start.getDate() + numDays - 1);
-    return formatDateDisplay(end);
+    const ymd = normalizeYMD(startDate);
+    const endYmd = addDaysYMD(ymd, parseInt(numDays, 10) - 1);
+    return formatDMYFromYMD(endYmd);
   };
 
   const getTimesheetLabel = (ts) => {
-    const startFormatted = formatDateDisplay(ts.start_date);
+    const startFormatted = formatDMYFromYMD(ts.start_date);
     const endFormatted = calculateEndDate(ts.start_date, ts.num_days);
     return ts.name || `TimeSheet ${startFormatted} - ${endFormatted}`;
   };
@@ -77,11 +96,7 @@ const TimeSheetList = () => {
       <div className="timesheet-list-container">
         <div className="error-message">
           <strong>Error:</strong> {error}
-          <button
-            type="button"
-            className="btn-retry"
-            onClick={loadTimesheets}
-          >
+          <button type="button" className="btn-retry" onClick={loadTimesheets}>
             Retry
           </button>
         </div>
@@ -130,12 +145,10 @@ const TimeSheetList = () => {
               {timesheets.map((ts) => (
                 <tr key={ts.period_id}>
                   <td className="period-name">{getTimesheetLabel(ts)}</td>
-                  <td>{formatDateDisplay(ts.start_date)}</td>
+                  <td>{formatDMYFromYMD(ts.start_date)}</td>
                   <td>{ts.num_days}</td>
                   <td>{ts.num_rows}</td>
-                  <td>
-                    {new Date(ts.created_at).toLocaleDateString("en-GB")}
-                  </td>
+                  <td>{formatDateVN(ts.created_at)}</td>
                   <td className="actions-cell">
                     <button
                       type="button"

@@ -42,6 +42,8 @@ if (DB_CLIENT === "mysql") {
     "nexgenus";
   cfg.waitForConnections = true;
   cfg.connectionLimit = 10;
+  // Prevent timezone shifts for DATE columns (e.g., start_date)
+  cfg.dateStrings = ["DATE"];
 
   const pool = mysql.createPool(cfg);
 
