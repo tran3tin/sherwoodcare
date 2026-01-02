@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Layout from "../../components/Layout";
 import timesheetService from "../../services/timesheetService";
-import { useToast } from "../../components/ToastProvider";
+import timesheetReportService from "../../services/timesheetReportService";
+import { toast } from "react-toastify";
 import {
   addDaysYMD,
   formatDMFromYMD,
@@ -15,7 +16,6 @@ import "./TimeSheetForm.css";
 const TimeSheetForm = () => {
   const navigate = useNavigate();
   const { id } = useParams(); // Get timesheet ID from URL for edit mode
-  const toast = useToast();
   const [startDate, setStartDate] = useState("");
   const [numDays, setNumDays] = useState(14);
   const [numRows, setNumRows] = useState(40);
@@ -58,6 +58,24 @@ const TimeSheetForm = () => {
   const getDraftKey = () => {
     const key = periodId || id;
     return key ? String(key) : "new";
+  };
+
+  const getLinkedReportId = (key = getDraftKey()) => {
+    try {
+      const raw = localStorage.getItem(`timesheetReportId:${key}`);
+      return raw ? String(raw) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const setLinkedReportId = (reportId, key = getDraftKey()) => {
+    try {
+      if (!reportId) return;
+      localStorage.setItem(`timesheetReportId:${key}`, String(reportId));
+    } catch {
+      // ignore
+    }
   };
 
   const saveDraft = (key = getDraftKey()) => {
@@ -192,7 +210,15 @@ const TimeSheetForm = () => {
       console.error("Error loading timesheet:", error);
       toast.error(
         error.response?.data?.error ||
-          "Failed to load timesheet. Redirecting to list."
+          "Failed to load timesheet. Redirecting to list.",
+        {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        }
       );
       navigate("/payroll/timesheets");
     } finally {
@@ -213,7 +239,14 @@ const TimeSheetForm = () => {
     rowCount = numRows
   ) => {
     if (!start) {
-      toast.warning("Please select a start date!");
+      toast.warning("Please select a start date!", {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       return;
     }
 
@@ -345,37 +378,48 @@ const TimeSheetForm = () => {
   };
 
   const clearData = () => {
-    toast.warning("Clear all data?", {
-      durationMs: 6000,
-      actions: [
-        {
-          label: "Clear",
-          variant: "primary",
-          onClick: () => {
-            const newRows = rows.map((row) => ({
-              ...row,
-              note: "",
-              period: "",
-              hrs: "",
-              days: Array(numDays).fill(""),
-            }));
-            setRows(newRows);
-            toast.success("Data cleared.");
-          },
-        },
-        {
-          label: "Cancel",
-          onClick: () => {
-            toast.info("Cancelled.");
-          },
-        },
-      ],
+    if (!window.confirm("Clear all data?")) return;
+
+    const newRows = rows.map((row) => ({
+      ...row,
+      note: "",
+      period: "",
+      hrs: "",
+      days: Array(numDays).fill(""),
+    }));
+    setRows(newRows);
+    toast.success("Data cleared.", {
+      position: "top-right",
+      autoClose: 3000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
     });
   };
 
-  const handleViewReport = () => {
+  const handleViewReport = async () => {
     if (!dateHeaders.length) {
-      toast.warning("Please generate the table first.");
+      toast.warning("Please generate the table first.", {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+      return;
+    }
+
+    if (!startDate) {
+      toast.warning("Please select a start date!", {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       return;
     }
 
@@ -398,21 +442,133 @@ const TimeSheetForm = () => {
         ? `/payroll/time-sheet/${periodId || id}`
         : "/payroll/time-sheet";
 
-    if (periodId) {
-      navigate(`/payroll/report/${periodId}`, { state: { from, draftKey } });
-    } else {
+    // Process data like TimeSheetReport does - group by employee name
+    const processedData = processDataForReport(rosterData, dateHeaders);
+
+    const startYmd = normalizeYMD(startDate);
+    const endYmd = addDaysYMD(startYmd, parseInt(numDays, 10) - 1);
+    const reportName = `TimeSheet ${formatDMFromYMD(
+      startYmd
+    )} - ${formatDMFromYMD(endYmd)}`;
+
+    const payload = {
+      start_date: startYmd,
+      num_days: numDays,
+      num_rows: numRows,
+      name: reportName,
+      processed_data: processedData,
+      date_headers: dateHeaders,
+    };
+
+    const linkedId = getLinkedReportId(draftKey);
+
+    try {
+      setSaving(true);
+
+      let reportId = linkedId;
+      if (linkedId) {
+        await timesheetReportService.updateReport(linkedId, payload);
+      } else {
+        const created = await timesheetReportService.createReport(payload);
+        reportId = created.report_id;
+        setLinkedReportId(reportId, draftKey);
+      }
+
+      navigate(`/payroll/report/${reportId}`, { state: { from, draftKey } });
+    } catch (err) {
+      console.error("Error saving report:", err);
+      toast.error(err?.response?.data?.error || "Failed to save report", {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+      // fallback to legacy report page (localStorage)
       navigate("/payroll/report", { state: { from, draftKey } });
+    } finally {
+      setSaving(false);
     }
+  };
+
+  // Process roster data into employee-grouped format for report
+  const processDataForReport = (data, headers) => {
+    let employeeMap = {};
+
+    data.forEach((rowData) => {
+      const { num, note, period, hrs, days } = rowData;
+
+      if (!note) return;
+
+      days.forEach((name, dayIndex) => {
+        if (name && name.trim() !== "") {
+          const trimmedName = name.trim();
+          if (!employeeMap[trimmedName]) employeeMap[trimmedName] = {};
+
+          // Create a unique key for the job
+          let jobKey = `${num}|${note}|${period}`;
+
+          if (!employeeMap[trimmedName][jobKey]) {
+            employeeMap[trimmedName][jobKey] = {
+              num: num,
+              note: note,
+              period: period,
+              hrsValue: hrs,
+              workedDays: {},
+            };
+          }
+          employeeMap[trimmedName][jobKey].workedDays[dayIndex] = true;
+        }
+      });
+    });
+
+    // Convert map to array for rendering
+    const sortedNames = Object.keys(employeeMap).sort();
+    const processed = sortedNames.map((name) => {
+      const jobs = employeeMap[name];
+      const jobKeys = Object.keys(jobs);
+      return {
+        name: name,
+        jobs: jobKeys.map((key) => {
+          const job = jobs[key];
+          const dayValues = headers.map((_, dayIndex) =>
+            job.workedDays[dayIndex] ? String(job.hrsValue ?? "") : ""
+          );
+
+          return {
+            ...job,
+            dayValues,
+          };
+        }),
+      };
+    });
+
+    return processed;
   };
 
   const handleSave = async () => {
     if (!startDate) {
-      toast.warning("Please select a start date!");
+      toast.warning("Please select a start date!", {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       return;
     }
 
     if (!dateHeaders.length) {
-      toast.warning("Please generate the table first!");
+      toast.warning("Please generate the table first!", {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       return;
     }
 
@@ -451,7 +607,14 @@ const TimeSheetForm = () => {
           entries,
         });
         clearDraft(String(periodId));
-        toast.success("Timesheet updated successfully!");
+        toast.success("Timesheet updated successfully!", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
       } else {
         const response = await timesheetService.createTimesheet({
           start_date: startYmd,
@@ -463,7 +626,14 @@ const TimeSheetForm = () => {
         clearDraft("new");
         setPeriodId(response.period_id);
         setIsEditMode(true);
-        toast.success("Timesheet saved successfully!");
+        toast.success("Timesheet saved successfully!", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
         navigate(`/payroll/time-sheet/${response.period_id}`, {
           replace: true,
         });
@@ -472,7 +642,15 @@ const TimeSheetForm = () => {
       console.error("Error saving timesheet:", error);
       toast.error(
         error.response?.data?.error ||
-          "Failed to save timesheet. Please try again."
+          "Failed to save timesheet. Please try again.",
+        {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        }
       );
     } finally {
       setSaving(false);
@@ -480,7 +658,6 @@ const TimeSheetForm = () => {
   };
 
   const handleCancelEdit = () => {
-    toast.info("Cancelled editing timesheet.");
     navigate("/payroll/timesheets");
   };
 

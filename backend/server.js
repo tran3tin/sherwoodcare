@@ -52,6 +52,10 @@ app.get("/api/db/status", async (req, res) => {
 const timesheetRoutes = require("./routes/timesheets");
 app.use("/api/timesheets", timesheetRoutes);
 
+// Timesheet report routes
+const timesheetReportRoutes = require("./routes/timesheetReports");
+app.use("/api/timesheetreports", timesheetReportRoutes);
+
 // Employee routes
 const employeeRoutes = require("./routes/employees");
 app.use("/api/employees", employeeRoutes);

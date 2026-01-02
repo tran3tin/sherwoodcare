@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
-import timesheetService from "../../services/timesheetService";
+import timesheetReportService from "../../services/timesheetReportService";
 import { toast } from "react-toastify";
 import {
   addDaysYMD,
@@ -11,8 +11,9 @@ import {
 } from "../../utils/dateVN";
 import "../../assets/styles/list.css";
 
-const TimeSheetList = () => {
+const TimeSheetReportList = () => {
   const navigate = useNavigate();
+
   const [timesheets, setTimesheets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -26,46 +27,15 @@ const TimeSheetList = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await timesheetService.fetchTimesheets();
+      const response = await timesheetReportService.fetchReports();
       setTimesheets(response.data || []);
     } catch (err) {
       console.error("Error loading timesheets:", err);
       setError(
-        err.response?.data?.error || err.message || "Failed to load timesheets"
+        err.response?.data?.error || err.message || "Failed to load reports"
       );
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDelete = async (id, name) => {
-    const confirmMsg = name
-      ? `Are you sure you want to delete "${name}"?`
-      : "Are you sure you want to delete this timesheet?";
-
-    if (!window.confirm(confirmMsg)) return;
-
-    try {
-      await timesheetService.deleteTimesheet(id);
-      setTimesheets((prev) => prev.filter((ts) => ts.period_id !== id));
-      toast.success("Timesheet deleted.", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
-    } catch (err) {
-      console.error("Error deleting timesheet:", err);
-      toast.error(err.response?.data?.error || "Failed to delete timesheet", {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
     }
   };
 
@@ -85,27 +55,63 @@ const TimeSheetList = () => {
     setSearchTerm("");
   };
 
-  // Filter timesheets
-  const filteredTimesheets = timesheets.filter((ts) => {
-    if (searchTerm === "") return true;
-    const label = getTimesheetLabel(ts).toLowerCase();
-    const startDate = formatDMYFromYMD(ts.start_date).toLowerCase();
-    return (
-      label.includes(searchTerm.toLowerCase()) ||
-      startDate.includes(searchTerm.toLowerCase())
-    );
-  });
+  const filteredTimesheets = useMemo(() => {
+    return timesheets.filter((ts) => {
+      if (searchTerm === "") return true;
+      const label = getTimesheetLabel(ts).toLowerCase();
+      const startDate = formatDMYFromYMD(ts.start_date).toLowerCase();
+      return (
+        label.includes(searchTerm.toLowerCase()) ||
+        startDate.includes(searchTerm.toLowerCase())
+      );
+    });
+  }, [timesheets, searchTerm]);
+
+  const handleDelete = (id, name) => {
+    const confirmMsg = name
+      ? `Are you sure you want to delete "${name}"?`
+      : "Are you sure you want to delete this report?";
+
+    if (!window.confirm(confirmMsg)) return;
+
+    async function performDelete() {
+      try {
+        await timesheetReportService.deleteReport(id);
+        setTimesheets((prev) => prev.filter((ts) => ts.report_id !== id));
+        toast.success("Report deleted.", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+      } catch (err) {
+        console.error("Error deleting report:", err);
+        toast.error(err.response?.data?.error || "Failed to delete report", {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+      }
+    }
+
+    performDelete();
+  };
 
   if (loading) {
     return (
       <Layout
-        title="Timesheet Management"
-        breadcrumb={["Home", "Payroll", "Timesheets"]}
+        title="Timesheet Reports"
+        breadcrumb={["Home", "Payroll", "Reports"]}
       >
         <div className="list-page-container">
           <div className="loading-state">
             <i className="fas fa-spinner"></i>
-            <p>Loading timesheets...</p>
+            <p>Loading reports...</p>
           </div>
         </div>
       </Layout>
@@ -115,8 +121,8 @@ const TimeSheetList = () => {
   if (error) {
     return (
       <Layout
-        title="Timesheet Management"
-        breadcrumb={["Home", "Payroll", "Timesheets"]}
+        title="Timesheet Reports"
+        breadcrumb={["Home", "Payroll", "Reports"]}
       >
         <div className="list-page-container">
           <div className="empty-state">
@@ -138,8 +144,8 @@ const TimeSheetList = () => {
 
   return (
     <Layout
-      title="Timesheet Management"
-      breadcrumb={["Home", "Payroll", "Timesheets"]}
+      title="Timesheet Reports"
+      breadcrumb={["Home", "Payroll", "Reports"]}
     >
       <div className="list-page-container">
         <div className="list-page-header">
@@ -172,7 +178,7 @@ const TimeSheetList = () => {
         {timesheets.length === 0 ? (
           <div className="empty-state">
             <h3>No Data</h3>
-            <p>No saved timesheets yet.</p>
+            <p>No saved reports yet.</p>
             <button
               type="button"
               className="btn-create-first"
@@ -185,7 +191,7 @@ const TimeSheetList = () => {
         ) : filteredTimesheets.length === 0 ? (
           <div className="empty-state">
             <h3>No Results Found</h3>
-            <p>No timesheets match your search criteria.</p>
+            <p>No reports match your search criteria.</p>
             <button
               type="button"
               className="btn-clear-filter"
@@ -217,7 +223,7 @@ const TimeSheetList = () => {
               </thead>
               <tbody>
                 {filteredTimesheets.map((ts, index) => (
-                  <tr key={ts.period_id}>
+                  <tr key={ts.report_id}>
                     <td>{index + 1}</td>
                     <td>{getTimesheetLabel(ts)}</td>
                     <td>{formatDMYFromYMD(ts.start_date)}</td>
@@ -229,27 +235,18 @@ const TimeSheetList = () => {
                         <button
                           className="btn-action btn-view"
                           onClick={() =>
-                            navigate(`/payroll/time-sheet/${ts.period_id}`)
+                            navigate(`/payroll/report/${ts.report_id}`)
                           }
-                          title="View Timesheet"
+                          title="View Report"
                         >
-                          <i className="fas fa-eye"></i>
-                        </button>
-                        <button
-                          className="btn-action btn-edit"
-                          onClick={() =>
-                            navigate(`/payroll/time-sheet/${ts.period_id}`)
-                          }
-                          title="Edit Timesheet"
-                        >
-                          <i className="fas fa-edit"></i>
+                          <i className="fas fa-chart-bar"></i>
                         </button>
                         <button
                           className="btn-action btn-delete"
                           onClick={() =>
-                            handleDelete(ts.period_id, getTimesheetLabel(ts))
+                            handleDelete(ts.report_id, getTimesheetLabel(ts))
                           }
-                          title="Delete Timesheet"
+                          title="Delete Report"
                         >
                           <i className="fas fa-trash"></i>
                         </button>
@@ -266,4 +263,4 @@ const TimeSheetList = () => {
   );
 };
 
-export default TimeSheetList;
+export default TimeSheetReportList;

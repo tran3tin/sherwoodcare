@@ -2,12 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import { employeeService } from "../../services/employeeService";
-import { useToast } from "../../components/ToastProvider";
+import { toast } from "react-toastify";
 import "../../assets/styles/list.css";
 
 export default function Employee() {
   const navigate = useNavigate();
-  const toast = useToast();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -24,7 +23,14 @@ export default function Employee() {
       setEmployees(response.data || []);
     } catch (error) {
       console.error("Error fetching employees:", error);
-      toast.error("Failed to load employees");
+      toast.error("Failed to load employees", {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } finally {
       setLoading(false);
     }
@@ -37,10 +43,24 @@ export default function Employee() {
 
     try {
       await employeeService.delete(id);
-      toast.success("Employee deleted successfully");
+      toast.success("Employee deleted successfully", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       fetchEmployees();
     } catch (error) {
-      toast.error("Failed to delete employee");
+      toast.error("Failed to delete employee", {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     }
   };
 

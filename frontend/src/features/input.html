@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng Phân Công - Nhập Liệu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        .date-config {
+            background: white;
+            padding: 20px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        .date-config h3 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 20px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .input-field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-field label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .input-field input,
+        .input-field select {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .table-container {
+            overflow: auto;
+            background: white;
+            padding: 15px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            max-height: 80vh;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 900px;
+        }
+
+        th,
+        td {
+            border: 1px solid #000;
+            padding: 0;
+            text-align: center;
+            height: 35px;
+        }
+
+        thead tr {
+            background-color: #d9d9d9;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            padding: 8px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .red-text {
+            color: red;
+            font-weight: bold;
+        }
+
+        .num-col {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            width: 40px;
+        }
+
+        .note-col {
+            background-color: #e8e8e8;
+            font-weight: bold;
+            text-align: left;
+            padding-left: 10px !important;
+            width: 120px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            height: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            text-align: center;
+            font-size: 14px;
+            font-family: inherit;
+            display: block;
+            box-sizing: border-box;
+            padding: 5px;
+        }
+
+        .note-col input[type="text"] {
+            text-align: left;
+            padding-left: 10px;
+            font-weight: bold;
+        }
+
+        input[type="text"]:focus {
+            background-color: rgba(255, 255, 255, 0.9);
+            box-shadow: inset 0 0 0 2px #007bff;
+            font-weight: bold;
+        }
+
+        /* Màu luân phiên cho các dòng */
+        tbody tr:nth-child(odd) td:not(.num-col):not(.note-col) {
+            background-color: #fce4d6;
+        }
+
+        tbody tr:nth-child(even) td:not(.num-col):not(.note-col) {
+            background-color: #e8f4f8;
+        }
+
+        tbody tr td input[type="text"]:focus {
+            background-color: #fff;
+        }
+
+        .btn-group {
+            margin-top: 15px;
+            text-align: right;
+        }
+
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            margin-left: 10px;
+        }
+
+        .btn-save {
+            background-color: #28a745;
+        }
+
+        .btn-clear {
+            background-color: #dc3545;
+        }
+
+        .btn-transform {
+            background-color: #007bff;
+        }
+
+        .btn-back {
+            background-color: #6c757d;
+        }
+
+        .btn-generate {
+            background-color: #17a2b8;
+        }
+
+        .weekend {
+            background-color: #ffe6e6 !important;
+        }
+
+        .info-box {
+            background-color: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+
+        .info-box ul {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
+
+        .info-box li {
+            margin: 3px 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="date-config">
+        <h3>⚙️ Cấu hình bảng phân công</h3>
+        <div class="input-group">
+            <div class="input-field">
+                <label for="startDate">Ngày bắt đầu:</label>
+                <input type="date" id="startDate" value="">
+            </div>
+            <div class="input-field">
+                <label for="numDays">Số ngày:</label>
+                <select id="numDays">
+                    <option value="7">7 ngày</option>
+                    <option value="14" selected>14 ngày</option>
+                    <option value="21">21 ngày</option>
+                    <option value="30">30 ngày</option>
+                </select>
+            </div>
+            <div class="input-field">
+                <label for="numRows">Số dòng:</label>
+                <input type="number" id="numRows" min="1" max="200" value="40" />
+            </div>
+            <button type="button" class="btn-generate" onclick="generateTable()">Tạo bảng</button>
+        </div>
+    </div>
+
+    <div id="inputSection" class="table-container">
+        <h2 style="text-align: center;">Bảng Phân Công Nhân Sự</h2>
+
+        <div class="info-box">
+            <strong>💡 Hướng dẫn sử dụng:</strong>
+            <ul>
+                <li><strong>Copy/Paste từ Excel:</strong> Chọn vùng dữ liệu trong Excel (có thể nhiều ô) → Ctrl+C →
+                    Click vào ô đầu tiên trong bảng → Ctrl+V (dữ liệu sẽ tự động điền vào đúng vị trí)</li>
+                <li><strong>Di chuyển:</strong> Dùng phím mũi tên ↑ ↓ ← → để di chuyển giữa các ô</li>
+                <li><strong>Tab/Enter:</strong> Nhấn Tab để sang ô bên phải, Enter để xuống dòng dưới</li>
+            </ul>
+        </div>
+
+        <form id="rosterForm">
+            <table id="excelTable">
+                <thead id="tableHead">
+                </thead>
+                <tbody id="inputBody">
+                </tbody>
+            </table>
+
+            <div class="btn-group">
+                <button type="button" class="btn-clear" onclick="clearData()">Xóa hết dữ liệu</button>
+                <button type="button" class="btn-transform" onclick="transformData()">Xem Báo Cáo</button>
+                <button type="button" class="btn-generate" onclick="exportCSV()">Export CSV</button>
+                <button type="button" class="btn-generate"
+                    onclick="document.getElementById('importFile').click()">Import CSV</button>
+                <input type="file" id="importFile" accept=".csv" style="display:none"
+                    onchange="handleImportFile(event)" />
+            </div>
+        </form>
+    </div>
+
+    <script>
+        let dateHeaders = [];
+        let dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        let NUM_ROWS = 40; // Số dòng mặc định (có thể thay đổi)
+
+        // Khởi tạo ngày mặc định
+        window.onload = function () {
+            const today = new Date();
+            document.getElementById('startDate').value = formatDateInput(today);
+
+            // Load từ localStorage nếu có
+            const savedDate = localStorage.getItem('startDate');
+            const savedDays = localStorage.getItem('numDays');
+            const savedRows = localStorage.getItem('numRows');
+            if (savedDate) document.getElementById('startDate').value = savedDate;
+            if (savedDays) document.getElementById('numDays').value = savedDays;
+            if (savedRows) document.getElementById('numRows').value = savedRows;
+        };
+
+        function formatDateInput(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function formatDateDisplay(date) {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = date.toLocaleString('en-US', { month: 'short' });
+            return `${day}-${month}`;
+        }
+
+        function createRow(rowNumber, numDays) {
+            const tr = document.createElement('tr');
+
+            // Cột #
+            let td = document.createElement('td');
+            td.className = 'num-col';
+            td.innerHTML = `<input type="text" value="${rowNumber}">`;
+            tr.appendChild(td);
+
+            // Cột Note
+            td = document.createElement('td');
+            td.className = 'note-col';
+            td.innerHTML = '<input type="text" value="">';
+            tr.appendChild(td);
+
+            // Cột Period
+            td = document.createElement('td');
+            td.innerHTML = '<input type="text" value="">';
+            tr.appendChild(td);
+
+            // Cột Hrs
+            td = document.createElement('td');
+            td.innerHTML = '<input type="text" value="">';
+            tr.appendChild(td);
+
+            // Các cột ngày
+            for (let i = 0; i < numDays; i++) {
+                td = document.createElement('td');
+                if (dateHeaders[i] && dateHeaders[i].isWeekend) {
+                    td.classList.add('weekend');
+                }
+                td.innerHTML = '<input type="text" value="">';
+                tr.appendChild(td);
+            }
+
+            return tr;
+        }
+
+        function generateTable() {
+            const startDateValue = document.getElementById('startDate').value;
+            const numDays = parseInt(document.getElementById('numDays').value);
+            const numRows = parseInt(document.getElementById('numRows').value) || NUM_ROWS;
+
+            if (!startDateValue) {
+                alert('Vui lòng chọn ngày bắt đầu!');
+                return;
+            }
+
+            // Lưu vào localStorage
+            localStorage.setItem('startDate', startDateValue);
+            localStorage.setItem('numDays', numDays);
+            localStorage.setItem('numRows', numRows);
+
+            // Cập nhật số dòng dùng toàn cục
+            NUM_ROWS = numRows;
+
+            const startDate = new Date(startDateValue + 'T00:00:00');
+            dateHeaders = [];
+
+            // Tạo header
+            const thead = document.getElementById('tableHead');
+            thead.innerHTML = '';
+
+            // Row 1: Date header
+            let tr1 = document.createElement('tr');
+            let thDate = document.createElement('th');
+            thDate.textContent = 'Date';
+            thDate.style.backgroundColor = '#ff9999';
+            thDate.colSpan = 4;
+            tr1.appendChild(thDate);
+
+            for (let i = 0; i < numDays; i++) {
+                const currentDate = new Date(startDate);
+                currentDate.setDate(startDate.getDate() + i);
+
+                const dayOfWeek = currentDate.getDay();
+                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+                dateHeaders.push({
+                    date: new Date(currentDate),
+                    isWeekend: isWeekend
+                });
+
+                const th1 = document.createElement('th');
+                th1.textContent = formatDateDisplay(currentDate);
+                th1.style.backgroundColor = '#ff9999';
+                if (isWeekend) th1.classList.add('weekend');
+                tr1.appendChild(th1);
+            }
+
+            // Row 2: # | Note | Period | Hrs | Day names
+            let tr2 = document.createElement('tr');
+            tr2.innerHTML = '<th style="width: 40px;">#</th><th style="width: 120px;">Note</th><th style="width: 120px;">Period</th><th style="width: 60px;">Hrs</th>';
+
+            for (let i = 0; i < numDays; i++) {
+                const currentDate = dateHeaders[i].date;
+                const dayOfWeek = currentDate.getDay();
+                const isWeekend = dateHeaders[i].isWeekend;
+
+                const th2 = document.createElement('th');
+                th2.textContent = dayNames[dayOfWeek];
+                if (isWeekend) th2.classList.add('weekend');
+                tr2.appendChild(th2);
+            }
+
+            thead.appendChild(tr1);
+            thead.appendChild(tr2);
+
+            // Tạo tbody với số dòng theo cấu hình
+            const tbody = document.getElementById('inputBody');
+            tbody.innerHTML = '';
+
+            for (let r = 1; r <= NUM_ROWS; r++) {
+                tbody.appendChild(createRow(r, numDays));
+            }
+
+            document.getElementById('inputSection').style.display = 'block';
+
+            // Focus vào ô đầu tiên
+            const firstInput = tbody.querySelector('input');
+            if (firstInput) {
+                setTimeout(() => firstInput.focus(), 100);
+            }
+        }
+
+        // Hỗ trợ Copy/Paste từ Excel - PASTE NHIỀU Ô
+        document.addEventListener('paste', function (e) {
+            const target = e.target;
+
+            // Chỉ xử lý khi paste vào bảng input
+            if (!target.matches('#excelTable input')) return;
+
+            e.preventDefault();
+
+            const clipboardData = (e.clipboardData || window.clipboardData).getData('text');
+            const rows = clipboardData.split(/\r\n|\n|\r/).filter(row => row.length > 0);
+
+            const startCell = target.closest('td');
+            const startRow = startCell.closest('tr');
+            const tableBody = startRow.closest('tbody');
+
+            const startRowIndex = Array.from(tableBody.children).indexOf(startRow);
+            const startColIndex = Array.from(startRow.children).indexOf(startCell);
+
+            rows.forEach((rowData, rIndex) => {
+                const cols = rowData.split('\t');
+                const targetRow = tableBody.children[startRowIndex + rIndex];
+
+                if (targetRow) {
+                    cols.forEach((cellData, cIndex) => {
+                        const targetCellIndex = startColIndex + cIndex;
+                        const targetCell = targetRow.children[targetCellIndex];
+
+                        if (targetCell) {
+                            const input = targetCell.querySelector('input');
+                            if (input) {
+                                input.value = cellData.trim();
+                            }
+                        }
+                    });
+                }
+            });
+
+            // Focus vào ô cuối cùng đã paste
+            const lastRowIndex = Math.min(startRowIndex + rows.length - 1, tableBody.children.length - 1);
+            const lastColIndex = Math.min(startColIndex + (rows[0]?.split('\t').length || 1) - 1, startRow.children.length - 1);
+            const lastCell = tableBody.children[lastRowIndex]?.children[lastColIndex];
+            const lastInput = lastCell?.querySelector('input');
+            if (lastInput) {
+                setTimeout(() => lastInput.focus(), 50);
+            }
+        });
+
+        // Xóa dữ liệu
+        function clearData() {
+            if (confirm('Bạn có chắc muốn xóa hết dữ liệu không?')) {
+                const inputs = document.querySelectorAll('#excelTable input');
+                inputs.forEach((input) => {
+                    // Giữ lại số thứ tự ở cột #
+                    const td = input.closest('td');
+                    if (td && td.classList.contains('num-col')) {
+                        // Tính lại số thứ tự
+                        const tr = td.closest('tr');
+                        const tbody = tr.closest('tbody');
+                        const rowIndex = Array.from(tbody.children).indexOf(tr);
+                        input.value = rowIndex + 1;
+                    } else {
+                        input.value = '';
+                    }
+                });
+            }
+        }
+
+        // Di chuyển bằng phím mũi tên và Tab/Enter
+        document.addEventListener('keydown', function (e) {
+            if (!e.target.matches('#excelTable input')) return;
+
+            const input = e.target;
+            const td = input.closest('td');
+            const tr = td.closest('tr');
+            const trArray = Array.from(document.querySelectorAll('#excelTable tbody tr'));
+            const tdArray = Array.from(tr.children);
+            let rowIndex = trArray.indexOf(tr);
+            let colIndex = tdArray.indexOf(td);
+
+            if (e.key === 'ArrowDown' && rowIndex < trArray.length - 1) {
+                e.preventDefault();
+                const nextCell = trArray[rowIndex + 1].children[colIndex];
+                const nextInput = nextCell ? nextCell.querySelector('input') : null;
+                if (nextInput) nextInput.focus();
+            } else if (e.key === 'ArrowUp' && rowIndex > 0) {
+                e.preventDefault();
+                const prevCell = trArray[rowIndex - 1].children[colIndex];
+                const prevInput = prevCell ? prevCell.querySelector('input') : null;
+                if (prevInput) prevInput.focus();
+            } else if (e.key === 'ArrowRight' && colIndex < tdArray.length - 1) {
+                e.preventDefault();
+                const nextCell = tdArray[colIndex + 1];
+                const nextInput = nextCell ? nextCell.querySelector('input') : null;
+                if (nextInput) nextInput.focus();
+            } else if (e.key === 'ArrowLeft' && colIndex > 0) {
+                e.preventDefault();
+                const prevCell = tdArray[colIndex - 1];
+                const prevInput = prevCell ? prevCell.querySelector('input') : null;
+                if (prevInput) prevInput.focus();
+            } else if (e.key === 'Tab' && !e.shiftKey && colIndex < tdArray.length - 1) {
+                e.preventDefault();
+                const nextCell = tdArray[colIndex + 1];
+                const nextInput = nextCell ? nextCell.querySelector('input') : null;
+                if (nextInput) nextInput.focus();
+            } else if (e.key === 'Tab' && e.shiftKey && colIndex > 0) {
+                e.preventDefault();
+                const prevCell = tdArray[colIndex - 1];
+                const prevInput = prevCell ? prevCell.querySelector('input') : null;
+                if (prevInput) prevInput.focus();
+            } else if (e.key === 'Enter' && rowIndex < trArray.length - 1) {
+                e.preventDefault();
+                const nextCell = trArray[rowIndex + 1].children[colIndex];
+                const nextInput = nextCell ? nextCell.querySelector('input') : null;
+                if (nextInput) nextInput.focus();
+            }
+        });
+
+        // Chuyển đổi sang báo cáo
+        function transformData() {
+            // Thu thập dữ liệu từ bảng
+            const inputRows = document.querySelectorAll('#inputBody tr');
+            let data = [];
+
+            inputRows.forEach(tr => {
+                const cells = tr.querySelectorAll('td');
+                let rowData = {
+                    num: cells[0].querySelector('input').value,
+                    note: cells[1].querySelector('input').value,
+                    period: cells[2].querySelector('input').value,
+                    hrs: cells[3].querySelector('input').value,
+                    days: []
+                };
+                for (let i = 4; i < cells.length; i++) {
+                    rowData.days.push(cells[i].querySelector('input').value);
+                }
+                data.push(rowData);
+            });
+
+            // Lưu dữ liệu vào localStorage
+            localStorage.setItem('rosterData', JSON.stringify(data));
+            localStorage.setItem('dateHeaders', JSON.stringify(dateHeaders));
+
+            // Chuyển sang trang báo cáo
+            window.location.href = 'report.html';
+        }
+
+        // Export CSV
+        function exportCSV() {
+            if (!dateHeaders || dateHeaders.length === 0) {
+                alert('Vui lòng tạo bảng trước khi xuất CSV');
+                return;
+            }
+
+            const inputRows = document.querySelectorAll('#inputBody tr');
+            const header = ['num', 'note', 'period', 'hrs'].concat(dateHeaders.map(d => formatDateDisplay(new Date(d.date))));
+            header.push('subtotal');
+            const lines = [];
+            lines.push(header.map(escapeCsv).join(','));
+
+            inputRows.forEach(tr => {
+                const cells = tr.querySelectorAll('td');
+                const row = [];
+                row.push(cells[0].querySelector('input').value);
+                row.push(cells[1].querySelector('input').value);
+                row.push(cells[2].querySelector('input').value);
+                row.push(cells[3].querySelector('input').value);
+                for (let i = 4; i < cells.length; i++) {
+                    const v = cells[i].querySelector('input') ? cells[i].querySelector('input').value : '';
+                    row.push(v);
+                }
+                lines.push(row.map(escapeCsv).join(','));
+            });
+
+            const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'roster_export.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function escapeCsv(val) {
+            if (val === null || val === undefined) return '';
+            const s = String(val);
+            if (s.includes('"') || s.includes(',') || s.includes('\n')) {
+                return '"' + s.replace(/"/g, '""') + '"';
+            }
+            return s;
+        }
+
+        // Import CSV
+        function handleImportFile(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (evt) {
+                const text = evt.target.result;
+                const rows = parseCsv(text);
+                if (rows.length <= 1) {
+                    alert('CSV không có dữ liệu hợp lệ');
+                    return;
+                }
+
+                // First row is header
+                const header = rows[0];
+                const dataRows = rows.slice(1);
+
+                // Determine numDays from header length
+                const numDays = Math.max(0, header.length - 4);
+                document.getElementById('numDays').value = numDays;
+                generateTable();
+
+                const tbody = document.getElementById('inputBody');
+                dataRows.forEach((r, idx) => {
+                    const tr = tbody.children[idx];
+                    if (!tr) return;
+                    const cells = tr.querySelectorAll('td');
+                    cells[0].querySelector('input').value = r[0] || '';
+                    cells[1].querySelector('input').value = r[1] || '';
+                    cells[2].querySelector('input').value = r[2] || '';
+                    cells[3].querySelector('input').value = r[3] || '';
+                    for (let i = 4; i < cells.length; i++) {
+                        const v = r[i] || '';
+                        const input = cells[i].querySelector('input');
+                        if (input) input.value = v;
+                    }
+                });
+            };
+            reader.readAsText(file, 'utf-8');
+            e.target.value = '';
+        }
+
+        function parseCsv(text) {
+            const lines = [];
+            const rows = text.split(/\r\n|\n|\r/).filter(Boolean);
+            for (const line of rows) {
+                const row = [];
+                let i = 0;
+                while (i < line.length) {
+                    if (line[i] === '"') {
+                        // quoted
+                        let j = i + 1;
+                        let field = '';
+                        while (j < line.length) {
+                            if (line[j] === '"' && line[j + 1] === '"') {
+                                field += '"';
+                                j += 2;
+                            } else if (line[j] === '"') {
+                                j++;
+                                break;
+                            } else {
+                                field += line[j];
+                                j++;
+                            }
+                        }
+                        // skip comma
+                        if (line[j] === ',') j++;
+                        row.push(field);
+                        i = j;
+                    } else {
+                        // unquoted
+                        let j = line.indexOf(',', i);
+                        if (j === -1) j = line.length;
+                        row.push(line.substring(i, j));
+                        i = j + 1;
+                    }
+                }
+                lines.push(row);
+            }
+            return lines;
+        }
+    </script>
+
+</body>
+
+</html>

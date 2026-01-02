@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
-import { useToast } from "../../components/ToastProvider";
+import { toast } from "react-toastify";
 import { employeeService } from "../../services/employeeService";
 import "../../assets/styles/form.css";
 
@@ -16,7 +16,6 @@ const initial = {
 
 export default function CreateEmployee() {
   const navigate = useNavigate();
-  const toast = useToast();
 
   const [form, setForm] = useState(initial);
 
@@ -38,10 +37,24 @@ export default function CreateEmployee() {
         recordId: form.levelId,
       });
 
-      toast.success("Employee created successfully");
+      toast.success("Employee created successfully", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       navigate("/employee");
     } catch (error) {
-      toast.error(error.message || "Failed to create employee");
+      toast.error(error.message || "Failed to create employee", {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     }
   };
 

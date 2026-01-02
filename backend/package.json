@@ -7,6 +7,8 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "init-db": "node scripts/init-db.js",
+    "create-timesheet-tables": "node scripts/create-timesheet-tables.js",
+    "create-timesheet-report-tables": "node scripts/create-timesheet-report-tables.js",
     "smoke": "node smoke.js"
   },
   "dependencies": {

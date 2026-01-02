@@ -2,14 +2,25 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
-import { ToastProvider } from "./components/ToastProvider";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import "./assets/styles/app.css";
 
 const root = createRoot(document.getElementById("app"));
 root.render(
-  <ToastProvider>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </ToastProvider>
+  <BrowserRouter>
+    <App />
+    <ToastContainer
+      position="top-right"
+      autoClose={3000}
+      hideProgressBar={false}
+      newestOnTop={false}
+      closeOnClick
+      rtl={false}
+      pauseOnFocusLoss
+      draggable
+      pauseOnHover
+      theme="colored"
+    />
+  </BrowserRouter>
 );
