@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import "../assets/styles/app.css";
@@ -39,7 +40,7 @@ export default function Layout({
               {breadcrumb.map((item, index) => (
                 <li key={index}>
                   {index < breadcrumb.length - 1 ? (
-                    <a href="/">{item}</a>
+                    <Link to="/">{item}</Link>
                   ) : (
                     item
                   )}

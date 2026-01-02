@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { NavLink } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { NavLink, Link } from "react-router-dom";
 import logo from "../assets/images/Sherwood-care-logo.webp";
 
 const menuItems = [
@@ -10,7 +10,6 @@ const menuItems = [
       { title: "Admin", path: "/" },
       { title: "Students", path: "/students-dashboard" },
       { title: "Parents", path: "/parents-dashboard" },
-      { title: "Teachers", path: "/teachers-dashboard" },
     ],
   },
   {
@@ -19,16 +18,12 @@ const menuItems = [
     submenu: [
       { title: "Timesheet List", path: "/payroll/timesheets" },
       { title: "Timesheet Reports", path: "/payroll/reports" },
-      { title: "Create Time Sheet", path: "/payroll/time-sheet" },
     ],
   },
   {
     title: "Employee",
     icon: "flaticon-multiple-users-silhouette",
-    submenu: [
-      { title: "Employee List", path: "/employee" },
-      { title: "Create Employee", path: "/employee/create" },
-    ],
+    submenu: [{ title: "Employee List", path: "/employee" }],
   },
   {
     title: "Teachers",
@@ -43,10 +38,21 @@ const menuItems = [
 ];
 
 export default function Sidebar({ collapsed, onToggle }) {
-  const [openMenus, setOpenMenus] = useState({});
+  const [openMenus, setOpenMenus] = useState(() => {
+    try {
+      const saved = localStorage.getItem("sidebarOpenMenus");
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
 
   const toggleSubmenu = (index) => {
-    setOpenMenus((prev) => ({ ...prev, [index]: !prev[index] }));
+    setOpenMenus((prev) => {
+      const newState = { ...prev, [index]: !prev[index] };
+      localStorage.setItem("sidebarOpenMenus", JSON.stringify(newState));
+      return newState;
+    });
   };
 
   return (
@@ -54,13 +60,13 @@ export default function Sidebar({ collapsed, onToggle }) {
       {/* Mobile header */}
       <div className="mobile-sidebar-header d-md-none">
         <div className="header-logo">
-          <a href="/">
+          <Link to="/">
             <img
               src={logo}
               alt="logo"
               style={{ maxWidth: "100%", maxHeight: "50px" }}
             />
-          </a>
+          </Link>
         </div>
       </div>
 

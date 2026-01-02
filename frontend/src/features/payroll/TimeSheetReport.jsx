@@ -545,6 +545,16 @@ const TimeSheetReport = () => {
     }, 0);
   };
 
+  const calcGrandTotal = () => {
+    if (!reportData || !Array.isArray(reportData)) return 0;
+    return reportData.reduce((total, employee) => {
+      const jobs = Array.isArray(employee?.jobs) ? employee.jobs : [];
+      return total + jobs.reduce((jobTotal, job) => {
+        return jobTotal + calcRowTotal(job.dayValues);
+      }, 0);
+    }, 0);
+  };
+
   const getSessionFromPeriod = (period) => {
     if (!period || typeof period !== "string") return "";
 
@@ -779,7 +789,7 @@ const TimeSheetReport = () => {
                     {header.dayName || ""}
                   </th>
                 ))}
-                <th className="total-col">TOTAL</th>
+                <th className="total-col">{calcGrandTotal()}</th>
               </tr>
             </thead>
             <tbody>
