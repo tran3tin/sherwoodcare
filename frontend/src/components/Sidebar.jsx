@@ -18,7 +18,15 @@ const menuItems = [
     icon: "flaticon-list",
     submenu: [
       { title: "Timesheet List", path: "/payroll/timesheets" },
-      { title: "New Time Sheet", path: "/payroll/time-sheet" },
+      { title: "Create Time Sheet", path: "/payroll/time-sheet" },
+    ],
+  },
+  {
+    title: "Employee",
+    icon: "flaticon-multiple-users-silhouette",
+    submenu: [
+      { title: "Employee List", path: "/employee" },
+      { title: "Create Employee", path: "/employee/create" },
     ],
   },
   {

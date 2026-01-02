@@ -24,20 +24,7 @@
   color: #666;
 }
 
-.btn-save {
-  background-color: #28a745 !important;
-  color: white !important;
-}
-
-.btn-save:hover:not(:disabled) {
-  background-color: #218838 !important;
-}
-
-.btn-save:disabled {
-  background-color: #6c757d !important;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
+/* NOTE: Removed global .btn-save overrides so shared icon-action buttons can be used */
 
 .input-group {
   display: flex;
@@ -181,34 +168,22 @@
   text-align: right;
 }
 
-.btn-action {
-  padding: 10px 20px;
+/* Timesheet-specific text buttons (kept separate from shared icon action buttons) */
+.ts-btn {
+  padding: 10px 16px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   color: white;
-  margin-left: 10px;
 }
 
-.btn-save {
-  background-color: #28a745;
+.ts-btn-generate {
+  background-color: var(--sherwoodcare-teal);
 }
 
-.btn-clear {
-  background-color: #dc3545;
-}
-
-.btn-transform {
-  background-color: #007bff;
-}
-
-.btn-back {
-  background-color: #6c757d;
-}
-
-.btn-generate {
-  background-color: #17a2b8;
+.ts-btn-generate:hover:not(:disabled) {
+  filter: brightness(0.95);
 }
 
 .weekend {

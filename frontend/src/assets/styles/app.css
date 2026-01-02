@@ -1,20 +1,23 @@
 /* Sherwoodcare Global Styles */
 
-/* CSS Variables */
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap");
+@import "./colors.css";
+
+/* Legacy CSS Variables (for backward compatibility) */
 :root {
-  --primary-color: #042954;
-  --secondary-color: #1890ff;
-  --accent-color: #f0932b;
+  --primary-color: var(--sherwoodcare-dark-blue);
+  --secondary-color: var(--sherwoodcare-teal);
+  --accent-color: var(--sherwoodcare-orange);
   --success-color: #6eb516;
-  --danger-color: #f5365c;
-  --warning-color: #fb6340;
-  --info-color: #11cdef;
-  --dark-color: #212529;
-  --light-color: #f5f7fa;
+  --danger-color: var(--sherwoodcare-red);
+  --warning-color: var(--sherwoodcare-orange);
+  --info-color: var(--sherwoodcare-teal);
+  --dark-color: var(--sherwoodcare-dark-blue-dark);
+  --light-color: var(--sherwoodcare-bg);
   --white-color: #ffffff;
-  --text-color: #646464;
-  --heading-color: #111111;
-  --border-color: #e1e1e1;
+  --text-color: var(--sherwoodcare-text);
+  --heading-color: var(--sherwoodcare-dark-blue);
+  --border-color: var(--sherwoodcare-border);
   --sidebar-width: 280px;
   --header-height: 80px;
 }
@@ -27,7 +30,7 @@
 }
 
 body {
-  font-family: "Poppins", sans-serif;
+  font-family: "Roboto", sans-serif;
   font-size: 14px;
   line-height: 1.8;
   color: var(--text-color);
@@ -62,6 +65,7 @@ h3,
 h4,
 h5,
 h6 {
+  font-family: "Roboto", sans-serif;
   color: var(--heading-color);
   font-weight: 600;
   line-height: 1.4;

@@ -1,0 +1,43 @@
+:root {
+  --sherwoodcare-orange: #ffa901;
+  --sherwoodcare-orange-light: #ffaa01;
+  --sherwoodcare-orange-gradient: linear-gradient(to right, #ff9d01, #ffaa01);
+  --sherwoodcare-dark-blue: #042954;
+  --sherwoodcare-dark-blue-light: #051f3e;
+  --sherwoodcare-dark-blue-dark: #021933;
+  --sherwoodcare-teal: #2ad7c5;
+  --sherwoodcare-red: #ff3131;
+  --sherwoodcare-bg: #f0f1f3;
+  --sherwoodcare-text: #646464;
+  --sherwoodcare-text-muted: #9ea8b5;
+  --sherwoodcare-border: #e8e3e3;
+}
+
+/* Color utility classes */
+.bg-primary {
+  background-color: var(--sherwoodcare-orange);
+}
+
+.bg-dark {
+  background-color: var(--sherwoodcare-dark-blue);
+}
+
+.bg-light {
+  background-color: var(--sherwoodcare-bg);
+}
+
+.text-primary {
+  color: var(--sherwoodcare-orange);
+}
+
+.text-dark {
+  color: var(--sherwoodcare-dark-blue);
+}
+
+.text-muted {
+  color: var(--sherwoodcare-text-muted);
+}
+
+.border-primary {
+  border-color: var(--sherwoodcare-border);
+}

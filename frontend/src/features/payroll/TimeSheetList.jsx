@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import Layout from "../../components/Layout";
 import timesheetService from "../../services/timesheetService";
 import { useToast } from "../../components/ToastProvider";
 import {
@@ -8,7 +9,7 @@ import {
   formatDateVN,
   normalizeYMD,
 } from "../../utils/dateVN";
-import "./TimeSheetList.css";
+import "../../assets/styles/list.css";
 
 const TimeSheetList = () => {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ const TimeSheetList = () => {
   const [timesheets, setTimesheets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     loadTimesheets();
@@ -83,101 +85,188 @@ const TimeSheetList = () => {
     return ts.name || `TimeSheet ${startFormatted} - ${endFormatted}`;
   };
 
+  const handleClearFilter = () => {
+    setSearchTerm("");
+  };
+
+  // Filter timesheets
+  const filteredTimesheets = timesheets.filter((ts) => {
+    if (searchTerm === "") return true;
+    const label = getTimesheetLabel(ts).toLowerCase();
+    const startDate = formatDMYFromYMD(ts.start_date).toLowerCase();
+    return (
+      label.includes(searchTerm.toLowerCase()) ||
+      startDate.includes(searchTerm.toLowerCase())
+    );
+  });
+
   if (loading) {
     return (
-      <div className="timesheet-list-container">
-        <div className="loading-message">Loading timesheets...</div>
-      </div>
+      <Layout
+        title="Timesheet Management"
+        breadcrumb={["Home", "Payroll", "Timesheets"]}
+      >
+        <div className="list-page-container">
+          <div className="loading-state">
+            <i className="fas fa-spinner"></i>
+            <p>Loading timesheets...</p>
+          </div>
+        </div>
+      </Layout>
     );
   }
 
   if (error) {
     return (
-      <div className="timesheet-list-container">
-        <div className="error-message">
-          <strong>Error:</strong> {error}
-          <button type="button" className="btn-retry" onClick={loadTimesheets}>
-            Retry
-          </button>
+      <Layout
+        title="Timesheet Management"
+        breadcrumb={["Home", "Payroll", "Timesheets"]}
+      >
+        <div className="list-page-container">
+          <div className="empty-state">
+            <h3>Error Loading Data</h3>
+            <p>{error}</p>
+            <button
+              type="button"
+              className="btn-create-first"
+              onClick={loadTimesheets}
+            >
+              <i className="fas fa-redo"></i>
+              Retry
+            </button>
+          </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="timesheet-list-container">
-      <div className="list-header">
-        <h2>Saved Timesheets</h2>
-        <button
-          type="button"
-          className="btn-create-new"
-          onClick={() => navigate("/payroll/time-sheet")}
-        >
-          + Create New Timesheet
-        </button>
-      </div>
+    <Layout
+      title="Timesheet Management"
+      breadcrumb={["Home", "Payroll", "Timesheets"]}
+    >
+      <div className="list-page-container">
+        <div className="list-page-header">
+          <div className="list-filters">
+            <div className="filter-group">
+              <label>Search</label>
+              <input
+                type="text"
+                className="filter-input"
+                placeholder="Timesheet name, date..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
 
-      {timesheets.length === 0 ? (
-        <div className="empty-state">
-          <p>No saved timesheets yet.</p>
-          <button
-            type="button"
-            className="btn-create-first"
-            onClick={() => navigate("/payroll/time-sheet")}
-          >
-            Create Your First Timesheet
-          </button>
+            <div className="filter-group">
+              <label>&nbsp;</label>
+              <button
+                type="button"
+                className="btn-create-new"
+                onClick={() => navigate("/payroll/time-sheet")}
+              >
+                <i className="fas fa-plus"></i>
+                Create Timesheet
+              </button>
+            </div>
+          </div>
         </div>
-      ) : (
-        <div className="timesheet-table-wrapper">
-          <table className="timesheet-list-table">
-            <thead>
-              <tr>
-                <th>Timesheet Period</th>
-                <th>Start Date</th>
-                <th>Days</th>
-                <th>Rows</th>
-                <th>Created</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {timesheets.map((ts) => (
-                <tr key={ts.period_id}>
-                  <td className="period-name">{getTimesheetLabel(ts)}</td>
-                  <td>{formatDMYFromYMD(ts.start_date)}</td>
-                  <td>{ts.num_days}</td>
-                  <td>{ts.num_rows}</td>
-                  <td>{formatDateVN(ts.created_at)}</td>
-                  <td className="actions-cell">
-                    <button
-                      type="button"
-                      className="btn-edit"
-                      onClick={() =>
-                        navigate(`/payroll/time-sheet/${ts.period_id}`)
-                      }
-                      title="Edit timesheet"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-delete"
-                      onClick={() =>
-                        handleDelete(ts.period_id, getTimesheetLabel(ts))
-                      }
-                      title="Delete timesheet"
-                    >
-                      Delete
-                    </button>
-                  </td>
+
+        {timesheets.length === 0 ? (
+          <div className="empty-state">
+            <h3>No Data</h3>
+            <p>No saved timesheets yet.</p>
+            <button
+              type="button"
+              className="btn-create-first"
+              onClick={() => navigate("/payroll/time-sheet")}
+            >
+              <i className="fas fa-plus"></i>
+              Create Your First Timesheet
+            </button>
+          </div>
+        ) : filteredTimesheets.length === 0 ? (
+          <div className="empty-state">
+            <h3>No Results Found</h3>
+            <p>No timesheets match your search criteria.</p>
+            <button
+              type="button"
+              className="btn-clear-filter"
+              onClick={handleClearFilter}
+            >
+              <i className="fas fa-redo"></i>
+              Clear Filters
+            </button>
+          </div>
+        ) : (
+          <div className="list-table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th className="sortable">
+                    Timesheet Period <i className="fas fa-sort sort-icon"></i>
+                  </th>
+                  <th className="sortable">
+                    Start Date <i className="fas fa-sort sort-icon"></i>
+                  </th>
+                  <th>Days</th>
+                  <th>Rows</th>
+                  <th className="sortable">
+                    Created <i className="fas fa-sort sort-icon"></i>
+                  </th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+              </thead>
+              <tbody>
+                {filteredTimesheets.map((ts, index) => (
+                  <tr key={ts.period_id}>
+                    <td>{index + 1}</td>
+                    <td>{getTimesheetLabel(ts)}</td>
+                    <td>{formatDMYFromYMD(ts.start_date)}</td>
+                    <td>{ts.num_days}</td>
+                    <td>{ts.num_rows}</td>
+                    <td>{formatDateVN(ts.created_at)}</td>
+                    <td>
+                      <div className="action-buttons">
+                        <button
+                          className="btn-action btn-view"
+                          onClick={() =>
+                            navigate(`/payroll/time-sheet/${ts.period_id}`)
+                          }
+                          title="View Timesheet"
+                        >
+                          <i className="fas fa-eye"></i>
+                        </button>
+                        <button
+                          className="btn-action btn-edit"
+                          onClick={() =>
+                            navigate(`/payroll/time-sheet/${ts.period_id}`)
+                          }
+                          title="Edit Timesheet"
+                        >
+                          <i className="fas fa-edit"></i>
+                        </button>
+                        <button
+                          className="btn-action btn-delete"
+                          onClick={() =>
+                            handleDelete(ts.period_id, getTimesheetLabel(ts))
+                          }
+                          title="Delete Timesheet"
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </Layout>
   );
 };
 

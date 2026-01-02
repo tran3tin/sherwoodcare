@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import Layout from "../../components/Layout";
 import timesheetService from "../../services/timesheetService";
 import { useToast } from "../../components/ToastProvider";
 import {
@@ -257,170 +258,148 @@ const Report = () => {
     );
   };
 
-  if (loading) return <div className="loading-spinner">Loading report...</div>;
-  if (!reportData) return <div>Loading...</div>;
+  if (loading) {
+    return (
+      <Layout
+        title="Timesheet Report"
+        breadcrumb={["Home", "Payroll", "Report"]}
+      >
+        <div className="loading-spinner">Loading report...</div>
+      </Layout>
+    );
+  }
+
+  if (!reportData) {
+    return (
+      <Layout
+        title="Timesheet Report"
+        breadcrumb={["Home", "Payroll", "Report"]}
+      >
+        <div>Loading...</div>
+      </Layout>
+    );
+  }
 
   return (
-    <div className="report-container">
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "15px",
-        }}
-      >
-        <h2 style={{ margin: 0 }}>Personal Summary Report</h2>
-        <button
-          type="button"
-          className="btn-back"
-          onClick={() => {
-            const from = location.state?.from;
-            if (typeof from === "string" && from.length > 0) {
-              navigate(from);
-              return;
-            }
-
-            if (id) {
-              navigate(`/payroll/time-sheet/${id}`);
-              return;
-            }
-
-            navigate("/payroll/time-sheet");
+    <Layout title="Timesheet Report" breadcrumb={["Home", "Payroll", "Report"]}>
+      <div className="report-container">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "15px",
           }}
         >
-          ← Back to Time Sheet
-        </button>
-      </div>
+          <h2 style={{ margin: 0 }}>Personal Summary Report</h2>
+          <button
+            type="button"
+            className="btn-back"
+            onClick={() => {
+              const from = location.state?.from;
+              if (typeof from === "string" && from.length > 0) {
+                navigate(from);
+                return;
+              }
 
-      <div className="report-table-container">
-        <table className="report-table">
-          <thead>
-            <tr>
-              <th colSpan="4">Date</th>
-              {dateHeaders.map((header, index) => (
-                <th key={index} className={header.isWeekend ? "weekend" : ""}>
-                  {header.display ||
-                    formatDateDisplay(header.ymd || header.date)}
-                </th>
-              ))}
-              <th className="total-col">TOTAL</th>
-            </tr>
-            <tr>
-              <th className="name-header">Name People</th>
-              <th className="job-header">Name Job</th>
-              <th className="period-header">Period</th>
-              <th className="hrs-header">Hrs</th>
-              {dateHeaders.map((header, index) => (
-                <th key={index} className={header.isWeekend ? "weekend" : ""}>
-                  {header.dayName || ""}
-                </th>
-              ))}
-              <th className="total-col">TOTAL</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reportData.map((employee, empIndex) => (
-              <React.Fragment key={empIndex}>
-                {employee.jobs.map((job, jobIndex) => {
-                  const rowTotal = calcRowTotal(job.dayValues);
+              if (id) {
+                navigate(`/payroll/time-sheet/${id}`);
+                return;
+              }
 
-                  return (
-                    <tr key={jobIndex}>
-                      {jobIndex === 0 && (
-                        <td className="name-col" rowSpan={employee.jobs.length}>
+              navigate("/payroll/time-sheet");
+            }}
+          >
+            ← Back to Time Sheet
+          </button>
+        </div>
+
+        <div className="report-table-container">
+          <table className="report-table">
+            <thead>
+              <tr>
+                <th colSpan="4">Date</th>
+                {dateHeaders.map((header, index) => (
+                  <th key={index} className={header.isWeekend ? "weekend" : ""}>
+                    {header.display ||
+                      formatDateDisplay(header.ymd || header.date)}
+                  </th>
+                ))}
+                <th className="total-col">TOTAL</th>
+              </tr>
+              <tr>
+                <th className="name-header">Name People</th>
+                <th className="job-header">Name Job</th>
+                <th className="period-header">Period</th>
+                <th className="hrs-header">Hrs</th>
+                {dateHeaders.map((header, index) => (
+                  <th key={index} className={header.isWeekend ? "weekend" : ""}>
+                    {header.dayName || ""}
+                  </th>
+                ))}
+                <th className="total-col">TOTAL</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reportData.map((employee, empIndex) => (
+                <React.Fragment key={empIndex}>
+                  {employee.jobs.map((job, jobIndex) => {
+                    const rowTotal = calcRowTotal(job.dayValues);
+
+                    return (
+                      <tr key={jobIndex}>
+                        {jobIndex === 0 && (
+                          <td
+                            className="name-col"
+                            rowSpan={employee.jobs.length}
+                          >
+                            <input
+                              type="text"
+                              value={employee.name}
+                              onChange={(e) =>
+                                updateEmployeeField(empIndex, e.target.value)
+                              }
+                              style={{
+                                width: "100%",
+                                border: "none",
+                                background: "transparent",
+                                textAlign: "left",
+                                paddingLeft: "15px",
+                                fontWeight: "bold",
+                              }}
+                            />
+                          </td>
+                        )}
+                        <td className="job-col">
                           <input
                             type="text"
-                            value={employee.name}
+                            value={job.note}
                             onChange={(e) =>
-                              updateEmployeeField(empIndex, e.target.value)
+                              updateJobField(
+                                empIndex,
+                                jobIndex,
+                                "note",
+                                e.target.value
+                              )
                             }
                             style={{
                               width: "100%",
                               border: "none",
                               background: "transparent",
                               textAlign: "left",
-                              paddingLeft: "15px",
-                              fontWeight: "bold",
+                              paddingLeft: "10px",
                             }}
                           />
                         </td>
-                      )}
-                      <td className="job-col">
-                        <input
-                          type="text"
-                          value={job.note}
-                          onChange={(e) =>
-                            updateJobField(
-                              empIndex,
-                              jobIndex,
-                              "note",
-                              e.target.value
-                            )
-                          }
-                          style={{
-                            width: "100%",
-                            border: "none",
-                            background: "transparent",
-                            textAlign: "left",
-                            paddingLeft: "10px",
-                          }}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="text"
-                          value={job.period}
-                          onChange={(e) =>
-                            updateJobField(
-                              empIndex,
-                              jobIndex,
-                              "period",
-                              e.target.value
-                            )
-                          }
-                          style={{
-                            width: "100%",
-                            border: "none",
-                            background: "transparent",
-                            textAlign: "center",
-                          }}
-                        />
-                      </td>
-                      <td className="hrs-col">
-                        <input
-                          type="text"
-                          value={job.hrsValue}
-                          onChange={(e) =>
-                            updateJobField(
-                              empIndex,
-                              jobIndex,
-                              "hrsValue",
-                              e.target.value
-                            )
-                          }
-                          style={{
-                            width: "100%",
-                            border: "none",
-                            background: "transparent",
-                            textAlign: "center",
-                          }}
-                        />
-                      </td>
-
-                      {dateHeaders.map((header, dayIndex) => (
-                        <td
-                          key={dayIndex}
-                          className={header.isWeekend ? "weekend" : ""}
-                        >
+                        <td>
                           <input
                             type="text"
-                            value={job.dayValues?.[dayIndex] ?? ""}
+                            value={job.period}
                             onChange={(e) =>
-                              updateJobDayValue(
+                              updateJobField(
                                 empIndex,
                                 jobIndex,
-                                dayIndex,
+                                "period",
                                 e.target.value
                               )
                             }
@@ -432,18 +411,64 @@ const Report = () => {
                             }}
                           />
                         </td>
-                      ))}
+                        <td className="hrs-col">
+                          <input
+                            type="text"
+                            value={job.hrsValue}
+                            onChange={(e) =>
+                              updateJobField(
+                                empIndex,
+                                jobIndex,
+                                "hrsValue",
+                                e.target.value
+                              )
+                            }
+                            style={{
+                              width: "100%",
+                              border: "none",
+                              background: "transparent",
+                              textAlign: "center",
+                            }}
+                          />
+                        </td>
 
-                      <td className="total-col">{rowTotal}</td>
-                    </tr>
-                  );
-                })}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
+                        {dateHeaders.map((header, dayIndex) => (
+                          <td
+                            key={dayIndex}
+                            className={header.isWeekend ? "weekend" : ""}
+                          >
+                            <input
+                              type="text"
+                              value={job.dayValues?.[dayIndex] ?? ""}
+                              onChange={(e) =>
+                                updateJobDayValue(
+                                  empIndex,
+                                  jobIndex,
+                                  dayIndex,
+                                  e.target.value
+                                )
+                              }
+                              style={{
+                                width: "100%",
+                                border: "none",
+                                background: "transparent",
+                                textAlign: "center",
+                              }}
+                            />
+                          </td>
+                        ))}
+
+                        <td className="total-col">{rowTotal}</td>
+                      </tr>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 
