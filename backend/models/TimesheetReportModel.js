@@ -42,6 +42,7 @@ class TimesheetReportModel {
         num_days,
         num_rows,
         name,
+        processed_data,
         created_at,
         updated_at
       FROM timesheetreport
@@ -54,6 +55,7 @@ class TimesheetReportModel {
         num_days,
         num_rows,
         name,
+        processed_data,
         created_at,
         updated_at
       FROM timesheetreport
@@ -61,7 +63,60 @@ class TimesheetReportModel {
     `;
 
     const { rows } = await db.query(sql);
-    return rows;
+
+    const parseJsonField = (value) => {
+      if (!value) return null;
+      if (typeof value === "string") {
+        try {
+          return JSON.parse(value);
+        } catch {
+          return null;
+        }
+      }
+      return value;
+    };
+
+    // Calculate employee count and total hours from processed_data
+    return rows.map((row) => {
+      let employee_count = 0;
+      let total_hours = 0;
+
+      try {
+        const processedData = parseJsonField(row.processed_data);
+        if (Array.isArray(processedData)) {
+          employee_count = processedData.length;
+
+          // Sum of all values in job.dayValues
+          for (const employee of processedData) {
+            const jobs = Array.isArray(employee?.jobs) ? employee.jobs : [];
+            for (const job of jobs) {
+              const dayValues = Array.isArray(job?.dayValues)
+                ? job.dayValues
+                : [];
+              for (const value of dayValues) {
+                const hours = parseFloat(value);
+                if (Number.isFinite(hours)) total_hours += hours;
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error(
+          "Error calculating stats for report",
+          row.report_id,
+          error
+        );
+      }
+
+      // Remove processed_data from response to reduce payload size
+      const { processed_data, ...reportWithoutData } = row;
+
+      return {
+        ...reportWithoutData,
+        employee_count,
+        total_hours: Math.round(total_hours * 100) / 100, // Round to 2 decimal places
+      };
+    });
   }
 
   static async getReportById(reportId) {

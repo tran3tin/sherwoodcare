@@ -549,9 +549,12 @@ const TimeSheetReport = () => {
     if (!reportData || !Array.isArray(reportData)) return 0;
     return reportData.reduce((total, employee) => {
       const jobs = Array.isArray(employee?.jobs) ? employee.jobs : [];
-      return total + jobs.reduce((jobTotal, job) => {
-        return jobTotal + calcRowTotal(job.dayValues);
-      }, 0);
+      return (
+        total +
+        jobs.reduce((jobTotal, job) => {
+          return jobTotal + calcRowTotal(job.dayValues);
+        }, 0)
+      );
     }, 0);
   };
 
@@ -628,10 +631,21 @@ const TimeSheetReport = () => {
 
             // If updating period, also update session automatically
             if (field === "period") {
+              const previousPeriod = String(job.period ?? "");
+              const previousSession = String(job.session ?? "");
+              const previousAutoSession = getSessionFromPeriod(previousPeriod);
+              const nextAutoSession = getSessionFromPeriod(String(value));
+
+              // Only auto-update session if it was blank or still on the auto-derived value.
+              const shouldAutoUpdateSession =
+                !previousSession || previousSession === previousAutoSession;
+
               return {
                 ...job,
                 period: value,
-                session: getSessionFromPeriod(value),
+                session: shouldAutoUpdateSession
+                  ? nextAutoSession
+                  : job.session,
               };
             }
 
@@ -881,14 +895,19 @@ const TimeSheetReport = () => {
                             value={
                               job.session || getSessionFromPeriod(job.period)
                             }
-                            readOnly
+                            onChange={(e) =>
+                              updateJobField(
+                                empIndex,
+                                jobIndex,
+                                "session",
+                                e.target.value
+                              )
+                            }
                             style={{
                               width: "100%",
                               border: "none",
                               background: "transparent",
                               textAlign: "center",
-                              color: "#666",
-                              cursor: "default",
                             }}
                           />
                         </td>

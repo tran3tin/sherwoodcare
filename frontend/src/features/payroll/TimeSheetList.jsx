@@ -208,7 +208,8 @@ const TimeSheetList = () => {
                     Start Date <i className="fas fa-sort sort-icon"></i>
                   </th>
                   <th>Days</th>
-                  <th>Rows</th>
+                  <th>Employees</th>
+                  <th>Total Hours</th>
                   <th className="sortable">
                     Created <i className="fas fa-sort sort-icon"></i>
                   </th>
@@ -222,7 +223,8 @@ const TimeSheetList = () => {
                     <td>{getTimesheetLabel(ts)}</td>
                     <td>{formatDMYFromYMD(ts.start_date)}</td>
                     <td>{ts.num_days}</td>
-                    <td>{ts.num_rows}</td>
+                    <td>{ts.employee_count || 0}</td>
+                    <td>{ts.total_hours || 0}</td>
                     <td>{formatDateVN(ts.created_at)}</td>
                     <td>
                       <div className="action-buttons">

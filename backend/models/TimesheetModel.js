@@ -30,27 +30,53 @@ class TimesheetModel {
       db.client === "pg"
         ? `
       SELECT 
-        period_id,
-        to_char(start_date, 'YYYY-MM-DD') AS start_date,
-        num_days,
-        num_rows,
-        name,
-        created_at,
-        updated_at
-      FROM timesheet_periods
-      ORDER BY start_date DESC, created_at DESC
+        p.period_id,
+        to_char(p.start_date, 'YYYY-MM-DD') AS start_date,
+        p.num_days,
+        p.num_rows,
+        p.name,
+        p.created_at,
+        p.updated_at,
+        COALESCE(COUNT(DISTINCT NULLIF(BTRIM(td.staff_name), '')), 0) AS employee_count,
+        COALESCE(
+          SUM(
+            CASE
+              WHEN td.entry_id IS NULL THEN 0
+              ELSE COALESCE(NULLIF(te.hrs, ''), '0')::numeric
+            END
+          ),
+          0
+        ) AS total_hours
+      FROM timesheet_periods p
+      LEFT JOIN timesheet_entries te ON te.period_id = p.period_id
+      LEFT JOIN timesheet_days td ON td.entry_id = te.entry_id
+      GROUP BY p.period_id, p.start_date, p.num_days, p.num_rows, p.name, p.created_at, p.updated_at
+      ORDER BY p.start_date DESC, p.created_at DESC
     `
         : `
       SELECT 
-        period_id,
-        DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date,
-        num_days,
-        num_rows,
-        name,
-        created_at,
-        updated_at
-      FROM timesheet_periods
-      ORDER BY start_date DESC, created_at DESC
+        p.period_id,
+        DATE_FORMAT(p.start_date, '%Y-%m-%d') AS start_date,
+        p.num_days,
+        p.num_rows,
+        p.name,
+        p.created_at,
+        p.updated_at,
+        COALESCE(COUNT(DISTINCT NULLIF(TRIM(td.staff_name), '')), 0) AS employee_count,
+        COALESCE(
+          SUM(
+            CASE
+              WHEN td.entry_id IS NULL THEN 0
+              ELSE CAST(COALESCE(NULLIF(te.hrs, ''), '0') AS DECIMAL(10,2))
+            END
+          ),
+          0
+        ) AS total_hours
+      FROM timesheet_periods p
+      LEFT JOIN timesheet_entries te ON te.period_id = p.period_id
+      LEFT JOIN timesheet_days td ON td.entry_id = te.entry_id
+      GROUP BY p.period_id, p.start_date, p.num_days, p.num_rows, p.name, p.created_at, p.updated_at
+      ORDER BY p.start_date DESC, p.created_at DESC
     `;
     const { rows } = await db.query(sql);
     return rows;
