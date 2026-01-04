@@ -60,6 +60,14 @@ app.use("/api/timesheetreports", timesheetReportRoutes);
 const employeeRoutes = require("./routes/employees");
 app.use("/api/employees", employeeRoutes);
 
+// Customer routes
+const customerRoutes = require("./routes/customers");
+app.use("/api/customers", customerRoutes);
+
+// Customer invoice routes
+const customerInvoiceRoutes = require("./routes/customerInvoices");
+app.use("/api/customer-invoices", customerInvoiceRoutes);
+
 // AI routes (OpenAI)
 const aiRoutes = require("./routes/ai");
 app.use("/api/ai", aiRoutes);

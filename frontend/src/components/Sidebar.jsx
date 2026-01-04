@@ -18,6 +18,7 @@ const menuItems = [
     submenu: [
       { title: "Timesheet List", path: "/payroll/timesheets" },
       { title: "Timesheet Reports", path: "/payroll/reports" },
+      { title: "Social Sheet", path: "/payroll/social-sheet" },
     ],
   },
   {
@@ -26,13 +27,11 @@ const menuItems = [
     submenu: [{ title: "Employee List", path: "/employee" }],
   },
   {
-    title: "Teachers",
-    icon: "flaticon-multiple-users-silhouette",
+    title: "Customer",
+    icon: "flaticon-user",
     submenu: [
-      { title: "All Teachers", path: "/all-teacher" },
-      { title: "Teacher Details", path: "/teacher-details" },
-      { title: "Add Teacher", path: "/add-teacher" },
-      { title: "Payment", path: "/teacher-payment" },
+      { title: "Customer List", path: "/customer" },
+      { title: "Invoices", path: "/customer-invoices" },
     ],
   },
 ];
