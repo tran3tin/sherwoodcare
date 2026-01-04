@@ -72,6 +72,10 @@ app.use("/api/customer-invoices", customerInvoiceRoutes);
 const aiRoutes = require("./routes/ai");
 app.use("/api/ai", aiRoutes);
 
+// Social sheet routes
+const socialSheetRoutes = require("./routes/socialSheets");
+app.use("/api/social-sheets", socialSheetRoutes);
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

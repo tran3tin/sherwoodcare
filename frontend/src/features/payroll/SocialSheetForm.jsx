@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import { toast } from "react-toastify";
+import socialSheetService from "../../services/socialSheetService";
 import "../../assets/styles/list.css";
 import "./TimeSheetForm.css";
 
@@ -27,9 +28,52 @@ export default function SocialSheetForm() {
   const [numRows, setNumRows] = useState(DEFAULT_ROWS);
   const [rows, setRows] = useState([]);
 
+  const DRAFT_KEY = "socialSheetDraft:new";
+
+  const saveDraft = (nextRows, nextNumRows) => {
+    try {
+      const payload = {
+        numRows: nextNumRows,
+        rows: nextRows,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+    } catch {
+      // ignore
+    }
+  };
+
+  const tryRestoreDraft = () => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return false;
+      const draft = JSON.parse(raw);
+      if (!draft || !Array.isArray(draft.rows)) return false;
+
+      const restoredNumRows = Number.isFinite(Number(draft.numRows))
+        ? parseInt(draft.numRows, 10)
+        : DEFAULT_ROWS;
+
+      setNumRows(restoredNumRows);
+      setRows(draft.rows);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
-    generateTable(DEFAULT_ROWS);
+    const restored = tryRestoreDraft();
+    if (!restored) generateTable(DEFAULT_ROWS);
   }, []);
+
+  useEffect(() => {
+    if (!Array.isArray(rows) || rows.length === 0) return;
+    const handle = window.setTimeout(() => {
+      saveDraft(rows, numRows);
+    }, 200);
+    return () => window.clearTimeout(handle);
+  }, [rows, numRows]);
 
   const generateTable = (rowCount = numRows) => {
     const count = Number.isFinite(Number(rowCount))
@@ -154,8 +198,63 @@ export default function SocialSheetForm() {
 
   const clearData = () => {
     if (!window.confirm("Clear all data?")) return;
-    setRows((prev) => prev.map((r) => ({ ...createEmptyRow(r.id), id: r.id })));
+    setRows((prev) => {
+      const cleared = prev.map((r) => ({ ...createEmptyRow(r.id), id: r.id }));
+      saveDraft(cleared, numRows);
+      return cleared;
+    });
     toast.success("Data cleared.", { position: "top-right", autoClose: 2000 });
+  };
+
+  const handleSave = async () => {
+    try {
+      const payloadRows = Array.isArray(rows) ? rows : [];
+      if (payloadRows.length === 0) {
+        toast.warning("No data to save.", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      const name = `Social Sheet ${new Date().toLocaleDateString()}`;
+      const response = await socialSheetService.createSheet({
+        name,
+        rows: payloadRows,
+      });
+
+      toast.success("Social sheet saved to database.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+
+      // Keep draft (for View Report draft mode), but navigate to list page.
+      if (response?.sheet_id) {
+        try {
+          localStorage.setItem(
+            "socialSheetLastSavedId",
+            String(response.sheet_id)
+          );
+        } catch {
+          // ignore
+        }
+      }
+
+      navigate("/payroll/social-participants");
+    } catch (error) {
+      console.error("Error saving social sheet:", error);
+      toast.error(
+        error?.response?.data?.error || "Failed to save social sheet.",
+        {
+          position: "top-right",
+          autoClose: 5000,
+        }
+      );
+    }
+  };
+
+  const handleViewReport = () => {
+    navigate("/payroll/social-participant-report");
   };
 
   return (
@@ -205,6 +304,16 @@ export default function SocialSheetForm() {
             <div className="action-buttons" style={{ marginTop: 0 }}>
               <button
                 type="button"
+                className="btn-action btn-save"
+                onClick={handleSave}
+                title="Save"
+                aria-label="Save"
+              >
+                <i className="fas fa-save"></i>
+              </button>
+
+              <button
+                type="button"
                 className="btn-action btn-clear"
                 onClick={clearData}
                 title="Clear Data"
@@ -215,12 +324,12 @@ export default function SocialSheetForm() {
 
               <button
                 type="button"
-                className="btn-action btn-cancel"
-                onClick={() => navigate("/payroll/timesheets")}
-                title="Back"
-                aria-label="Back"
+                className="btn-action btn-report"
+                onClick={handleViewReport}
+                title="View Report"
+                aria-label="View Report"
               >
-                <i className="fas fa-times"></i>
+                <i className="fas fa-chart-bar"></i>
               </button>
             </div>
           </div>

@@ -19,6 +19,10 @@ const menuItems = [
       { title: "Timesheet List", path: "/payroll/timesheets" },
       { title: "Timesheet Reports", path: "/payroll/reports" },
       { title: "Social Sheet", path: "/payroll/social-sheet" },
+      {
+        title: "Social Participant List",
+        path: "/payroll/social-participants",
+      },
     ],
   },
   {

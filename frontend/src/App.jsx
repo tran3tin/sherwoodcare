@@ -6,6 +6,8 @@ import TimeSheetList from "./features/payroll/TimeSheetList";
 import TimeSheetReport from "./features/payroll/TimeSheetReport";
 import TimeSheetReportList from "./features/payroll/TimeSheetReportList";
 import SocialSheetForm from "./features/payroll/SocialSheetForm";
+import SocialParticipantReport from "./features/payroll/SocialParticipantReport";
+import SocialParticipantList from "./features/payroll/SocialParticipantList";
 import EmployeeList from "./features/employee/EmployeeList";
 import CreateEmployee from "./features/employee/CreateEmployee";
 import CustomerList from "./features/customer/CustomerList";
@@ -26,6 +28,18 @@ export default function App() {
       <Route path="/payroll/time-sheet" element={<TimeSheetForm />} />
       <Route path="/payroll/time-sheet/:id" element={<TimeSheetForm />} />
       <Route path="/payroll/social-sheet" element={<SocialSheetForm />} />
+      <Route
+        path="/payroll/social-participants"
+        element={<SocialParticipantList />}
+      />
+      <Route
+        path="/payroll/social-participant-report"
+        element={<SocialParticipantReport />}
+      />
+      <Route
+        path="/payroll/social-participant-report/:id"
+        element={<SocialParticipantReport />}
+      />
       <Route path="/payroll/report" element={<TimeSheetReport />} />
       <Route path="/payroll/report/:id" element={<TimeSheetReport />} />
       <Route path="/employee" element={<EmployeeList />} />
