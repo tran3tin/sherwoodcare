@@ -5,7 +5,33 @@ const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
+// CORS: allow multiple origins for development
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl, Postman)
+      if (!origin) return callback(null, true);
+      // Allow whitelisted origins
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      // In development, allow all origins
+      if (process.env.NODE_ENV !== "production") {
+        return callback(null, true);
+      }
+      // Block unknown origins in production
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // If production, optionally serve static frontend from ../frontend/dist
@@ -75,6 +101,10 @@ app.use("/api/ai", aiRoutes);
 // Social sheet routes
 const socialSheetRoutes = require("./routes/socialSheets");
 app.use("/api/social-sheets", socialSheetRoutes);
+
+// Payroll NexGenus routes
+const payrollNexgenusRoutes = require("./routes/payrollNexgenus");
+app.use("/api/payroll-nexgenus", payrollNexgenusRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

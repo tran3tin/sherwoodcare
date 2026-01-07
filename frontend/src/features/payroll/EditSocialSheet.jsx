@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Layout from "../../components/Layout";
 import { toast } from "react-toastify";
 import socialSheetService from "../../services/socialSheetService";
 import "../../assets/styles/list.css";
 import "./TimeSheetForm.css";
-
-const DEFAULT_ROWS = 100;
 
 const createEmptyRow = (id) => ({
   id,
@@ -22,110 +20,38 @@ const createEmptyRow = (id) => ({
   details_of_activity: "",
 });
 
-// Convert yyyy-mm-dd to dd/mm/yyyy
-const formatDateToDisplay = (dateStr) => {
-  if (!dateStr) return "";
-  const parts = dateStr.split("-");
-  if (parts.length === 3) {
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  }
-  return dateStr;
-};
-
-// Convert dd/mm/yyyy to yyyy-mm-dd
-const formatDateToISO = (dateStr) => {
-  if (!dateStr) return null;
-  const parts = dateStr.split("/");
-  if (parts.length === 3) {
-    const [day, month, year] = parts;
-    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-  }
-  return null;
-};
-
-// Validate dd/mm/yyyy format
-const isValidDateFormat = (dateStr) => {
-  if (!dateStr) return true;
-  const regex = /^(0?[1-9]|[12][0-9]|3[01])\/(0?[1-9]|1[0-2])\/\d{4}$/;
-  return regex.test(dateStr);
-};
-
-export default function SocialSheetForm() {
+export default function EditSocialSheet() {
   const navigate = useNavigate();
+  const { id } = useParams();
 
-  const [numRows, setNumRows] = useState(DEFAULT_ROWS);
+  const [sheetName, setSheetName] = useState("");
   const [rows, setRows] = useState([]);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-
-  const DRAFT_KEY = "socialSheetDraft:new";
-
-  const saveDraft = (nextRows, nextNumRows, nextStartDate, nextEndDate) => {
-    try {
-      const payload = {
-        numRows: nextNumRows,
-        rows: nextRows,
-        startDate: nextStartDate,
-        endDate: nextEndDate,
-        savedAt: Date.now(),
-      };
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
-    } catch {
-      // ignore
-    }
-  };
-
-  const tryRestoreDraft = () => {
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (!raw) return false;
-      const draft = JSON.parse(raw);
-      if (!draft || !Array.isArray(draft.rows)) return false;
-
-      const restoredNumRows = Number.isFinite(Number(draft.numRows))
-        ? parseInt(draft.numRows, 10)
-        : DEFAULT_ROWS;
-
-      setNumRows(restoredNumRows);
-      setRows(draft.rows);
-      setStartDate(draft.startDate || "");
-      setEndDate(draft.endDate || "");
-      return true;
-    } catch {
-      return false;
-    }
-  };
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const restored = tryRestoreDraft();
-    if (!restored) generateTable(DEFAULT_ROWS);
-  }, []);
+    if (id) {
+      loadSheet(id);
+    }
+  }, [id]);
 
-  useEffect(() => {
-    if (!Array.isArray(rows) || rows.length === 0) return;
-    const handle = window.setTimeout(() => {
-      saveDraft(rows, numRows, startDate, endDate);
-    }, 200);
-    return () => window.clearTimeout(handle);
-  }, [rows, numRows, startDate, endDate]);
-
-  const generateTable = (rowCount = numRows) => {
-    const count = Number.isFinite(Number(rowCount))
-      ? parseInt(rowCount, 10)
-      : 0;
-    if (!Number.isFinite(count) || count <= 0) {
-      toast.warning("Rows must be greater than 0", {
+  const loadSheet = async (sheetId) => {
+    try {
+      setLoading(true);
+      const response = await socialSheetService.fetchSheetById(sheetId);
+      const sheet = response.data;
+      setSheetName(sheet?.name || `Social Sheet #${sheetId}`);
+      setRows(Array.isArray(sheet?.rows) ? sheet.rows : []);
+    } catch (e) {
+      console.error("Failed to load social sheet:", e);
+      toast.error(e?.response?.data?.error || "Failed to load Social Sheet.", {
         position: "top-right",
-        autoClose: 3000,
+        autoClose: 4000,
       });
-      return;
+      navigate("/payroll/social-participants");
+    } finally {
+      setLoading(false);
     }
-
-    const newRows = [];
-    for (let r = 1; r <= count; r++) {
-      newRows.push(createEmptyRow(r));
-    }
-    setRows(newRows);
   };
 
   const handleInputChange = (rowIndex, field, value) => {
@@ -230,141 +156,64 @@ export default function SocialSheetForm() {
     }
   };
 
-  const clearData = () => {
-    if (!window.confirm("Clear all data?")) return;
-    setRows((prev) => {
-      const cleared = prev.map((r) => ({ ...createEmptyRow(r.id), id: r.id }));
-      saveDraft(cleared, numRows, startDate, endDate);
-      return cleared;
-    });
-    toast.success("Data cleared.", { position: "top-right", autoClose: 2000 });
-  };
-
   const handleSave = async () => {
+    if (saving) return;
+
     try {
-      const payloadRows = Array.isArray(rows) ? rows : [];
-      if (payloadRows.length === 0) {
-        toast.warning("No data to save.", {
-          position: "top-right",
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      // Validate date formats
-      if (startDate && !isValidDateFormat(startDate)) {
-        toast.error("Invalid Start Date format. Use dd/mm/yyyy", {
-          position: "top-right",
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      if (endDate && !isValidDateFormat(endDate)) {
-        toast.error("Invalid End Date format. Use dd/mm/yyyy", {
-          position: "top-right",
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      const name = `Social Sheet ${new Date().toLocaleDateString()}`;
-      const response = await socialSheetService.createSheet({
-        name,
-        start_date: formatDateToISO(startDate),
-        end_date: formatDateToISO(endDate),
-        rows: payloadRows,
+      setSaving(true);
+      await socialSheetService.updateSheet(id, {
+        name: sheetName,
+        rows,
       });
 
-      toast.success("Social sheet saved to database.", {
+      toast.success("Social sheet updated successfully.", {
         position: "top-right",
         autoClose: 3000,
       });
 
-      // Keep draft (for View Report draft mode), but navigate to list page.
-      if (response?.sheet_id) {
-        try {
-          localStorage.setItem(
-            "socialSheetLastSavedId",
-            String(response.sheet_id)
-          );
-        } catch {
-          // ignore
-        }
-      }
-
       navigate("/payroll/social-participants");
     } catch (error) {
-      console.error("Error saving social sheet:", error);
+      console.error("Error updating social sheet:", error);
       toast.error(
-        error?.response?.data?.error || "Failed to save social sheet.",
+        error?.response?.data?.error || "Failed to update social sheet.",
         {
           position: "top-right",
           autoClose: 5000,
         }
       );
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleViewReport = () => {
-    navigate("/payroll/social-participant-report");
+  const clearData = () => {
+    if (!window.confirm("Clear all data?")) return;
+    setRows((prev) => prev.map((r) => ({ ...createEmptyRow(r.id), id: r.id })));
+    toast.success("Data cleared.", { position: "top-right", autoClose: 2000 });
   };
+
+  if (loading) {
+    return (
+      <Layout
+        title="Edit Social Sheet"
+        breadcrumb={["Home", "Payroll", "Edit Social Sheet"]}
+      >
+        <div className="list-page-container">
+          <div className="loading-state">
+            <i className="fas fa-spinner"></i>
+            <p>Loading social sheet...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout
-      title="Social Sheet"
-      breadcrumb={["Home", "Payroll", "Social Sheet"]}
+      title={`Edit: ${sheetName}`}
+      breadcrumb={["Home", "Payroll", "Social Participant List", "Edit"]}
     >
       <div className="timesheet-container">
-        <div className="date-config">
-          <h3>⚙️ Social Sheet Configuration</h3>
-          <div className="input-group">
-            <div className="input-field">
-              <label htmlFor="startDate">Start Date:</label>
-              <input
-                type="text"
-                id="startDate"
-                placeholder="dd/mm/yyyy"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
-
-            <div className="input-field">
-              <label htmlFor="endDate">End Date:</label>
-              <input
-                type="text"
-                id="endDate"
-                placeholder="dd/mm/yyyy"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-
-            <div className="input-field">
-              <label htmlFor="numRows">Rows:</label>
-              <input
-                type="number"
-                id="numRows"
-                min="1"
-                max="500"
-                value={numRows}
-                onChange={(e) =>
-                  setNumRows(parseInt(e.target.value || "0", 10))
-                }
-              />
-            </div>
-
-            <button
-              type="button"
-              className="ts-btn ts-btn-generate"
-              onClick={() => generateTable(numRows)}
-            >
-              Generate Table
-            </button>
-          </div>
-        </div>
-
         <div className="table-container">
           <div
             style={{
@@ -374,13 +223,14 @@ export default function SocialSheetForm() {
               marginBottom: "15px",
             }}
           >
-            <h2 style={{ margin: 0 }}>Social Sheet</h2>
+            <h2 style={{ margin: 0 }}>Edit: {sheetName}</h2>
 
             <div className="action-buttons" style={{ marginTop: 0 }}>
               <button
                 type="button"
                 className="btn-action btn-save"
                 onClick={handleSave}
+                disabled={saving}
                 title="Save"
                 aria-label="Save"
               >
@@ -399,12 +249,12 @@ export default function SocialSheetForm() {
 
               <button
                 type="button"
-                className="btn-action btn-report"
-                onClick={handleViewReport}
-                title="View Report"
-                aria-label="View Report"
+                className="btn-action btn-cancel"
+                onClick={() => navigate("/payroll/social-participants")}
+                title="Cancel"
+                aria-label="Cancel"
               >
-                <i className="fas fa-chart-bar"></i>
+                <i className="fas fa-times"></i>
               </button>
             </div>
           </div>
@@ -427,34 +277,38 @@ export default function SocialSheetForm() {
             </ul>
           </div>
 
-          <table className="timesheet-table" id="socialSheetTable">
+          <table className="timesheet-table" id="editSocialSheetTable">
             <thead>
               <tr>
                 <th style={{ width: "40px" }}>#</th>
                 <th style={{ width: "140px" }}>Date</th>
                 <th style={{ width: "180px" }}>Worker&apos;s Name</th>
-                <th style={{ width: "160px" }}>Number of Participants</th>
-                <th style={{ width: "160px" }}>Participants 1</th>
+                <th style={{ width: "160px" }}># Participants</th>
+                <th style={{ width: "160px" }}>Participant 1</th>
                 <th style={{ width: "140px" }}>Shift Starts</th>
                 <th style={{ width: "140px" }}>Shift Ends</th>
                 <th style={{ width: "120px" }}>Actual Hours</th>
-                <th style={{ width: "170px" }}>Does worker use own car?</th>
+                <th style={{ width: "170px" }}>Use own car?</th>
                 <th style={{ width: "130px" }}>Total Mileage</th>
                 <th style={{ width: "260px" }}>Details of activity</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row, rowIndex) => (
-                <tr key={row.id}>
+                <tr key={row.id || rowIndex}>
                   <td className="num-col">
-                    <input type="text" value={row.id} readOnly />
+                    <input
+                      type="text"
+                      value={row.id || rowIndex + 1}
+                      readOnly
+                    />
                   </td>
 
                   <td>
                     <input
                       id={`cell-${rowIndex}-date`}
                       type="text"
-                      value={row.date}
+                      value={row.date || ""}
                       onChange={(e) =>
                         handleInputChange(rowIndex, "date", e.target.value)
                       }
@@ -467,7 +321,7 @@ export default function SocialSheetForm() {
                     <input
                       id={`cell-${rowIndex}-worker_name`}
                       type="text"
-                      value={row.worker_name}
+                      value={row.worker_name || ""}
                       onChange={(e) =>
                         handleInputChange(
                           rowIndex,
@@ -488,7 +342,7 @@ export default function SocialSheetForm() {
                     <input
                       id={`cell-${rowIndex}-number_of_participants`}
                       type="text"
-                      value={row.number_of_participants}
+                      value={row.number_of_participants || ""}
                       onChange={(e) =>
                         handleInputChange(
                           rowIndex,
@@ -509,7 +363,7 @@ export default function SocialSheetForm() {
                     <input
                       id={`cell-${rowIndex}-participant_1`}
                       type="text"
-                      value={row.participant_1}
+                      value={row.participant_1 || ""}
                       onChange={(e) =>
                         handleInputChange(
                           rowIndex,
@@ -530,7 +384,7 @@ export default function SocialSheetForm() {
                     <input
                       id={`cell-${rowIndex}-shift_starts`}
                       type="text"
-                      value={row.shift_starts}
+                      value={row.shift_starts || ""}
                       onChange={(e) =>
                         handleInputChange(
                           rowIndex,
@@ -551,7 +405,7 @@ export default function SocialSheetForm() {
                     <input
                       id={`cell-${rowIndex}-shift_ends`}
                       type="text"
-                      value={row.shift_ends}
+                      value={row.shift_ends || ""}
                       onChange={(e) =>
                         handleInputChange(
                           rowIndex,
@@ -570,7 +424,7 @@ export default function SocialSheetForm() {
                     <input
                       id={`cell-${rowIndex}-actual_hours`}
                       type="text"
-                      value={row.actual_hours}
+                      value={row.actual_hours || ""}
                       onChange={(e) =>
                         handleInputChange(
                           rowIndex,
@@ -591,7 +445,7 @@ export default function SocialSheetForm() {
                     <input
                       id={`cell-${rowIndex}-use_own_car`}
                       type="text"
-                      value={row.use_own_car}
+                      value={row.use_own_car || ""}
                       onChange={(e) =>
                         handleInputChange(
                           rowIndex,
@@ -612,7 +466,7 @@ export default function SocialSheetForm() {
                     <input
                       id={`cell-${rowIndex}-total_mileage`}
                       type="text"
-                      value={row.total_mileage}
+                      value={row.total_mileage || ""}
                       onChange={(e) =>
                         handleInputChange(
                           rowIndex,
@@ -633,7 +487,7 @@ export default function SocialSheetForm() {
                     <input
                       id={`cell-${rowIndex}-details_of_activity`}
                       type="text"
-                      value={row.details_of_activity}
+                      value={row.details_of_activity || ""}
                       onChange={(e) =>
                         handleInputChange(
                           rowIndex,

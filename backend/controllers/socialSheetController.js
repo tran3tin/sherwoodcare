@@ -2,7 +2,7 @@ const SocialSheetModel = require("../models/SocialSheetModel");
 
 exports.createSheet = async (req, res) => {
   try {
-    const { name, rows } = req.body;
+    const { name, start_date, end_date, rows } = req.body;
 
     if (!Array.isArray(rows)) {
       return res.status(400).json({ error: "Invalid rows data" });
@@ -10,6 +10,8 @@ exports.createSheet = async (req, res) => {
 
     const sheetId = await SocialSheetModel.createSheet({
       name: name || null,
+      start_date: start_date || null,
+      end_date: end_date || null,
       rows,
     });
 
@@ -53,7 +55,7 @@ exports.getSheetById = async (req, res) => {
 exports.updateSheet = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, rows } = req.body;
+    const { name, start_date, end_date, rows } = req.body;
 
     if (!Array.isArray(rows)) {
       return res.status(400).json({ error: "Invalid rows data" });
@@ -66,6 +68,8 @@ exports.updateSheet = async (req, res) => {
 
     await SocialSheetModel.updateSheet(id, {
       name: name !== undefined ? name : existing.name,
+      start_date: start_date !== undefined ? start_date : existing.start_date,
+      end_date: end_date !== undefined ? end_date : existing.end_date,
       rows,
     });
 

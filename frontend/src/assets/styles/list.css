@@ -228,12 +228,12 @@
 }
 
 .btn-action.btn-view {
-  border-color: var(--sherwoodcare-teal);
-  color: var(--sherwoodcare-teal);
+  border-color: var(--sherwoodcare-dark-blue);
+  color: var(--sherwoodcare-dark-blue);
 }
 
 .btn-action.btn-view:hover {
-  background-color: var(--sherwoodcare-teal);
+  background-color: var(--sherwoodcare-dark-blue);
   color: white;
 }
 
@@ -289,12 +289,12 @@
 }
 
 .btn-action.btn-report {
-  border-color: var(--sherwoodcare-teal);
-  color: var(--sherwoodcare-teal);
+  border-color: var(--sherwoodcare-dark-blue);
+  color: var(--sherwoodcare-dark-blue);
 }
 
 .btn-action.btn-report:hover {
-  background-color: var(--sherwoodcare-teal);
+  background-color: var(--sherwoodcare-dark-blue);
   color: white;
 }
 

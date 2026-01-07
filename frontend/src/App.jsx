@@ -5,9 +5,15 @@ import TimeSheetForm from "./features/payroll/TimeSheetForm";
 import TimeSheetList from "./features/payroll/TimeSheetList";
 import TimeSheetReport from "./features/payroll/TimeSheetReport";
 import TimeSheetReportList from "./features/payroll/TimeSheetReportList";
+import PayrollNexgenusForm from "./features/nexgenus/PayrollNexgenusForm";
+import PayrollNexgenuslist from "./features/nexgenus/PayrollNexgenuslist";
+import PayrollNexgenusReport from "./features/nexgenus/PayrollNexgenusReport";
 import SocialSheetForm from "./features/payroll/SocialSheetForm";
 import SocialParticipantReport from "./features/payroll/SocialParticipantReport";
+import SocialEmployeeReport from "./features/payroll/SocialEmployeeReport";
 import SocialParticipantList from "./features/payroll/SocialParticipantList";
+import ViewSocialSheet from "./features/payroll/ViewSocialSheet";
+import EditSocialSheet from "./features/payroll/EditSocialSheet";
 import EmployeeList from "./features/employee/EmployeeList";
 import CreateEmployee from "./features/employee/CreateEmployee";
 import CustomerList from "./features/customer/CustomerList";
@@ -28,9 +34,21 @@ export default function App() {
       <Route path="/payroll/time-sheet" element={<TimeSheetForm />} />
       <Route path="/payroll/time-sheet/:id" element={<TimeSheetForm />} />
       <Route path="/payroll/social-sheet" element={<SocialSheetForm />} />
+      <Route path="/payroll/social-sheet/:id" element={<ViewSocialSheet />} />
+      <Route
+        path="/payroll/social-sheet/edit/:id"
+        element={<EditSocialSheet />}
+      />
       <Route
         path="/payroll/social-participants"
         element={<SocialParticipantList />}
+      />
+      <Route path="/nexgenus/payroll" element={<PayrollNexgenuslist />} />
+      <Route path="/nexgenus/payroll/new" element={<PayrollNexgenusForm />} />
+      <Route path="/nexgenus/payroll/:id" element={<PayrollNexgenusReport />} />
+      <Route
+        path="/nexgenus/payroll/edit/:id"
+        element={<PayrollNexgenusForm />}
       />
       <Route
         path="/payroll/social-participant-report"
@@ -39,6 +57,14 @@ export default function App() {
       <Route
         path="/payroll/social-participant-report/:id"
         element={<SocialParticipantReport />}
+      />
+      <Route
+        path="/payroll/social-employee-report"
+        element={<SocialEmployeeReport />}
+      />
+      <Route
+        path="/payroll/social-employee-report/:id"
+        element={<SocialEmployeeReport />}
       />
       <Route path="/payroll/report" element={<TimeSheetReport />} />
       <Route path="/payroll/report/:id" element={<TimeSheetReport />} />

@@ -6,12 +6,12 @@
 /* Legacy CSS Variables (for backward compatibility) */
 :root {
   --primary-color: var(--sherwoodcare-dark-blue);
-  --secondary-color: var(--sherwoodcare-teal);
+  --secondary-color: var(--sherwoodcare-dark-blue);
   --accent-color: var(--sherwoodcare-orange);
   --success-color: #6eb516;
   --danger-color: var(--sherwoodcare-red);
   --warning-color: var(--sherwoodcare-orange);
-  --info-color: var(--sherwoodcare-teal);
+  --info-color: var(--sherwoodcare-dark-blue);
   --dark-color: var(--sherwoodcare-dark-blue-dark);
   --light-color: var(--sherwoodcare-bg);
   --white-color: #ffffff;

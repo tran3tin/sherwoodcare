@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import { toast } from "react-toastify";
-import socialSheetService from "../../services/socialSheetService";
 import "../../assets/styles/list.css";
 
 // Format yyyy-mm-dd to dd/mm/yyyy
@@ -15,83 +14,94 @@ const formatDate = (dateStr) => {
   return dateStr;
 };
 
-const SocialParticipantList = () => {
+const PayrollNexgenuslist = () => {
   const navigate = useNavigate();
 
-  const [sheets, setSheets] = useState([]);
+  const [payrolls, setPayrolls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    loadSheets();
+    loadPayrolls();
   }, []);
 
-  const loadSheets = async () => {
+  const loadPayrolls = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await socialSheetService.fetchSheets();
-      setSheets(response.data || []);
-    } catch (err) {
-      console.error("Error loading social sheets:", err);
-      setError(
-        err.response?.data?.error ||
-          err.message ||
-          "Failed to load social sheets"
+      const response = await fetch(
+        "http://localhost:3000/api/payroll-nexgenus"
       );
+      if (!response.ok) {
+        throw new Error("Failed to load payrolls");
+      }
+      const data = await response.json();
+      setPayrolls(data || []);
+    } catch (err) {
+      console.error("Error loading payrolls:", err);
+      setError(err.message || "Failed to load payrolls");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (sheetId, sheetName) => {
-    const confirmMsg = sheetName
-      ? `Are you sure you want to delete "${sheetName}"?`
-      : "Are you sure you want to delete this social sheet?";
+  const handleDelete = async (payrollId, startDate) => {
+    const confirmMsg = startDate
+      ? `Are you sure you want to delete payroll with start date "${formatDate(
+          startDate
+        )}"?`
+      : "Are you sure you want to delete this payroll?";
 
     if (!window.confirm(confirmMsg)) return;
 
     try {
-      await socialSheetService.deleteSheet(sheetId);
-      setSheets((prev) => prev.filter((s) => s.sheet_id !== sheetId));
-      toast.success("Social sheet deleted.", {
+      const response = await fetch(
+        `http://localhost:3000/api/payroll-nexgenus/${payrollId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete payroll");
+      }
+
+      setPayrolls((prev) => prev.filter((p) => p.id !== payrollId));
+      toast.success("Payroll deleted successfully.", {
         position: "top-right",
         autoClose: 3000,
       });
     } catch (err) {
-      console.error("Error deleting social sheet:", err);
-      toast.error(
-        err.response?.data?.error || "Failed to delete social sheet",
-        {
-          position: "top-right",
-          autoClose: 5000,
-        }
-      );
+      console.error("Error deleting payroll:", err);
+      toast.error(err.message || "Failed to delete payroll", {
+        position: "top-right",
+        autoClose: 5000,
+      });
     }
   };
 
-  const filteredSheets = useMemo(() => {
+  const filteredPayrolls = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return sheets;
+    if (!term) return payrolls;
 
-    return sheets.filter((s) => {
-      const name = String(s.name || "").toLowerCase();
-      const id = String(s.sheet_id || "").toLowerCase();
-      return name.includes(term) || id.includes(term);
+    return payrolls.filter((p) => {
+      const id = String(p.id || "").toLowerCase();
+      const startDate = String(p.start_date || "").toLowerCase();
+      return id.includes(term) || startDate.includes(term);
     });
-  }, [sheets, searchTerm]);
+  }, [payrolls, searchTerm]);
 
   if (loading) {
     return (
       <Layout
-        title="Social List"
-        breadcrumb={["Home", "Payroll", "Social List"]}
+        title="Payroll NexGenus List"
+        breadcrumb={["Home", "NexGenus", "Payroll List"]}
       >
         <div className="list-page-container">
           <div className="loading-state">
             <i className="fas fa-spinner"></i>
-            <p>Loading social sheets...</p>
+            <p>Loading payrolls...</p>
           </div>
         </div>
       </Layout>
@@ -101,8 +111,8 @@ const SocialParticipantList = () => {
   if (error) {
     return (
       <Layout
-        title="Social List"
-        breadcrumb={["Home", "Payroll", "Social List"]}
+        title="Payroll NexGenus List"
+        breadcrumb={["Home", "NexGenus", "Payroll List"]}
       >
         <div className="list-page-container">
           <div className="empty-state">
@@ -111,7 +121,7 @@ const SocialParticipantList = () => {
             <button
               type="button"
               className="btn-create-first"
-              onClick={loadSheets}
+              onClick={loadPayrolls}
             >
               <i className="fas fa-redo"></i>
               Retry
@@ -123,7 +133,10 @@ const SocialParticipantList = () => {
   }
 
   return (
-    <Layout title="Social List" breadcrumb={["Home", "Payroll", "Social List"]}>
+    <Layout
+      title="Payroll NexGenus List"
+      breadcrumb={["Home", "NexGenus", "Payroll List"]}
+    >
       <div className="list-page-container">
         <div className="list-page-header">
           <div className="list-filters">
@@ -132,7 +145,7 @@ const SocialParticipantList = () => {
               <input
                 type="text"
                 className="filter-input"
-                placeholder="Name or ID..."
+                placeholder="ID or Date..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -143,7 +156,7 @@ const SocialParticipantList = () => {
               <button
                 type="button"
                 className="btn-create-new"
-                onClick={() => navigate("/payroll/social-sheet")}
+                onClick={() => navigate("/nexgenus/payroll/new")}
               >
                 <i className="fas fa-plus"></i>
                 Create
@@ -152,23 +165,23 @@ const SocialParticipantList = () => {
           </div>
         </div>
 
-        {sheets.length === 0 ? (
+        {payrolls.length === 0 ? (
           <div className="empty-state">
             <h3>No Data</h3>
-            <p>No saved social sheets yet.</p>
+            <p>No saved payrolls yet.</p>
             <button
               type="button"
               className="btn-create-first"
-              onClick={() => navigate("/payroll/social-sheet")}
+              onClick={() => navigate("/nexgenus/payroll/new")}
             >
               <i className="fas fa-plus"></i>
-              Create Your First Social Sheet
+              Create Your First Payroll
             </button>
           </div>
-        ) : filteredSheets.length === 0 ? (
+        ) : filteredPayrolls.length === 0 ? (
           <div className="empty-state">
             <h3>No Results Found</h3>
-            <p>No social sheets match your search criteria.</p>
+            <p>No payrolls match your search criteria.</p>
             <button
               type="button"
               className="btn-clear-filter"
@@ -184,39 +197,43 @@ const SocialParticipantList = () => {
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Sheet</th>
+                  <th>ID</th>
                   <th>Start Date</th>
-                  <th>End Date</th>
-                  <th>Participants</th>
-                  <th>Activities</th>
+                  <th>Created At</th>
+                  <th>Updated At</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredSheets.map((s, index) => (
-                  <tr key={s.sheet_id}>
+                {filteredPayrolls.map((p, index) => (
+                  <tr key={p.id}>
                     <td>{index + 1}</td>
-                    <td>{s.name || `Social Sheet #${s.sheet_id}`}</td>
-                    <td>{formatDate(s.start_date)}</td>
-                    <td>{formatDate(s.end_date)}</td>
-                    <td>{s.participant_count || 0}</td>
-                    <td>{s.activity_count || 0}</td>
+                    <td>{p.id}</td>
+                    <td>{formatDate(p.start_date)}</td>
+                    <td>
+                      {p.created_at
+                        ? new Date(p.created_at).toLocaleString()
+                        : "-"}
+                    </td>
+                    <td>
+                      {p.updated_at
+                        ? new Date(p.updated_at).toLocaleString()
+                        : "-"}
+                    </td>
                     <td>
                       <div className="action-buttons">
                         <button
                           className="btn-action btn-view"
-                          onClick={() =>
-                            navigate(`/payroll/social-sheet/${s.sheet_id}`)
-                          }
-                          title="View"
-                          aria-label="View"
+                          onClick={() => navigate(`/nexgenus/payroll/${p.id}`)}
+                          title="View Report"
+                          aria-label="View Report"
                         >
-                          <i className="fas fa-eye"></i>
+                          <i className="fas fa-file-alt"></i>
                         </button>
                         <button
                           className="btn-action btn-edit"
                           onClick={() =>
-                            navigate(`/payroll/social-sheet/edit/${s.sheet_id}`)
+                            navigate(`/nexgenus/payroll/edit/${p.id}`)
                           }
                           title="Edit"
                           aria-label="Edit"
@@ -225,12 +242,7 @@ const SocialParticipantList = () => {
                         </button>
                         <button
                           className="btn-action btn-delete"
-                          onClick={() =>
-                            handleDelete(
-                              s.sheet_id,
-                              s.name || `Social Sheet #${s.sheet_id}`
-                            )
-                          }
+                          onClick={() => handleDelete(p.id, p.start_date)}
                           title="Delete"
                           aria-label="Delete"
                         >
@@ -249,4 +261,4 @@ const SocialParticipantList = () => {
   );
 };
 
-export default SocialParticipantList;
+export default PayrollNexgenuslist;

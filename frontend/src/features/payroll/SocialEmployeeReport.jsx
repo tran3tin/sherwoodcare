@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import * as XLSX from "xlsx";
 import Layout from "../../components/Layout";
 import { toast } from "react-toastify";
 import socialSheetService from "../../services/socialSheetService";
@@ -56,40 +57,39 @@ const calculatePayableHours = (actualHoursStr) => {
   return payable.toFixed(2);
 };
 
-const buildParticipantGroups = (rows) => {
+const buildEmployeeGroups = (rows) => {
   const groups = new Map();
 
   for (const row of Array.isArray(rows) ? rows : []) {
-    const participant = normalizeText(row?.participant_1);
-    if (!participant) continue;
+    const employee = normalizeText(row?.worker_name);
+    if (!employee) continue;
 
     const activity = {
       id: row?.id,
       date: normalizeText(row?.date),
-      worker_name: normalizeText(row?.worker_name),
+      participant: normalizeText(row?.participant_1),
       number_of_participants: normalizeText(row?.number_of_participants),
       shift_starts: normalizeText(row?.shift_starts),
       shift_ends: normalizeText(row?.shift_ends),
       actual_hours: normalizeText(row?.actual_hours),
-      use_own_car: normalizeText(row?.use_own_car),
       total_mileage: normalizeText(row?.total_mileage),
       details_of_activity: normalizeText(row?.details_of_activity),
     };
 
-    if (!groups.has(participant)) groups.set(participant, []);
-    groups.get(participant).push(activity);
+    if (!groups.has(employee)) groups.set(employee, []);
+    groups.get(employee).push(activity);
   }
 
   return groups;
 };
 
-export default function SocialParticipantReport() {
+export default function SocialEmployeeReport() {
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
 
   const [rawRows, setRawRows] = useState([]);
-  const [participantFilter, setParticipantFilter] = useState("");
+  const [employeeFilter, setEmployeeFilter] = useState("");
   const [sortDir, setSortDir] = useState("asc");
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -246,42 +246,42 @@ export default function SocialParticipantReport() {
     load();
   }, [location.state, id]);
 
-  const participantGroups = useMemo(() => {
-    const groups = buildParticipantGroups(rawRows);
-    const term = normalizeText(participantFilter).toLowerCase();
+  const employeeGroups = useMemo(() => {
+    const groups = buildEmployeeGroups(rawRows);
+    const term = normalizeText(employeeFilter).toLowerCase();
 
-    let participants = Array.from(groups.keys());
+    let employees = Array.from(groups.keys());
 
     if (term) {
-      participants = participants.filter((p) => p.toLowerCase().includes(term));
+      employees = employees.filter((e) => e.toLowerCase().includes(term));
     }
 
-    participants.sort((a, b) => {
+    employees.sort((a, b) => {
       const cmp = a.localeCompare(b);
       return sortDir === "desc" ? -cmp : cmp;
     });
 
-    const ordered = participants.map((p) => ({
-      participant: p,
-      activities: (groups.get(p) || []).slice().sort((x, y) => {
-        // Best-effort sort: date then worker_name
+    const ordered = employees.map((e) => ({
+      employee: e,
+      activities: (groups.get(e) || []).slice().sort((x, y) => {
+        // Best-effort sort: date then participant
         const d = x.date.localeCompare(y.date);
         if (d !== 0) return d;
-        return x.worker_name.localeCompare(y.worker_name);
+        return x.participant.localeCompare(y.participant);
       }),
     }));
 
     return ordered;
-  }, [rawRows, participantFilter, sortDir]);
+  }, [rawRows, employeeFilter, sortDir]);
 
   const totalActivities = useMemo(() => {
-    return participantGroups.reduce((sum, g) => sum + g.activities.length, 0);
-  }, [participantGroups]);
+    return employeeGroups.reduce((sum, g) => sum + g.activities.length, 0);
+  }, [employeeGroups]);
 
   return (
     <Layout
-      title="Social Participant Report"
-      breadcrumb={["Home", "Payroll", "Social Participant Report"]}
+      title="Social Employee Report"
+      breadcrumb={["Home", "Payroll", "Social Employee Report"]}
     >
       <div className="timesheet-container">
         <div
@@ -292,7 +292,7 @@ export default function SocialParticipantReport() {
             marginBottom: "15px",
           }}
         >
-          <h2 style={{ margin: 0 }}>Social Participant Report</h2>
+          <h2 style={{ margin: 0 }}>Social Employee Report</h2>
           <div className="action-buttons">
             <button
               type="button"
@@ -340,11 +340,49 @@ export default function SocialParticipantReport() {
           </div>
         </div>
 
+        <div className="date-config">
+          <h3>📋 Social Employee Report</h3>
+          <div className="input-group">
+            <div className="input-field" style={{ minWidth: 260 }}>
+              <label htmlFor="employeeFilter">Worker&apos;s Name:</label>
+              <input
+                id="employeeFilter"
+                type="text"
+                placeholder="Type worker name..."
+                value={employeeFilter}
+                onChange={(e) => setEmployeeFilter(e.target.value)}
+              />
+            </div>
+
+            <button
+              type="button"
+              className="ts-btn ts-btn-generate"
+              onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+              title="Toggle sort"
+            >
+              Sort: {sortDir === "asc" ? "A→Z" : "Z→A"}
+            </button>
+
+            <button
+              type="button"
+              className="ts-btn ts-btn-generate"
+              onClick={() => navigate("/payroll/social-sheet")}
+            >
+              Back to Social Sheet
+            </button>
+          </div>
+
+          <div style={{ marginTop: 10, opacity: 0.9 }}>
+            Employees: <strong>{employeeGroups.length}</strong> — Activities:{" "}
+            <strong>{totalActivities}</strong>
+          </div>
+        </div>
+
         <div className="table-container">
-          {participantGroups.length === 0 ? (
+          {employeeGroups.length === 0 ? (
             <div className="empty-state" style={{ padding: 20 }}>
               <h3>No Data</h3>
-              <p>No rows with Participant found.</p>
+              <p>No rows with Worker&apos;s Name found.</p>
               <button
                 type="button"
                 className="btn-create-first"
@@ -355,14 +393,12 @@ export default function SocialParticipantReport() {
               </button>
             </div>
           ) : (
-            <table
-              className="timesheet-table"
-              id="socialParticipantReportTable"
-            >
+            <table className="timesheet-table" id="socialEmployeeReportTable">
               <thead>
                 <tr>
-                  <th style={{ width: "220px" }}>Participant</th>
+                  <th style={{ width: "220px" }}>Worker&apos;s Name</th>
                   <th style={{ width: "140px" }}>Date</th>
+                  <th style={{ width: "180px" }}>Participant</th>
                   <th style={{ width: "160px" }}># Participants</th>
                   <th style={{ width: "140px" }}>Shift Starts</th>
                   <th style={{ width: "140px" }}>Shift Ends</th>
@@ -373,15 +409,16 @@ export default function SocialParticipantReport() {
                 </tr>
               </thead>
               <tbody>
-                {participantGroups.map((group) => {
+                {employeeGroups.map((group) => {
                   return group.activities.map((a, idx) => (
-                    <tr key={`${group.participant}-${a.id ?? idx}-${idx}`}>
+                    <tr key={`${group.employee}-${a.id ?? idx}-${idx}`}>
                       {idx === 0 && (
                         <td rowSpan={group.activities.length}>
-                          {group.participant}
+                          {group.employee}
                         </td>
                       )}
                       <td>{a.date}</td>
+                      <td>{a.participant}</td>
                       <td>{a.number_of_participants}</td>
                       <td>{a.shift_starts}</td>
                       <td>{a.shift_ends}</td>

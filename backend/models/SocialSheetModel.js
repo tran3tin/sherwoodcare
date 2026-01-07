@@ -1,18 +1,23 @@
 const db = require("../config/db");
 
 class SocialSheetModel {
-  static async createSheet({ name, rows }) {
+  static async createSheet({ name, start_date, end_date, rows }) {
     const rowsJson = rows ? JSON.stringify(rows) : JSON.stringify([]);
 
     const sql =
       db.client === "pg"
-        ? `INSERT INTO social_sheets (name, rows_json)
-           VALUES ($1, $2)
+        ? `INSERT INTO social_sheets (name, start_date, end_date, rows_json)
+           VALUES ($1, $2, $3, $4)
            RETURNING sheet_id`
-        : `INSERT INTO social_sheets (name, rows_json)
-           VALUES (?, ?)`;
+        : `INSERT INTO social_sheets (name, start_date, end_date, rows_json)
+           VALUES (?, ?, ?, ?)`;
 
-    const { rows: result } = await db.query(sql, [name || null, rowsJson]);
+    const { rows: result } = await db.query(sql, [
+      name || null,
+      start_date || null,
+      end_date || null,
+      rowsJson,
+    ]);
     return db.client === "pg" ? result[0].sheet_id : result.insertId;
   }
 
@@ -23,6 +28,8 @@ class SocialSheetModel {
       SELECT
         sheet_id,
         name,
+        start_date,
+        end_date,
         rows_json,
         created_at,
         updated_at
@@ -33,6 +40,8 @@ class SocialSheetModel {
       SELECT
         sheet_id,
         name,
+        start_date,
+        end_date,
         rows_json,
         created_at,
         updated_at
@@ -75,6 +84,8 @@ class SocialSheetModel {
       return {
         sheet_id: row.sheet_id,
         name: row.name,
+        start_date: row.start_date,
+        end_date: row.end_date,
         created_at: row.created_at,
         updated_at: row.updated_at,
         participant_count: participants.size,
@@ -90,6 +101,8 @@ class SocialSheetModel {
       SELECT
         sheet_id,
         name,
+        start_date,
+        end_date,
         rows_json,
         created_at,
         updated_at
@@ -100,6 +113,8 @@ class SocialSheetModel {
       SELECT
         sheet_id,
         name,
+        start_date,
+        end_date,
         rows_json,
         created_at,
         updated_at
@@ -124,29 +139,41 @@ class SocialSheetModel {
     return {
       sheet_id: row.sheet_id,
       name: row.name,
+      start_date: row.start_date,
+      end_date: row.end_date,
       rows: parsedRows,
       created_at: row.created_at,
       updated_at: row.updated_at,
     };
   }
 
-  static async updateSheet(sheetId, { name, rows }) {
+  static async updateSheet(sheetId, { name, start_date, end_date, rows }) {
     const rowsJson = rows ? JSON.stringify(rows) : JSON.stringify([]);
 
     const sql =
       db.client === "pg"
         ? `UPDATE social_sheets
            SET name = $1,
-               rows_json = $2,
+               start_date = $2,
+               end_date = $3,
+               rows_json = $4,
                updated_at = CURRENT_TIMESTAMP
-           WHERE sheet_id = $3`
+           WHERE sheet_id = $5`
         : `UPDATE social_sheets
            SET name = ?,
+               start_date = ?,
+               end_date = ?,
                rows_json = ?,
                updated_at = CURRENT_TIMESTAMP
            WHERE sheet_id = ?`;
 
-    await db.query(sql, [name || null, rowsJson, sheetId]);
+    await db.query(sql, [
+      name || null,
+      start_date || null,
+      end_date || null,
+      rowsJson,
+      sheetId,
+    ]);
   }
 
   static async deleteSheet(sheetId) {

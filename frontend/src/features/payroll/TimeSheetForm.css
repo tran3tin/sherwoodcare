@@ -179,7 +179,7 @@
 }
 
 .ts-btn-generate {
-  background-color: var(--sherwoodcare-teal);
+  background-color: var(--sherwoodcare-dark-blue);
 }
 
 .ts-btn-generate:hover:not(:disabled) {

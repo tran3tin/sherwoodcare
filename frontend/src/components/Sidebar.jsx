@@ -18,12 +18,16 @@ const menuItems = [
     submenu: [
       { title: "Timesheet List", path: "/payroll/timesheets" },
       { title: "Timesheet Reports", path: "/payroll/reports" },
-      { title: "Social Sheet", path: "/payroll/social-sheet" },
       {
-        title: "Social Participant List",
+        title: "Social List",
         path: "/payroll/social-participants",
       },
     ],
+  },
+  {
+    title: "NexGenus",
+    icon: "flaticon-shopping-bag",
+    submenu: [{ title: "Payroll NexGenus List", path: "/nexgenus/payroll" }],
   },
   {
     title: "Employee",
