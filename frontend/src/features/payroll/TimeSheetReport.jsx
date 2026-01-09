@@ -36,18 +36,7 @@ const TimeSheetReport = () => {
   ]);
 
   const handleBack = () => {
-    const from = location.state?.from;
-    if (typeof from === "string" && from.length > 0) {
-      navigate(from);
-      return;
-    }
-
-    if (id) {
-      navigate("/payroll/reports");
-      return;
-    }
-
-    navigate("/payroll/time-sheet");
+    navigate(-1);
   };
 
   const handleEdit = () => {
@@ -343,6 +332,17 @@ const TimeSheetReport = () => {
     XLSX.writeFile(wb, fileName);
   };
 
+  const handleNavigateToMYOB = () => {
+    // Save timesheet data to localStorage for MYOB upload
+    const myobData = {
+      reportData,
+      dateHeaders,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem("myobTimesheetData", JSON.stringify(myobData));
+    navigate("/payroll/myob-upload");
+  };
+
   const buildDateHeaders = (startYmd, days) => {
     const s = normalizeYMD(startYmd);
     const count = parseInt(days, 10);
@@ -476,8 +476,11 @@ const TimeSheetReport = () => {
   };
 
   const formatDateDisplay = (dateString) => {
-    // dateString can be ISO or YYYY-MM-DD; normalize then format.
-    return formatDMFromYMD(normalizeYMD(dateString));
+    // dateString can be ISO or YYYY-MM-DD; normalize then format as dd/mm/yyyy
+    const ymd = normalizeYMD(dateString);
+    if (!ymd) return "";
+    const [year, month, day] = ymd.split("-");
+    return `${day}/${month}/${year}`;
   };
 
   const processData = (data, headers) => {
@@ -755,6 +758,17 @@ const TimeSheetReport = () => {
 
             <button
               type="button"
+              className="btn-action btn-edit"
+              onClick={handleNavigateToMYOB}
+              title="MYOB Upload"
+              aria-label="MYOB Upload"
+              disabled={deleting || saving}
+            >
+              <i className="fas fa-upload"></i>
+            </button>
+
+            <button
+              type="button"
               className="btn-action btn-cancel"
               onClick={handleBack}
               title="Back"
@@ -857,14 +871,20 @@ const TimeSheetReport = () => {
                                 }}
                               >
                                 <option value="">Select...</option>
-                                {employees.map((emp) => (
-                                  <option
-                                    key={emp.employee_id}
-                                    value={`${emp.first_name} ${emp.last_name}`}
-                                  >
-                                    {emp.first_name} {emp.last_name}
-                                  </option>
-                                ))}
+                                {[...employees]
+                                  .sort((a, b) =>
+                                    (a.first_name || "").localeCompare(
+                                      b.first_name || ""
+                                    )
+                                  )
+                                  .map((emp) => (
+                                    <option
+                                      key={emp.employee_id}
+                                      value={`${emp.first_name} ${emp.last_name}`}
+                                    >
+                                      {emp.first_name} {emp.last_name}
+                                    </option>
+                                  ))}
                               </select>
                             </td>
                           </>

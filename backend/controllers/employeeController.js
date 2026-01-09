@@ -3,30 +3,12 @@ const EmployeeModel = require("../models/EmployeeModel");
 // Create a new employee
 async function createEmployee(req, res) {
   try {
-    const { lastName, firstName, preferredName, level, cardId, recordId } =
-      req.body;
+    const { lastName, firstName, preferredName, level } = req.body;
 
     // Validation
-    if (!lastName || !firstName || !level || !cardId || !recordId) {
+    if (!lastName || !firstName || !level) {
       return res.status(400).json({
-        error:
-          "Missing required fields: lastName, firstName, level, cardId, recordId",
-      });
-    }
-
-    // Check if card ID already exists
-    const existingCard = await EmployeeModel.getByCardId(cardId);
-    if (existingCard) {
-      return res.status(400).json({
-        error: "Card ID already exists",
-      });
-    }
-
-    // Check if record ID already exists
-    const existingRecord = await EmployeeModel.getByRecordId(recordId);
-    if (existingRecord) {
-      return res.status(400).json({
-        error: "Record ID already exists",
+        error: "Missing required fields: lastName, firstName, level",
       });
     }
 
@@ -36,8 +18,6 @@ async function createEmployee(req, res) {
       firstName,
       preferredName,
       level,
-      cardId,
-      recordId,
     });
 
     res.status(201).json({
@@ -82,8 +62,7 @@ async function getEmployee(req, res) {
 async function updateEmployee(req, res) {
   try {
     const { id } = req.params;
-    const { lastName, firstName, preferredName, level, cardId, recordId } =
-      req.body;
+    const { lastName, firstName, preferredName, level } = req.body;
 
     // Check if employee exists
     const employee = await EmployeeModel.getById(id);
@@ -92,26 +71,9 @@ async function updateEmployee(req, res) {
     }
 
     // Validation
-    if (!lastName || !firstName || !level || !cardId || !recordId) {
+    if (!lastName || !firstName || !level) {
       return res.status(400).json({
-        error:
-          "Missing required fields: lastName, firstName, level, cardId, recordId",
-      });
-    }
-
-    // Check if card ID is used by another employee
-    const existingCard = await EmployeeModel.getByCardId(cardId);
-    if (existingCard && existingCard.employee_id !== parseInt(id)) {
-      return res.status(400).json({
-        error: "Card ID already exists",
-      });
-    }
-
-    // Check if record ID is used by another employee
-    const existingRecord = await EmployeeModel.getByRecordId(recordId);
-    if (existingRecord && existingRecord.employee_id !== parseInt(id)) {
-      return res.status(400).json({
-        error: "Record ID already exists",
+        error: "Missing required fields: lastName, firstName, level",
       });
     }
 
@@ -121,8 +83,6 @@ async function updateEmployee(req, res) {
       firstName,
       preferredName,
       level,
-      cardId,
-      recordId,
     });
 
     res.json({ message: "Employee updated successfully" });

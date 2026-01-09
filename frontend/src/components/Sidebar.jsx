@@ -6,11 +6,12 @@ const menuItems = [
   {
     title: "Dashboard",
     icon: "flaticon-dashboard",
-    submenu: [
-      { title: "Admin", path: "/" },
-      { title: "Students", path: "/students-dashboard" },
-      { title: "Parents", path: "/parents-dashboard" },
-    ],
+    submenu: [{ title: "Task Board", path: "/dashboard/tasks" }],
+  },
+  {
+    title: "AI Assistant",
+    icon: "flaticon-chat",
+    path: "/ai-assistant",
   },
   {
     title: "Payroll",
@@ -25,11 +26,6 @@ const menuItems = [
     ],
   },
   {
-    title: "NexGenus",
-    icon: "flaticon-shopping-bag",
-    submenu: [{ title: "Payroll NexGenus List", path: "/nexgenus/payroll" }],
-  },
-  {
     title: "Employee",
     icon: "flaticon-multiple-users-silhouette",
     submenu: [{ title: "Employee List", path: "/employee" }],
@@ -41,6 +37,12 @@ const menuItems = [
       { title: "Customer List", path: "/customer" },
       { title: "Invoices", path: "/customer-invoices" },
     ],
+  },
+  ,
+  {
+    title: "NexGenus",
+    icon: "flaticon-shopping-bag",
+    submenu: [{ title: "Payroll NexGenus List", path: "/nexgenus/payroll" }],
   },
 ];
 

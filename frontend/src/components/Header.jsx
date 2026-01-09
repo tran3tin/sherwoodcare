@@ -1,11 +1,62 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/images/Sherwood-care-logo.webp";
+import { notificationService } from "../services/notificationService";
 
 export default function Header({ onToggle }) {
   const [showMessages, setShowMessages] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    loadNotifications();
+    // Refresh notifications every 5 minutes
+    const interval = setInterval(loadNotifications, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadNotifications = async () => {
+    const result = await notificationService.getDueNotes();
+    if (result.success) {
+      setNotifications(result.data);
+    }
+  };
+
+  const handleNotificationClick = (notification) => {
+    if (notification.type === "employee") {
+      navigate(`/employee/${notification.employeeId}/notes`);
+    } else if (notification.type === "customer") {
+      navigate(`/customer/${notification.customerId}/notes`);
+    }
+    setShowNotifications(false);
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case "high":
+        return "bg-danger";
+      case "medium":
+        return "bg-warning";
+      case "low":
+        return "bg-info";
+      default:
+        return "bg-secondary";
+    }
+  };
+
+  const formatDueDate = (dueDate, isOverdue, isDueToday) => {
+    if (isOverdue) return "Quá hạn";
+    if (isDueToday) return "Hôm nay";
+    const date = new Date(dueDate);
+    const today = new Date();
+    const diffTime = date - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) return "Ngày mai";
+    if (diffDays <= 7) return `${diffDays} ngày nữa`;
+    return date.toLocaleDateString("vi-VN");
+  };
 
   return (
     <div className="navbar navbar-expand-md header-menu-one bg-light">
@@ -183,24 +234,114 @@ export default function Header({ onToggle }) {
               }}
             >
               <i className="far fa-bell"></i>
-              <span>8</span>
+              {notifications.length > 0 && <span>{notifications.length}</span>}
             </a>
             {showNotifications && (
-              <div className="dropdown-menu dropdown-menu-right show">
+              <div
+                className="dropdown-menu dropdown-menu-right show"
+                style={{
+                  minWidth: "350px",
+                  maxHeight: "500px",
+                  overflowY: "auto",
+                }}
+              >
                 <div className="item-header">
-                  <h6 className="item-title">03 Notifications</h6>
+                  <h6 className="item-title">
+                    {notifications.length} Thông báo ghi chú đến hạn
+                  </h6>
                 </div>
                 <div className="item-content">
-                  <div className="media">
-                    <div className="item-icon bg-skyblue">
-                      <i className="fas fa-check"></i>
+                  {notifications.length === 0 ? (
+                    <div className="text-center py-3 text-muted">
+                      Không có thông báo mới
                     </div>
-                    <div className="media-body">
-                      <div className="post-title">Task completed</div>
-                      <span>1 min ago</span>
-                    </div>
-                  </div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className="media"
+                        style={{
+                          cursor: "pointer",
+                          borderBottom: "1px solid #eee",
+                          padding: "10px",
+                        }}
+                        onClick={() => handleNotificationClick(notification)}
+                      >
+                        <div
+                          className={`item-icon ${getPriorityColor(
+                            notification.priority
+                          )}`}
+                        >
+                          <i
+                            className={
+                              notification.type === "employee"
+                                ? "fas fa-user"
+                                : "fas fa-building"
+                            }
+                          ></i>
+                        </div>
+                        <div className="media-body" style={{ flex: 1 }}>
+                          <div
+                            className="post-title"
+                            style={{ fontWeight: "600" }}
+                          >
+                            {notification.title}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "12px",
+                              color: "#666",
+                              marginTop: "4px",
+                            }}
+                          >
+                            {notification.type === "employee"
+                              ? `Nhân viên: ${notification.employeeName}`
+                              : `Khách hàng: ${notification.customerName}`}
+                          </div>
+                          <span
+                            style={{
+                              fontSize: "11px",
+                              color: notification.isOverdue
+                                ? "#dc3545"
+                                : notification.isDueToday
+                                ? "#ffc107"
+                                : "#666",
+                              fontWeight:
+                                notification.isOverdue ||
+                                notification.isDueToday
+                                  ? "600"
+                                  : "normal",
+                            }}
+                          >
+                            {formatDueDate(
+                              notification.dueDate,
+                              notification.isOverdue,
+                              notification.isDueToday
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
+                {notifications.length > 0 && (
+                  <div
+                    className="item-footer"
+                    style={{
+                      padding: "10px",
+                      textAlign: "center",
+                      borderTop: "1px solid #eee",
+                    }}
+                  >
+                    <Link
+                      to="/notifications"
+                      onClick={() => setShowNotifications(false)}
+                      style={{ fontSize: "12px", color: "#007bff" }}
+                    >
+                      Xem tất cả thông báo
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
           </li>

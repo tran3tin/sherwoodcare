@@ -106,6 +106,29 @@ app.use("/api/social-sheets", socialSheetRoutes);
 const payrollNexgenusRoutes = require("./routes/payrollNexgenus");
 app.use("/api/payroll-nexgenus", payrollNexgenusRoutes);
 
+// Customer notes routes
+const customerNoteRoutes = require("./routes/customerNotes");
+app.use("/api/customer-notes", customerNoteRoutes);
+
+// Employee notes routes
+const employeeNoteRoutes = require("./routes/employeeNotes");
+app.use("/api/employee-notes", employeeNoteRoutes);
+
+// Notification routes
+const notificationRoutes = require("./routes/notifications");
+app.use("/api/notifications", notificationRoutes);
+
+// Task routes (Kanban board)
+const taskRoutes = require("./routes/tasks");
+app.use("/api/tasks", taskRoutes);
+
+// Chatbot routes (AI with database access)
+const chatbotRoutes = require("./routes/chatbot");
+app.use("/api/chatbot", chatbotRoutes);
+
+// Serve uploaded files
+app.use("/uploads", express.static(path.join(__dirname, "public", "uploads")));
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

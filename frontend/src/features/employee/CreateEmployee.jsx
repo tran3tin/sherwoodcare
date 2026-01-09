@@ -10,8 +10,6 @@ const initial = {
   firstName: "",
   preferName: "",
   level: "",
-  cardId: "",
-  levelId: "",
 };
 
 export default function CreateEmployee() {
@@ -33,8 +31,6 @@ export default function CreateEmployee() {
         firstName: form.firstName,
         preferredName: form.preferName,
         level: form.level,
-        cardId: form.cardId,
-        recordId: form.levelId,
       });
 
       toast.success("Employee created successfully", {
@@ -118,38 +114,6 @@ export default function CreateEmployee() {
                     placeholder="Enter employee level"
                     required
                   />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-field">
-                  <label>
-                    Card ID <span className="required">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={form.cardId}
-                    onChange={onChange("cardId")}
-                    placeholder="Enter card ID"
-                    required
-                  />
-                  <span className="help-text">
-                    Employee identification card number
-                  </span>
-                </div>
-
-                <div className="form-field">
-                  <label>
-                    Record ID <span className="required">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={form.levelId}
-                    onChange={onChange("levelId")}
-                    placeholder="Enter record ID"
-                    required
-                  />
-                  <span className="help-text">Employee record identifier</span>
                 </div>
               </div>
 

@@ -220,6 +220,15 @@ export default function CustomerList() {
                           <i className="fas fa-edit"></i>
                         </button>
                         <button
+                          className="btn-action btn-save"
+                          onClick={() =>
+                            navigate(`/customer/${customer.customer_id}/notes`)
+                          }
+                          title="Notes / To-Do"
+                        >
+                          <i className="fas fa-sticky-note"></i>
+                        </button>
+                        <button
                           className="btn-action btn-delete"
                           onClick={() =>
                             handleDelete(

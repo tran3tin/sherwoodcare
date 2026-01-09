@@ -73,8 +73,6 @@ export default function Employee() {
   const filteredEmployees = employees.filter((emp) => {
     const matchSearch =
       searchTerm === "" ||
-      emp.record_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.card_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (emp.preferred_name &&
@@ -130,7 +128,7 @@ export default function Employee() {
               <input
                 type="text"
                 className="filter-input"
-                placeholder="Employee name, ID, card ID..."
+                placeholder="Employee name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -179,9 +177,6 @@ export default function Employee() {
               <thead>
                 <tr>
                   <th>#</th>
-                  <th className="sortable">
-                    ID <i className="fas fa-sort sort-icon"></i>
-                  </th>
                   <th>Preferred Name</th>
                   <th className="sortable">
                     Employee Name <i className="fas fa-sort sort-icon"></i>
@@ -189,7 +184,6 @@ export default function Employee() {
                   <th className="sortable">
                     Level <i className="fas fa-sort sort-icon"></i>
                   </th>
-                  <th>Card ID</th>
                   <th className="sortable">
                     Status <i className="fas fa-sort sort-icon"></i>
                   </th>
@@ -200,11 +194,9 @@ export default function Employee() {
                 {filteredEmployees.map((emp, index) => (
                   <tr key={emp.employee_id}>
                     <td>{index + 1}</td>
-                    <td>{emp.record_id}</td>
                     <td>{emp.preferred_name || "-"}</td>
                     <td>{`${emp.first_name} ${emp.last_name}`}</td>
                     <td>{emp.level}</td>
-                    <td>{emp.card_id}</td>
                     <td>
                       <span className="status-badge active">Active</span>
                     </td>
@@ -227,6 +219,15 @@ export default function Employee() {
                           title="Edit"
                         >
                           <i className="fas fa-edit"></i>
+                        </button>
+                        <button
+                          className="btn-action btn-save"
+                          onClick={() =>
+                            navigate(`/employee/${emp.employee_id}/notes`)
+                          }
+                          title="Notes / To-Do"
+                        >
+                          <i className="fas fa-sticky-note"></i>
                         </button>
                         <button
                           className="btn-action btn-delete"

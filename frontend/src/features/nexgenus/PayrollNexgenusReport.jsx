@@ -149,6 +149,8 @@ const PayrollNexgenusReport = () => {
         "Employer BHTN",
         "Employer KPCD",
         "PIT",
+        "Total",
+        "Net Employee Receive",
       ],
     ];
 
@@ -167,6 +169,8 @@ const PayrollNexgenusReport = () => {
         formatNumber(group.employer.bhtn),
         formatNumber(group.employer.kpcd),
         formatNumber(group.pit),
+        formatNumber(calculateRowTotal(group)),
+        formatNumber(calculateNetEmployeeReceive(group)),
       ]);
     });
 
@@ -185,6 +189,25 @@ const PayrollNexgenusReport = () => {
       formatNumber(totals.employer.bhtn),
       formatNumber(totals.employer.kpcd),
       formatNumber(totals.pit),
+      formatNumber(
+        totals.totalIncome +
+          totals.employee.bhxh +
+          totals.employee.bhyt +
+          totals.employee.bhtn +
+          totals.employer.bhxh +
+          totals.employer.tnld +
+          totals.employer.bhyt +
+          totals.employer.bhtn +
+          totals.employer.kpcd +
+          totals.pit
+      ),
+      formatNumber(
+        totals.totalIncome -
+          totals.employee.bhxh -
+          totals.employee.bhyt -
+          totals.employee.bhtn -
+          totals.pit
+      ),
     ]);
 
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
@@ -214,6 +237,16 @@ const PayrollNexgenusReport = () => {
       group.employer.bhyt +
       group.employer.bhtn +
       group.employer.kpcd +
+      group.pit
+    );
+  };
+
+  const calculateNetEmployeeReceive = (group) => {
+    return (
+      group.totalIncome -
+      group.employee.bhxh -
+      group.employee.bhyt -
+      group.employee.bhtn -
       group.pit
     );
   };
@@ -440,6 +473,17 @@ const PayrollNexgenusReport = () => {
                   >
                     Total
                   </th>
+                  <th
+                    rowSpan="2"
+                    style={{
+                      backgroundColor: "#99ccff",
+                      position: "sticky",
+                      top: 0,
+                      zIndex: 101,
+                    }}
+                  >
+                    Net Employee Receive
+                  </th>
                 </tr>
                 <tr style={{ position: "sticky", top: "40px", zIndex: 99 }}>
                   <th
@@ -541,10 +585,11 @@ const PayrollNexgenusReport = () => {
                     <td>{formatNumber(group.employer.bhtn)}</td>
                     <td>{formatNumber(group.employer.kpcd)}</td>
                     <td>{formatNumber(group.pit)}</td>
-                    <td
-                      style={{ backgroundColor: "#fff3e0", fontWeight: "bold" }}
-                    >
+                    <td style={{ fontWeight: "bold" }}>
                       {formatNumber(calculateRowTotal(group))}
+                    </td>
+                    <td style={{ fontWeight: "bold" }}>
+                      {formatNumber(calculateNetEmployeeReceive(group))}
                     </td>
                   </tr>
                 ))}
@@ -564,9 +609,7 @@ const PayrollNexgenusReport = () => {
                   <td>{formatNumber(totals.employer.bhtn)}</td>
                   <td>{formatNumber(totals.employer.kpcd)}</td>
                   <td>{formatNumber(totals.pit)}</td>
-                  <td
-                    style={{ backgroundColor: "#ffe0b2", fontWeight: "bold" }}
-                  >
+                  <td style={{ fontWeight: "bold" }}>
                     {formatNumber(
                       totals.totalIncome +
                         totals.employee.bhxh +
@@ -577,6 +620,15 @@ const PayrollNexgenusReport = () => {
                         totals.employer.bhyt +
                         totals.employer.bhtn +
                         totals.employer.kpcd +
+                        totals.pit
+                    )}
+                  </td>
+                  <td style={{ fontWeight: "bold" }}>
+                    {formatNumber(
+                      totals.totalIncome -
+                        totals.employee.bhxh -
+                        totals.employee.bhyt -
+                        totals.employee.bhtn -
                         totals.pit
                     )}
                   </td>
