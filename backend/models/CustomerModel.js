@@ -41,7 +41,7 @@ class CustomerModel {
         created_at,
         updated_at
       FROM customers
-      WHERE customer_id = ?
+      WHERE customer_id = $1
     `;
     const { rows } = await db.query(sql, [id]);
     return rows[0] || null;
@@ -60,7 +60,8 @@ class CustomerModel {
         da_weekly_email,
         social_fortnightly,
         social_fortnightly_email
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING customer_id
     `;
     const values = [
       data.full_name,
@@ -74,9 +75,8 @@ class CustomerModel {
       data.social_fortnightly_email || false,
     ];
 
-    const result = await db.query(sql, values);
-    const insertId =
-      db.client === "mysql" ? result.insertId : result.rows[0].customer_id;
+    const { rows } = await db.query(sql, values);
+    const insertId = rows[0].customer_id;
     return this.getById(insertId);
   }
 
@@ -85,17 +85,17 @@ class CustomerModel {
     const sql = `
       UPDATE customers
       SET
-        full_name = ?,
-        rent_monthly = ?,
-        rent_monthly_email = ?,
-        rent_fortnightly = ?,
-        rent_fortnightly_email = ?,
-        da_weekly = ?,
-        da_weekly_email = ?,
-        social_fortnightly = ?,
-        social_fortnightly_email = ?,
+        full_name = $1,
+        rent_monthly = $2,
+        rent_monthly_email = $3,
+        rent_fortnightly = $4,
+        rent_fortnightly_email = $5,
+        da_weekly = $6,
+        da_weekly_email = $7,
+        social_fortnightly = $8,
+        social_fortnightly_email = $9,
         updated_at = CURRENT_TIMESTAMP
-      WHERE customer_id = ?
+      WHERE customer_id = $10
     `;
     const values = [
       data.full_name,
@@ -116,11 +116,10 @@ class CustomerModel {
 
   // Delete Customer
   static async delete(id) {
-    const sql = "DELETE FROM customers WHERE customer_id = ?";
+    const sql = "DELETE FROM customers WHERE customer_id = $1";
     await db.query(sql, [id]);
     return true;
   }
 }
 
 module.exports = CustomerModel;
-

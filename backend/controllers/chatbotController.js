@@ -72,8 +72,27 @@ exports.chatbot = async (req, res) => {
     const dbSchema = await getCompleteDbSchema();
     const schemaDescription = generateSchemaDescription(dbSchema);
 
+    const now = new Date();
+    // Use local time instead of UTC (toISOString)
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const currentDate = `${day}/${month}/${year}`;
+
+    const days = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const dayName = days[now.getDay()];
+
     // System prompt for understanding questions and generating SQL
     const systemPrompt = `You are an intelligent database assistant for a business management system called NexGenus/SherwoodCare.
+Today is ${dayName}, ${currentDate}.
 
 YOUR DATABASE SCHEMA:
 ${schemaDescription}

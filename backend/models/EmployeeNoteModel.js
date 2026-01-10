@@ -5,7 +5,7 @@ class EmployeeNoteModel {
   static async getByEmployeeId(employeeId) {
     const { rows } = await db.query(
       `SELECT * FROM employee_notes 
-       WHERE employee_id = ? 
+       WHERE employee_id = $1 
        ORDER BY is_completed ASC, created_at DESC`,
       [employeeId]
     );
@@ -15,7 +15,7 @@ class EmployeeNoteModel {
   // Get single note by ID
   static async getById(noteId) {
     const { rows } = await db.query(
-      `SELECT * FROM employee_notes WHERE note_id = ?`,
+      `SELECT * FROM employee_notes WHERE note_id = $1`,
       [noteId]
     );
     return rows[0];
@@ -36,7 +36,8 @@ class EmployeeNoteModel {
     const { rows: result } = await db.query(
       `INSERT INTO employee_notes 
        (employee_id, title, content, priority, due_date, attachment_url, attachment_name) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING note_id`,
       [
         employee_id,
         title,
@@ -48,7 +49,7 @@ class EmployeeNoteModel {
       ]
     );
 
-    return { note_id: result.insertId, ...noteData };
+    return { note_id: result[0].note_id, ...noteData };
   }
 
   // Update note
@@ -63,46 +64,46 @@ class EmployeeNoteModel {
       attachment_name,
     } = noteData;
 
-    const { rows: result } = await db.query(
+    const { rowCount } = await db.query(
       `UPDATE employee_notes 
-       SET title = ?, content = ?, priority = ?, due_date = ?, 
-           is_completed = ?, attachment_url = ?, attachment_name = ?,
+       SET title = $1, content = $2, priority = $3, due_date = $4, 
+           is_completed = $5, attachment_url = $6, attachment_name = $7,
            updated_at = CURRENT_TIMESTAMP
-       WHERE note_id = ?`,
+       WHERE note_id = $8`,
       [
         title,
         content,
         priority,
         due_date,
-        is_completed ? 1 : 0,
+        is_completed ? true : false,
         attachment_url,
         attachment_name,
         noteId,
       ]
     );
 
-    return result.affectedRows > 0;
+    return rowCount > 0;
   }
 
   // Toggle completion status
   static async toggleComplete(noteId) {
-    const { rows: result } = await db.query(
+    const { rowCount } = await db.query(
       `UPDATE employee_notes 
        SET is_completed = NOT is_completed, 
            updated_at = CURRENT_TIMESTAMP 
-       WHERE note_id = ?`,
+       WHERE note_id = $1`,
       [noteId]
     );
-    return result.affectedRows > 0;
+    return rowCount > 0;
   }
 
   // Delete note
   static async delete(noteId) {
-    const { rows: result } = await db.query(
-      `DELETE FROM employee_notes WHERE note_id = ?`,
+    const { rowCount } = await db.query(
+      `DELETE FROM employee_notes WHERE note_id = $1`,
       [noteId]
     );
-    return result.affectedRows > 0;
+    return rowCount > 0;
   }
 
   // Get notes count by employee
@@ -110,10 +111,10 @@ class EmployeeNoteModel {
     const { rows } = await db.query(
       `SELECT 
          COUNT(*) as total,
-         SUM(CASE WHEN is_completed = 1 THEN 1 ELSE 0 END) as completed,
-         SUM(CASE WHEN is_completed = 0 THEN 1 ELSE 0 END) as pending
+         SUM(CASE WHEN is_completed = true THEN 1 ELSE 0 END) as completed,
+         SUM(CASE WHEN is_completed = false THEN 1 ELSE 0 END) as pending
        FROM employee_notes 
-       WHERE employee_id = ?`,
+       WHERE employee_id = $1`,
       [employeeId]
     );
     return rows[0];
@@ -126,8 +127,8 @@ class EmployeeNoteModel {
        FROM employee_notes en
        LEFT JOIN employees e ON en.employee_id = e.employee_id
        WHERE en.due_date IS NOT NULL 
-         AND en.due_date <= DATE_ADD(?, INTERVAL 7 DAY)
-         AND en.is_completed = 0
+         AND en.due_date <= ($1::date + INTERVAL '7 days')
+         AND en.is_completed = false
        ORDER BY en.due_date ASC, en.priority DESC`,
       [today]
     );

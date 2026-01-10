@@ -12,7 +12,7 @@ class TaskModel {
   // Get tasks by status
   static async getByStatus(status) {
     const { rows } = await db.query(
-      `SELECT * FROM tasks WHERE status = ? ORDER BY position ASC`,
+      `SELECT * FROM tasks WHERE status = $1 ORDER BY position ASC`,
       [status]
     );
     return rows;
@@ -20,7 +20,7 @@ class TaskModel {
 
   // Get single task by ID
   static async getById(taskId) {
-    const { rows } = await db.query(`SELECT * FROM tasks WHERE task_id = ?`, [
+    const { rows } = await db.query(`SELECT * FROM tasks WHERE task_id = $1`, [
       taskId,
     ]);
     return rows[0];
@@ -42,7 +42,7 @@ class TaskModel {
 
     // Get max position for the status
     const { rows: posRows } = await db.query(
-      `SELECT COALESCE(MAX(position), -1) + 1 as next_pos FROM tasks WHERE status = ?`,
+      `SELECT COALESCE(MAX(position), -1) + 1 as next_pos FROM tasks WHERE status = $1`,
       [status]
     );
     const nextPosition = posRows[0]?.next_pos || 0;
@@ -50,7 +50,8 @@ class TaskModel {
     const { rows: result } = await db.query(
       `INSERT INTO tasks 
        (title, description, status, priority, due_date, assigned_to, position, attachment_url, attachment_name) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING task_id`,
       [
         title,
         description,
@@ -64,7 +65,7 @@ class TaskModel {
       ]
     );
 
-    return { task_id: result.insertId, ...taskData, position: nextPosition };
+    return { task_id: result[0].task_id, ...taskData, position: nextPosition };
   }
 
   // Update task
@@ -81,13 +82,13 @@ class TaskModel {
       attachment_name,
     } = taskData;
 
-    const { rows: result } = await db.query(
+    const { rowCount } = await db.query(
       `UPDATE tasks 
-       SET title = ?, description = ?, status = ?, priority = ?, 
-           due_date = ?, assigned_to = ?, position = ?,
-           attachment_url = ?, attachment_name = ?,
+       SET title = $1, description = $2, status = $3, priority = $4, 
+           due_date = $5, assigned_to = $6, position = $7,
+           attachment_url = $8, attachment_name = $9,
            updated_at = CURRENT_TIMESTAMP
-       WHERE task_id = ?`,
+       WHERE task_id = $10`,
       [
         title,
         description,
@@ -102,25 +103,25 @@ class TaskModel {
       ]
     );
 
-    return result.affectedRows > 0;
+    return rowCount > 0;
   }
 
   // Update task status and position (for drag & drop)
   static async updatePosition(taskId, status, position) {
-    const { rows: result } = await db.query(
+    const { rowCount } = await db.query(
       `UPDATE tasks 
-       SET status = ?, position = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE task_id = ?`,
+       SET status = $1, position = $2, updated_at = CURRENT_TIMESTAMP
+       WHERE task_id = $3`,
       [status, position, taskId]
     );
-    return result.affectedRows > 0;
+    return rowCount > 0;
   }
 
   // Reorder tasks in a column
   static async reorderTasks(status, taskIds) {
     for (let i = 0; i < taskIds.length; i++) {
       await db.query(
-        `UPDATE tasks SET position = ?, status = ? WHERE task_id = ?`,
+        `UPDATE tasks SET position = $1, status = $2 WHERE task_id = $3`,
         [i, status, taskIds[i]]
       );
     }
@@ -129,11 +130,11 @@ class TaskModel {
 
   // Delete task
   static async delete(taskId) {
-    const { rows: result } = await db.query(
-      `DELETE FROM tasks WHERE task_id = ?`,
+    const { rowCount } = await db.query(
+      `DELETE FROM tasks WHERE task_id = $1`,
       [taskId]
     );
-    return result.affectedRows > 0;
+    return rowCount > 0;
   }
 
   // Get tasks count by status

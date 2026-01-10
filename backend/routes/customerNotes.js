@@ -6,7 +6,13 @@ const fs = require("fs");
 const customerNoteController = require("../controllers/customerNoteController");
 
 // Ensure upload directory exists
-const uploadDir = path.join(__dirname, "..", "public", "uploads", "customer-notes");
+const uploadDir = path.join(
+  __dirname,
+  "..",
+  "public",
+  "uploads",
+  "customer-notes"
+);
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -41,7 +47,10 @@ const fileFilter = (req, file, cb) => {
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error("Invalid file type. Only images and documents are allowed."), false);
+    cb(
+      new Error("Invalid file type. Only images and documents are allowed."),
+      false
+    );
   }
 };
 
@@ -54,11 +63,22 @@ const upload = multer({
 });
 
 // Routes
-router.get("/customer/:customerId", customerNoteController.getNotesByCustomerId);
+router.get(
+  "/customer/:customerId",
+  customerNoteController.getNotesByCustomerId
+);
 router.get("/customer/:customerId/count", customerNoteController.getNotesCount);
 router.get("/:noteId", customerNoteController.getNoteById);
-router.post("/", upload.single("attachment"), customerNoteController.createNote);
-router.put("/:noteId", upload.single("attachment"), customerNoteController.updateNote);
+router.post(
+  "/",
+  upload.single("attachment"),
+  customerNoteController.createNote
+);
+router.put(
+  "/:noteId",
+  upload.single("attachment"),
+  customerNoteController.updateNote
+);
 router.patch("/:noteId/toggle", customerNoteController.toggleNoteComplete);
 router.delete("/:noteId", customerNoteController.deleteNote);
 

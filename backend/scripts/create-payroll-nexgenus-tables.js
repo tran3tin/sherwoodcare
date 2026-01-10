@@ -5,7 +5,7 @@ const path = require("path");
 async function runMigration() {
   try {
     console.log("Running migration: create_payroll_nexgenus_table.sql");
-    console.log(`Using database client: ${db.client}`);
+    console.log("Using database client: PostgreSQL");
 
     const migrationPath = path.join(
       __dirname,
@@ -13,18 +13,7 @@ async function runMigration() {
       "migrations",
       "create_payroll_nexgenus_table.sql"
     );
-    let sql = fs.readFileSync(migrationPath, "utf8");
-
-    // If using MySQL, convert PostgreSQL syntax to MySQL
-    if (db.client === "mysql") {
-      sql = sql
-        .replace(/SERIAL PRIMARY KEY/g, "INT AUTO_INCREMENT PRIMARY KEY")
-        .replace(
-          /TIMESTAMP DEFAULT CURRENT_TIMESTAMP/g,
-          "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
-        )
-        .replace(/IF NOT EXISTS/g, "IF NOT EXISTS");
-    }
+    const sql = fs.readFileSync(migrationPath, "utf8");
 
     // Split and execute each statement
     const statements = sql

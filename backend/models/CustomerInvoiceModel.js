@@ -4,10 +4,12 @@ class CustomerInvoiceModel {
   static async getAll({ customerId } = {}) {
     const where = [];
     const params = [];
+    let paramIndex = 1;
 
     if (customerId) {
-      where.push("ci.customer_id = ?");
+      where.push(`ci.customer_id = $${paramIndex}`);
       params.push(customerId);
+      paramIndex++;
     }
 
     const sql = `
@@ -57,7 +59,7 @@ class CustomerInvoiceModel {
         ci.updated_at
       FROM customer_invoices ci
       JOIN customers c ON c.customer_id = ci.customer_id
-      WHERE ci.invoice_id = ?
+      WHERE ci.invoice_id = $1
       LIMIT 1
     `;
 
@@ -75,7 +77,8 @@ class CustomerInvoiceModel {
         amount,
         amount_due,
         note
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING invoice_id
     `;
 
     const { rows } = await db.query(sql, [
@@ -88,7 +91,7 @@ class CustomerInvoiceModel {
       data.note || null,
     ]);
 
-    const insertId = db.client === "mysql" ? rows.insertId : rows[0].invoice_id;
+    const insertId = rows[0].invoice_id;
     return this.getById(insertId);
   }
 
@@ -96,15 +99,15 @@ class CustomerInvoiceModel {
     const sql = `
       UPDATE customer_invoices
       SET
-        customer_id = ?,
-        invoice_date = ?,
-        invoice_no = ?,
-        memory = ?,
-        amount = ?,
-        amount_due = ?,
-        note = ?,
+        customer_id = $1,
+        invoice_date = $2,
+        invoice_no = $3,
+        memory = $4,
+        amount = $5,
+        amount_due = $6,
+        note = $7,
         updated_at = CURRENT_TIMESTAMP
-      WHERE invoice_id = ?
+      WHERE invoice_id = $8
     `;
 
     await db.query(sql, [
@@ -122,7 +125,7 @@ class CustomerInvoiceModel {
   }
 
   static async delete(id) {
-    const sql = "DELETE FROM customer_invoices WHERE invoice_id = ?";
+    const sql = "DELETE FROM customer_invoices WHERE invoice_id = $1";
     await db.query(sql, [id]);
     return true;
   }

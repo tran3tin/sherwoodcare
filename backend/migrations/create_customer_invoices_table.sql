@@ -1,7 +1,7 @@
--- Create customer_invoices table
+-- Create customer_invoices table (PostgreSQL)
 CREATE TABLE IF NOT EXISTS customer_invoices (
-  invoice_id INT AUTO_INCREMENT PRIMARY KEY,
-  customer_id INT NOT NULL,
+  invoice_id SERIAL PRIMARY KEY,
+  customer_id INTEGER NOT NULL,
 
   invoice_date DATE NOT NULL,
   invoice_no VARCHAR(100) NULL,
@@ -11,9 +11,9 @@ CREATE TABLE IF NOT EXISTS customer_invoices (
   note TEXT NULL,
 
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-  INDEX idx_invoice_customer (customer_id),
-  INDEX idx_invoice_date (invoice_date),
-  INDEX idx_invoice_no (invoice_no)
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_invoice_customer ON customer_invoices(customer_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_date ON customer_invoices(invoice_date);
+CREATE INDEX IF NOT EXISTS idx_invoice_no ON customer_invoices(invoice_no);

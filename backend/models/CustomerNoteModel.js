@@ -5,7 +5,7 @@ class CustomerNoteModel {
   static async getByCustomerId(customerId) {
     const { rows } = await db.query(
       `SELECT * FROM customer_notes 
-       WHERE customer_id = ? 
+       WHERE customer_id = $1 
        ORDER BY is_completed ASC, created_at DESC`,
       [customerId]
     );
@@ -15,7 +15,7 @@ class CustomerNoteModel {
   // Get single note by ID
   static async getById(noteId) {
     const { rows } = await db.query(
-      `SELECT * FROM customer_notes WHERE note_id = ?`,
+      `SELECT * FROM customer_notes WHERE note_id = $1`,
       [noteId]
     );
     return rows[0];
@@ -36,7 +36,8 @@ class CustomerNoteModel {
     const { rows: result } = await db.query(
       `INSERT INTO customer_notes 
        (customer_id, title, content, priority, due_date, attachment_url, attachment_name) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING note_id`,
       [
         customer_id,
         title,
@@ -48,7 +49,7 @@ class CustomerNoteModel {
       ]
     );
 
-    return { note_id: result.insertId, ...noteData };
+    return { note_id: result[0].note_id, ...noteData };
   }
 
   // Update note
@@ -63,46 +64,46 @@ class CustomerNoteModel {
       attachment_name,
     } = noteData;
 
-    const { rows: result } = await db.query(
+    const { rowCount } = await db.query(
       `UPDATE customer_notes 
-       SET title = ?, content = ?, priority = ?, due_date = ?, 
-           is_completed = ?, attachment_url = ?, attachment_name = ?,
+       SET title = $1, content = $2, priority = $3, due_date = $4, 
+           is_completed = $5, attachment_url = $6, attachment_name = $7,
            updated_at = CURRENT_TIMESTAMP
-       WHERE note_id = ?`,
+       WHERE note_id = $8`,
       [
         title,
         content,
         priority,
         due_date,
-        is_completed ? 1 : 0,
+        is_completed ? true : false,
         attachment_url,
         attachment_name,
         noteId,
       ]
     );
 
-    return result.affectedRows > 0;
+    return rowCount > 0;
   }
 
   // Toggle completion status
   static async toggleComplete(noteId) {
-    const { rows: result } = await db.query(
+    const { rowCount } = await db.query(
       `UPDATE customer_notes 
        SET is_completed = NOT is_completed, 
            updated_at = CURRENT_TIMESTAMP 
-       WHERE note_id = ?`,
+       WHERE note_id = $1`,
       [noteId]
     );
-    return result.affectedRows > 0;
+    return rowCount > 0;
   }
 
   // Delete note
   static async delete(noteId) {
-    const { rows: result } = await db.query(
-      `DELETE FROM customer_notes WHERE note_id = ?`,
+    const { rowCount } = await db.query(
+      `DELETE FROM customer_notes WHERE note_id = $1`,
       [noteId]
     );
-    return result.affectedRows > 0;
+    return rowCount > 0;
   }
 
   // Get notes count by customer
@@ -110,10 +111,10 @@ class CustomerNoteModel {
     const { rows } = await db.query(
       `SELECT 
          COUNT(*) as total,
-         SUM(CASE WHEN is_completed = 1 THEN 1 ELSE 0 END) as completed,
-         SUM(CASE WHEN is_completed = 0 THEN 1 ELSE 0 END) as pending
+         SUM(CASE WHEN is_completed = true THEN 1 ELSE 0 END) as completed,
+         SUM(CASE WHEN is_completed = false THEN 1 ELSE 0 END) as pending
        FROM customer_notes 
-       WHERE customer_id = ?`,
+       WHERE customer_id = $1`,
       [customerId]
     );
     return rows[0];
@@ -126,8 +127,8 @@ class CustomerNoteModel {
        FROM customer_notes cn
        LEFT JOIN customers c ON cn.customer_id = c.customer_id
        WHERE cn.due_date IS NOT NULL 
-         AND cn.due_date <= DATE_ADD(?, INTERVAL 7 DAY)
-         AND cn.is_completed = 0
+         AND cn.due_date <= ($1::date + INTERVAL '7 days')
+         AND cn.is_completed = false
        ORDER BY cn.due_date ASC, cn.priority DESC`,
       [today]
     );

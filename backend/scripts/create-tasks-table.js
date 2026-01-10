@@ -6,22 +6,34 @@ async function createTasksTable() {
 
     await db.query(`
       CREATE TABLE IF NOT EXISTS tasks (
-        task_id INT AUTO_INCREMENT PRIMARY KEY,
+        task_id SERIAL PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
         description TEXT,
-        status ENUM('todo', 'inprogress', 'review', 'done') DEFAULT 'todo',
-        priority ENUM('low', 'medium', 'high', 'urgent') DEFAULT 'medium',
+        status VARCHAR(20) DEFAULT 'todo' CHECK (status IN ('todo', 'inprogress', 'review', 'done')),
+        priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
         due_date DATE NULL,
         assigned_to VARCHAR(100) NULL,
         position INT DEFAULT 0,
+        attachment_url TEXT NULL,
+        attachment_name VARCHAR(255) NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_status (status),
-        INDEX idx_priority (priority),
-        INDEX idx_due_date (due_date),
-        INDEX idx_position (position)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
     `);
+
+    // Create indexes
+    await db.query(
+      `CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)`
+    );
+    await db.query(
+      `CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority)`
+    );
+    await db.query(
+      `CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date)`
+    );
+    await db.query(
+      `CREATE INDEX IF NOT EXISTS idx_tasks_position ON tasks(position)`
+    );
 
     console.log("✅ tasks table created successfully!");
     process.exit(0);

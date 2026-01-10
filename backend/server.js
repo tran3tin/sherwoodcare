@@ -62,10 +62,7 @@ app.get("/api/sample", (req, res) => {
 const db = require("./config/db");
 app.get("/api/db/status", async (req, res) => {
   try {
-    const sql =
-      db.client === "mysql"
-        ? "SELECT DATABASE() AS db"
-        : "SELECT current_database() AS db";
+    const sql = "SELECT current_database() AS db";
     const { rows } = await db.query(sql);
     const dbName = Array.isArray(rows) ? rows[0].db : rows[0] && rows[0].db;
     res.json({ ok: true, client: db.client, database: dbName });

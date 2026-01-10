@@ -177,7 +177,12 @@ const deleteNote = async (req, res) => {
 
     // Delete attachment file if exists
     if (note.attachment_url) {
-      const filePath = path.join(__dirname, "..", "public", note.attachment_url);
+      const filePath = path.join(
+        __dirname,
+        "..",
+        "public",
+        note.attachment_url
+      );
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }

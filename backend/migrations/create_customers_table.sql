@@ -1,6 +1,6 @@
--- Create customers table
+-- Create customers table (PostgreSQL)
 CREATE TABLE IF NOT EXISTS customers (
-  customer_id INT AUTO_INCREMENT PRIMARY KEY,
+  customer_id SERIAL PRIMARY KEY,
   full_name VARCHAR(255) NOT NULL,
   
   -- Payment Frequency checkboxes
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS customers (
   social_fortnightly_email BOOLEAN DEFAULT FALSE,
   
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  
-  INDEX idx_customer_name (full_name)
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_customer_name ON customers(full_name);

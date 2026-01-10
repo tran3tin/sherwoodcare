@@ -3,30 +3,21 @@ const db = require("../config/db");
 
 async function createSocialSheetTables() {
   try {
-    console.log(`Creating social sheet tables for ${db.client}...`);
+    console.log("Creating social sheet tables for PostgreSQL...");
 
-    if (db.client === "pg") {
-      await db.query(`
-        CREATE TABLE IF NOT EXISTS social_sheets (
-          sheet_id SERIAL PRIMARY KEY,
-          name VARCHAR(255),
-          rows_json TEXT NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-    } else {
-      await db.query(`
-        CREATE TABLE IF NOT EXISTS social_sheets (
-          sheet_id INT AUTO_INCREMENT PRIMARY KEY,
-          name VARCHAR(255) NULL,
-          rows_json LONGTEXT NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          INDEX idx_social_sheets_created (created_at)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-      `);
-    }
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS social_sheets (
+        sheet_id SERIAL PRIMARY KEY,
+        name VARCHAR(255),
+        rows_json TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await db.query(
+      `CREATE INDEX IF NOT EXISTS idx_social_sheets_created ON social_sheets(created_at)`
+    );
 
     console.log("✅ Social sheet tables created successfully!");
   } catch (error) {

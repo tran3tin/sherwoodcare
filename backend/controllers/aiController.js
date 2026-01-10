@@ -15,35 +15,7 @@ function isReadOnlySql(sql) {
 }
 
 async function getDbSchema() {
-  if (db.client === "mysql") {
-    const dbNameSql = "SELECT DATABASE() AS db";
-    const { rows: dbNameRows } = await db.query(dbNameSql);
-    const dbName = Array.isArray(dbNameRows)
-      ? dbNameRows[0]?.db
-      : dbNameRows?.[0]?.db;
-
-    const sql = `
-      SELECT TABLE_NAME as table_name, COLUMN_NAME as column_name, DATA_TYPE as data_type, IS_NULLABLE as is_nullable
-      FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE TABLE_SCHEMA = ?
-      ORDER BY TABLE_NAME, ORDINAL_POSITION
-    `;
-    const { rows } = await db.query(sql, [dbName]);
-
-    const tables = {};
-    for (const r of rows) {
-      if (!tables[r.table_name]) tables[r.table_name] = [];
-      tables[r.table_name].push({
-        name: r.column_name,
-        type: r.data_type,
-        nullable: r.is_nullable === "YES",
-      });
-    }
-
-    return { client: "mysql", database: dbName, tables };
-  }
-
-  // pg
+  // PostgreSQL
   const sql = `
     SELECT table_name, column_name, data_type, is_nullable
     FROM information_schema.columns
@@ -73,11 +45,8 @@ async function runReadOnlyQuery(sql, { limit = 50 } = {}) {
     throw err;
   }
 
-  // Wrap to enforce LIMIT without parsing.
-  const wrapped =
-    db.client === "mysql"
-      ? `SELECT * FROM (${sql}) AS _t LIMIT ${Number(limit) || 50}`
-      : `SELECT * FROM (${sql}) AS _t LIMIT ${Number(limit) || 50}`;
+  // Wrap to enforce LIMIT without parsing - PostgreSQL syntax
+  const wrapped = `SELECT * FROM (${sql}) AS _t LIMIT ${Number(limit) || 50}`;
 
   const { rows } = await db.query(wrapped);
   return rows;

@@ -3,12 +3,8 @@ const db = require("../config/db");
 class EmployeeModel {
   // Create a new employee
   static async create({ lastName, firstName, preferredName, level }) {
-    const sql =
-      db.client === "pg"
-        ? `INSERT INTO employees (last_name, first_name, preferred_name, level) 
-           VALUES ($1, $2, $3, $4) RETURNING employee_id`
-        : `INSERT INTO employees (last_name, first_name, preferred_name, level) 
-           VALUES (?, ?, ?, ?)`;
+    const sql = `INSERT INTO employees (last_name, first_name, preferred_name, level) 
+           VALUES ($1, $2, $3, $4) RETURNING employee_id`;
 
     const { rows } = await db.query(sql, [
       lastName,
@@ -17,11 +13,7 @@ class EmployeeModel {
       level,
     ]);
 
-    if (db.client === "pg") {
-      return rows[0].employee_id;
-    } else {
-      return rows.insertId;
-    }
+    return rows[0].employee_id;
   }
 
   // Get all employees
@@ -44,9 +36,7 @@ class EmployeeModel {
 
   // Get single employee by ID
   static async getById(employeeId) {
-    const sql =
-      db.client === "pg"
-        ? `SELECT 
+    const sql = `SELECT 
             employee_id,
             last_name,
             first_name,
@@ -55,17 +45,7 @@ class EmployeeModel {
             created_at,
             updated_at
            FROM employees
-           WHERE employee_id = $1`
-        : `SELECT 
-            employee_id,
-            last_name,
-            first_name,
-            preferred_name,
-            level,
-            created_at,
-            updated_at
-           FROM employees
-           WHERE employee_id = ?`;
+           WHERE employee_id = $1`;
 
     const { rows } = await db.query(sql, [employeeId]);
     return rows[0] || null;
@@ -76,15 +56,10 @@ class EmployeeModel {
     employeeId,
     { lastName, firstName, preferredName, level }
   ) {
-    const sql =
-      db.client === "pg"
-        ? `UPDATE employees 
+    const sql = `UPDATE employees 
            SET last_name = $1, first_name = $2, preferred_name = $3, level = $4, 
                updated_at = CURRENT_TIMESTAMP 
-           WHERE employee_id = $5`
-        : `UPDATE employees 
-           SET last_name = ?, first_name = ?, preferred_name = ?, level = ? 
-           WHERE employee_id = ?`;
+           WHERE employee_id = $5`;
 
     await db.query(sql, [
       lastName,
@@ -97,10 +72,7 @@ class EmployeeModel {
 
   // Delete employee
   static async delete(employeeId) {
-    const sql =
-      db.client === "pg"
-        ? `DELETE FROM employees WHERE employee_id = $1`
-        : `DELETE FROM employees WHERE employee_id = ?`;
+    const sql = `DELETE FROM employees WHERE employee_id = $1`;
     await db.query(sql, [employeeId]);
   }
 }

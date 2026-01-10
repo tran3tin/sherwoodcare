@@ -4,26 +4,14 @@ const db = require("../config/db");
 async function removeCardIdRecordId() {
   try {
     console.log(
-      `Removing card_id and record_id columns from employees table for ${db.client}...`
+      "Removing card_id and record_id columns from employees table..."
     );
 
-    if (db.client === "pg") {
-      // PostgreSQL
-      await db.query(`DROP INDEX IF EXISTS idx_employees_card_id`);
-      await db.query(`DROP INDEX IF EXISTS idx_employees_record_id`);
-      await db.query(`ALTER TABLE employees DROP COLUMN IF EXISTS card_id`);
-      await db.query(`ALTER TABLE employees DROP COLUMN IF EXISTS record_id`);
-    } else {
-      // MySQL
-      await db.query(
-        `ALTER TABLE employees DROP INDEX IF EXISTS idx_employees_card_id`
-      );
-      await db.query(
-        `ALTER TABLE employees DROP INDEX IF EXISTS idx_employees_record_id`
-      );
-      await db.query(`ALTER TABLE employees DROP COLUMN IF EXISTS card_id`);
-      await db.query(`ALTER TABLE employees DROP COLUMN IF EXISTS record_id`);
-    }
+    // PostgreSQL
+    await db.query(`DROP INDEX IF EXISTS idx_employees_card_id`);
+    await db.query(`DROP INDEX IF EXISTS idx_employees_record_id`);
+    await db.query(`ALTER TABLE employees DROP COLUMN IF EXISTS card_id`);
+    await db.query(`ALTER TABLE employees DROP COLUMN IF EXISTS record_id`);
 
     console.log("✅ Columns removed successfully!");
   } catch (error) {
