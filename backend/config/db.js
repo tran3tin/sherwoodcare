@@ -2,6 +2,10 @@ require("dotenv").config();
 
 // PostgreSQL database configuration (Supabase compatible)
 const { Pool } = require("pg");
+const dns = require("dns");
+
+// Force IPv4 DNS resolution for cloud platforms (Render, Railway, etc.)
+dns.setDefaultResultOrder("ipv4first");
 
 const databaseUrl =
   process.env.DATABASE_URL ||
@@ -24,6 +28,12 @@ const pool = new Pool({
   connectionString: databaseUrl,
   // SSL required for Supabase
   ssl: isSupabase ? { rejectUnauthorized: false } : false,
+  // Connection timeout
+  connectionTimeoutMillis: 10000,
+  // Idle timeout
+  idleTimeoutMillis: 30000,
+  // Max connections
+  max: 20,
 });
 
 // Test connection on startup
