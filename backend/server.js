@@ -5,13 +5,17 @@ const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CORS: allow multiple origins for development
+// CORS: allow multiple origins for development and production
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://127.0.0.1:5173",
   "http://127.0.0.1:5174",
-];
+  // Production frontend URLs
+  "https://sherwoodcare-fontend.onrender.com",
+  "https://sherwoodcare.onrender.com",
+  process.env.FRONTEND_URL, // Allow custom frontend URL from env
+].filter(Boolean); // Remove undefined values
 
 app.use(
   cors({
@@ -26,6 +30,8 @@ app.use(
       if (process.env.NODE_ENV !== "production") {
         return callback(null, true);
       }
+      // Log blocked origin for debugging
+      console.warn("⚠️ Blocked by CORS:", origin);
       // Block unknown origins in production
       return callback(new Error("Not allowed by CORS"));
     },
