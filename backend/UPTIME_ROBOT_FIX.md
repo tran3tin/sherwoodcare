@@ -1,6 +1,7 @@
 # Hướng dẫn fix lỗi 404 Uptime Robot
 
 ## Vấn đề
+
 Uptime Robot truy cập vào `https://sherwoodcare.onrender.com/` trả về lỗi 404 vì backend chưa định nghĩa route cho trang chủ (`/`).
 
 ## Giải pháp đã áp dụng
@@ -8,6 +9,7 @@ Uptime Robot truy cập vào `https://sherwoodcare.onrender.com/` trả về l�
 Đã thêm 2 endpoints vào `server.js`:
 
 ### 1. Root endpoint (`/`)
+
 ```javascript
 app.get("/", (req, res) => {
   res.status(200).json({
@@ -23,6 +25,7 @@ app.get("/", (req, res) => {
 ```
 
 **Response khi truy cập `https://sherwoodcare.onrender.com/`:**
+
 ```json
 {
   "message": "SherwoodCare Backend API is running!",
@@ -36,6 +39,7 @@ app.get("/", (req, res) => {
 ```
 
 ### 2. Ping endpoint (`/ping`)
+
 ```javascript
 app.get("/ping", (req, res) => {
   res.status(200).send("Pong!");
@@ -43,6 +47,7 @@ app.get("/ping", (req, res) => {
 ```
 
 **Response khi truy cập `https://sherwoodcare.onrender.com/ping`:**
+
 ```
 Pong!
 ```
@@ -52,18 +57,21 @@ Pong!
 Sau khi deploy code mới lên Render, cấu hình Uptime Robot như sau:
 
 ### Option 1: Monitor root endpoint (/)
+
 - **Monitor Type**: HTTP(s)
 - **URL**: `https://sherwoodcare.onrender.com/`
 - **Monitoring Interval**: 5 minutes
 - **Expected Status Code**: 200
 
 ### Option 2: Monitor /ping endpoint (đơn giản hơn)
+
 - **Monitor Type**: HTTP(s)
 - **URL**: `https://sherwoodcare.onrender.com/ping`
 - **Monitoring Interval**: 5 minutes
 - **Expected Status Code**: 200
 
 ### Option 3: Monitor /api/health endpoint (chi tiết nhất)
+
 - **Monitor Type**: HTTP(s)
 - **URL**: `https://sherwoodcare.onrender.com/api/health`
 - **Monitoring Interval**: 5 minutes
@@ -85,6 +93,7 @@ curl http://localhost:3000/api/health
 ## Deploy lên Render
 
 1. Commit và push code lên Git:
+
 ```bash
 git add backend/server.js
 git commit -m "Add root and ping endpoints for Uptime Robot monitoring"
@@ -94,6 +103,7 @@ git push origin main
 2. Render sẽ tự động deploy
 
 3. Sau khi deploy xong, test trên production:
+
 ```bash
 curl https://sherwoodcare.onrender.com/
 curl https://sherwoodcare.onrender.com/ping
