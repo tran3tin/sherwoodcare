@@ -67,28 +67,6 @@ export default function CustomerList() {
     setSearchTerm("");
   };
 
-  const getPaymentFrequencies = (customer) => {
-    const frequencies = [];
-    if (customer.rent_monthly) frequencies.push("Rent/Monthly");
-    if (customer.rent_fortnightly) frequencies.push("Rent/Fortnightly");
-    if (customer.da_weekly) frequencies.push("DA/Weekly");
-    if (customer.social_fortnightly) frequencies.push("Social/Fortnightly");
-    return frequencies.length > 0 ? frequencies.join(", ") : "None";
-  };
-
-  const getEmailStatuses = (customer) => {
-    const emails = [];
-    if (customer.rent_monthly && customer.rent_monthly_email)
-      emails.push("Rent/Monthly");
-    if (customer.rent_fortnightly && customer.rent_fortnightly_email)
-      emails.push("Rent/Fortnightly");
-    if (customer.da_weekly && customer.da_weekly_email)
-      emails.push("DA/Weekly");
-    if (customer.social_fortnightly && customer.social_fortnightly_email)
-      emails.push("Social/Fortnightly");
-    return emails.length > 0 ? emails.join(", ") : "None";
-  };
-
   // Filter customers
   const filteredCustomers = customers.filter((customer) => {
     const matchSearch =
@@ -181,11 +159,10 @@ export default function CustomerList() {
                   <th className="sortable">
                     Full Name <i className="fas fa-sort sort-icon"></i>
                   </th>
-                  <th>Payment Frequencies</th>
-                  <th>Email Enabled For</th>
-                  <th className="sortable">
-                    Created Date <i className="fas fa-sort sort-icon"></i>
-                  </th>
+                  <th>Reference</th>
+                  <th>Payment Method 1</th>
+                  <th>Payment Method 2</th>
+                  <th>Room</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -194,11 +171,10 @@ export default function CustomerList() {
                   <tr key={customer.customer_id}>
                     <td>{index + 1}</td>
                     <td>{customer.full_name}</td>
-                    <td>{getPaymentFrequencies(customer)}</td>
-                    <td>{getEmailStatuses(customer)}</td>
-                    <td>
-                      {new Date(customer.created_at).toLocaleDateString()}
-                    </td>
+                    <td>{customer.reference || "-"}</td>
+                    <td>{customer.payment_method_1 || "-"}</td>
+                    <td>{customer.payment_method_2 || "-"}</td>
+                    <td>{customer.room || "-"}</td>
                     <td>
                       <div className="action-buttons">
                         <button

@@ -1,6 +1,7 @@
 # Migration Guide for Customer Table Updates
 
 ## Vấn đề
+
 Database production chưa có các cột mới: `first_name`, `last_name`, `reference`, `room`, `payment_method_1`, `payment_method_2`, `note`
 
 ## Giải pháp
@@ -10,6 +11,7 @@ Database production chưa có các cột mới: `first_name`, `last_name`, `refe
 Khi deploy, hệ thống sẽ tự động chạy migration nếu `AUTO_MIGRATE=true` trong environment variables.
 
 Kiểm tra logs khi khởi động server để đảm bảo migration đã chạy:
+
 ```
 🔄 AUTO_MIGRATE enabled, đang tạo database...
 📝 Chạy migration: 00_init_all_tables.sql
@@ -22,6 +24,7 @@ Kiểm tra logs khi khởi động server để đảm bảo migration đã ch�
 
 1. Vào Render Dashboard → Your Service → Shell
 2. Chạy lệnh:
+
 ```bash
 npm run migrate-customers
 ```
@@ -42,10 +45,11 @@ node scripts/migrate-customers.js
 ## Kiểm tra sau khi migrate
 
 Chạy query này để kiểm tra các cột đã được tạo:
+
 ```sql
-SELECT column_name, data_type 
-FROM information_schema.columns 
-WHERE table_name = 'customers' 
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_name = 'customers'
 ORDER BY ordinal_position;
 ```
 

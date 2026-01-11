@@ -43,16 +43,17 @@
   margin-bottom: 24px;
 }
 
+.form-page-container .form-row {
+  grid-template-columns: repeat(2, 1fr) !important;
+}
+
 .form-row:last-child {
   margin-bottom: 0;
 }
 
-.form-row.form-row-single {
-  grid-template-columns: 1fr;
-}
-
-.form-row.form-row-triple {
-  grid-template-columns: repeat(3, 1fr);
+.form-row.form-row-single,
+.form-page-container .form-row.form-row-single {
+  grid-template-columns: 1fr !important;
 }
 
 /* Form Fields */
