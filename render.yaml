@@ -12,6 +12,14 @@ services:
         value: production
       - key: AUTO_MIGRATE
         value: true
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_IPV4
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
     healthCheckPath: /api/health
 
   # Frontend static site
