@@ -23,13 +23,15 @@
   transform: translateY(20px) scale(0.95);
   pointer-events: none;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: slideUp 0.3s ease-out;
+  visibility: hidden;
 }
 
 .chat-widget.open {
   opacity: 1;
   transform: translateY(0) scale(1);
   pointer-events: all;
+  visibility: visible;
+  animation: slideUp 0.3s ease-out;
 }
 
 @keyframes slideUp {
