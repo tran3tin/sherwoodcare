@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import ChatWidget from "./ChatWidget";
 import "../assets/styles/app.css";
 
 export default function Layout({
@@ -61,6 +62,9 @@ export default function Layout({
           </footer>
         </div>
       </div>
+
+      {/* AI Chat Widget - Always visible */}
+      <ChatWidget />
     </div>
   );
 }

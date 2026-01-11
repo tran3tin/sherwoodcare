@@ -29,7 +29,6 @@ import CustomerInvoiceList from "./features/invoice/CustomerInvoiceList";
 import CreateCustomerInvoice from "./features/invoice/CreateCustomerInvoice";
 import EditCustomerInvoice from "./features/invoice/EditCustomerInvoice";
 import KanbanBoard from "./features/tasks/KanbanBoard";
-import AIChatbot from "./features/chatbot/AIChatbot";
 import "./assets/styles/home.css";
 
 export default function App() {
@@ -37,7 +36,6 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/dashboard/tasks" element={<KanbanBoard />} />
-      <Route path="/ai-assistant" element={<AIChatbot />} />
       <Route path="/payroll/timesheets" element={<TimeSheetList />} />
       <Route path="/payroll/reports" element={<TimeSheetReportList />} />
       <Route path="/payroll/time-sheet" element={<TimeSheetForm />} />

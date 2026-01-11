@@ -9,11 +9,6 @@ const menuItems = [
     submenu: [{ title: "Task Board", path: "/dashboard/tasks" }],
   },
   {
-    title: "AI Assistant",
-    icon: "flaticon-chat",
-    path: "/ai-assistant",
-  },
-  {
     title: "Payroll",
     icon: "flaticon-list",
     submenu: [
@@ -38,7 +33,6 @@ const menuItems = [
       { title: "Invoices", path: "/customer-invoices" },
     ],
   },
-  ,
   {
     title: "NexGenus",
     icon: "flaticon-shopping-bag",
