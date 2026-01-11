@@ -594,7 +594,7 @@ const TimeSheetReport = () => {
     else if (totalMinutes >= 780 && totalMinutes < 1080) {
       return "Afternoon";
     }
-    // Evening: 6:00pm onwards or before 7am
+    // Night: 6:00pm onwards or before 7am
     else {
       return "Night";
     }
