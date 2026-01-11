@@ -107,9 +107,9 @@ export default function ChatWidget() {
               <i className="fas fa-robot"></i>
             </div>
             <div className="header-info">
-              <h4>Trợ lý AI</h4>
+              <h4>AI Assistant</h4>
               <span className="status">
-                <i className="fas fa-circle"></i> Đang hoạt động
+                <i className="fas fa-circle"></i> Online
               </span>
             </div>
           </div>

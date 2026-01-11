@@ -238,9 +238,10 @@
 }
 
 .chat-msg.user .msg-content {
-  background: linear-gradient(135deg, #042954 0%, #031d40 100%);
-  color: #ffffff;
-  box-shadow: 0 2px 12px rgba(4, 41, 84, 0.25);
+  background: #ffffff;
+  color: #2d3748;
+  box-shadow: 0 2px 8px rgba(4, 41, 84, 0.1);
+  border: 1px solid #e2e8f0;
 }
 
 .chat-msg.error .msg-content {
