@@ -6,8 +6,7 @@ import { customerNoteService } from "../../services/customerNoteService";
 import { customerService } from "../../services/customerService";
 import "../../assets/styles/list.css";
 import "./CustomerNotes.css";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+import { API_BASE_URL } from "../../config/api";
 
 export default function CustomerNotes() {
   const { customerId } = useParams();
@@ -311,7 +310,7 @@ export default function CustomerNotes() {
 
                     {note.attachment_url && (
                       <a
-                        href={`${API_URL}${note.attachment_url}`}
+                        href={`${API_BASE_URL}${note.attachment_url}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="note-attachment"
@@ -445,7 +444,7 @@ export default function CustomerNotes() {
                 {editingNote?.attachment_url && !selectedFile && (
                   <div className="existing-attachment">
                     <a
-                      href={`${API_URL}${editingNote.attachment_url}`}
+                      href={`${API_BASE_URL}${editingNote.attachment_url}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >

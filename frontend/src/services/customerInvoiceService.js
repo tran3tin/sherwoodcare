@@ -1,8 +1,10 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+import { API_BASE_WITH_API_PREFIX } from "../config/api";
+
+const API_URL = API_BASE_WITH_API_PREFIX;
 
 export const customerInvoiceService = {
   async create(payload) {
-    const response = await fetch(`${API_URL}/api/customer-invoices`, {
+    const response = await fetch(`${API_URL}/customer-invoices`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -17,7 +19,7 @@ export const customerInvoiceService = {
   },
 
   async getAll({ customer_id } = {}) {
-    const url = new URL(`${API_URL}/api/customer-invoices`);
+    const url = new URL(`${API_URL}/customer-invoices`);
     if (customer_id) {
       url.searchParams.set("customer_id", String(customer_id));
     }
@@ -30,7 +32,7 @@ export const customerInvoiceService = {
   },
 
   async getById(id) {
-    const response = await fetch(`${API_URL}/api/customer-invoices/${id}`);
+    const response = await fetch(`${API_URL}/customer-invoices/${id}`);
     if (!response.ok) {
       throw new Error("Failed to fetch invoice");
     }
@@ -38,7 +40,7 @@ export const customerInvoiceService = {
   },
 
   async update(id, payload) {
-    const response = await fetch(`${API_URL}/api/customer-invoices/${id}`, {
+    const response = await fetch(`${API_URL}/customer-invoices/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -53,7 +55,7 @@ export const customerInvoiceService = {
   },
 
   async delete(id) {
-    const response = await fetch(`${API_URL}/api/customer-invoices/${id}`, {
+    const response = await fetch(`${API_URL}/customer-invoices/${id}`, {
       method: "DELETE",
     });
 

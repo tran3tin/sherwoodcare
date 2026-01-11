@@ -1,9 +1,11 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+import { API_BASE_WITH_API_PREFIX } from "../config/api";
+
+const API_URL = API_BASE_WITH_API_PREFIX;
 
 export const employeeService = {
   // Create a new employee
   async create(employeeData) {
-    const response = await fetch(`${API_URL}/api/employees`, {
+    const response = await fetch(`${API_URL}/employees`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(employeeData),
@@ -17,7 +19,7 @@ export const employeeService = {
 
   // Get all employees
   async getAll() {
-    const response = await fetch(`${API_URL}/api/employees`);
+    const response = await fetch(`${API_URL}/employees`);
     if (!response.ok) {
       throw new Error("Failed to fetch employees");
     }
@@ -26,7 +28,7 @@ export const employeeService = {
 
   // Get single employee
   async getById(id) {
-    const response = await fetch(`${API_URL}/api/employees/${id}`);
+    const response = await fetch(`${API_URL}/employees/${id}`);
     if (!response.ok) {
       throw new Error("Failed to fetch employee");
     }
@@ -35,7 +37,7 @@ export const employeeService = {
 
   // Update employee
   async update(id, employeeData) {
-    const response = await fetch(`${API_URL}/api/employees/${id}`, {
+    const response = await fetch(`${API_URL}/employees/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(employeeData),
@@ -49,7 +51,7 @@ export const employeeService = {
 
   // Delete employee
   async delete(id) {
-    const response = await fetch(`${API_URL}/api/employees/${id}`, {
+    const response = await fetch(`${API_URL}/employees/${id}`, {
       method: "DELETE",
     });
     if (!response.ok) {

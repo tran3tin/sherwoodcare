@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import Layout from "../../components/Layout";
 import "../../assets/styles/list.css";
 import "../payroll/TimeSheetReport.css";
+import { API_BASE_WITH_API_PREFIX } from "../../config/api";
 
 const PayrollNexgenusForm = () => {
   const navigate = useNavigate();
@@ -88,7 +89,7 @@ const PayrollNexgenusForm = () => {
       setIsEditMode(true);
 
       const response = await fetch(
-        `http://localhost:3000/api/payroll-nexgenus/${id}`
+        `${API_BASE_WITH_API_PREFIX}/payroll-nexgenus/${id}`
       );
       if (!response.ok) {
         throw new Error("Failed to load payroll");
@@ -352,7 +353,7 @@ const PayrollNexgenusForm = () => {
       if (isEditMode && payrollId) {
         // Update existing payroll
         response = await fetch(
-          `http://localhost:3000/api/payroll-nexgenus/${payrollId}`,
+          `${API_BASE_WITH_API_PREFIX}/payroll-nexgenus/${payrollId}`,
           {
             method: "PUT",
             headers: {
@@ -363,7 +364,7 @@ const PayrollNexgenusForm = () => {
         );
       } else {
         // Create new payroll
-        response = await fetch("http://localhost:3000/api/payroll-nexgenus", {
+        response = await fetch(`${API_BASE_WITH_API_PREFIX}/payroll-nexgenus`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -3,9 +3,8 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { toast } from "react-toastify";
 import Layout from "../../components/Layout";
 import { taskService } from "../../services/taskService";
+import { API_BASE_URL } from "../../config/api";
 import "./KanbanBoard.css";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 const COLUMNS = {
   todo: { id: "todo", title: "To Do", color: "#6c757d" },
@@ -134,7 +133,7 @@ export default function KanbanBoard() {
       // Set existing attachment preview
       if (task.attachment_url) {
         setAttachmentPreview({
-          url: `${API_URL}${task.attachment_url}`,
+          url: `${API_BASE_URL}${task.attachment_url}`,
           name: task.attachment_name,
           isExisting: true,
         });

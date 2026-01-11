@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+import { API_BASE_WITH_API_PREFIX } from "../config/api";
+
+const API_URL = API_BASE_WITH_API_PREFIX;
 
 export const customerNoteService = {
   // Get all notes for a customer

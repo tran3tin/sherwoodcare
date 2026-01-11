@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import Layout from "../../components/Layout";
 import "../../assets/styles/list.css";
 import "../payroll/TimeSheetReport.css";
+import { API_BASE_WITH_API_PREFIX } from "../../config/api";
 
 const PayrollNexgenusReport = () => {
   const location = useLocation();
@@ -37,7 +38,7 @@ const PayrollNexgenusReport = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://localhost:3000/api/payroll-nexgenus/${payrollId}`
+        `${API_BASE_WITH_API_PREFIX}/payroll-nexgenus/${payrollId}`
       );
       if (!response.ok) {
         throw new Error("Failed to load payroll report");

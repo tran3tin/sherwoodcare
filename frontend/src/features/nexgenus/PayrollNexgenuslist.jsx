@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import { toast } from "react-toastify";
 import "../../assets/styles/list.css";
+import { API_BASE_WITH_API_PREFIX } from "../../config/api";
 
 // Format yyyy-mm-dd to dd/mm/yyyy
 const formatDate = (dateStr) => {
@@ -30,9 +31,7 @@ const PayrollNexgenuslist = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(
-        "http://localhost:3000/api/payroll-nexgenus"
-      );
+      const response = await fetch(`${API_BASE_WITH_API_PREFIX}/payroll-nexgenus`);
       if (!response.ok) {
         throw new Error("Failed to load payrolls");
       }
@@ -57,7 +56,7 @@ const PayrollNexgenuslist = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:3000/api/payroll-nexgenus/${payrollId}`,
+        `${API_BASE_WITH_API_PREFIX}/payroll-nexgenus/${payrollId}`,
         {
           method: "DELETE",
         }

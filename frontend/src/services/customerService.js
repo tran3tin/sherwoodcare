@@ -1,9 +1,11 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+import { API_BASE_WITH_API_PREFIX } from "../config/api";
+
+const API_URL = API_BASE_WITH_API_PREFIX;
 
 export const customerService = {
   // Create a new customer
   async create(customerData) {
-    const response = await fetch(`${API_URL}/api/customers`, {
+    const response = await fetch(`${API_URL}/customers`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(customerData),
@@ -17,7 +19,7 @@ export const customerService = {
 
   // Get all customers
   async getAll() {
-    const response = await fetch(`${API_URL}/api/customers`);
+    const response = await fetch(`${API_URL}/customers`);
     if (!response.ok) {
       throw new Error("Failed to fetch customers");
     }
@@ -26,7 +28,7 @@ export const customerService = {
 
   // Get single customer
   async getById(id) {
-    const response = await fetch(`${API_URL}/api/customers/${id}`);
+    const response = await fetch(`${API_URL}/customers/${id}`);
     if (!response.ok) {
       throw new Error("Failed to fetch customer");
     }
@@ -35,7 +37,7 @@ export const customerService = {
 
   // Update customer
   async update(id, customerData) {
-    const response = await fetch(`${API_URL}/api/customers/${id}`, {
+    const response = await fetch(`${API_URL}/customers/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(customerData),
@@ -49,7 +51,7 @@ export const customerService = {
 
   // Delete customer
   async delete(id) {
-    const response = await fetch(`${API_URL}/api/customers/${id}`, {
+    const response = await fetch(`${API_URL}/customers/${id}`, {
       method: "DELETE",
     });
     if (!response.ok) {
