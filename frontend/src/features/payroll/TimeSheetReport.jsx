@@ -596,7 +596,7 @@ const TimeSheetReport = () => {
     }
     // Evening: 6:00pm onwards or before 7am
     else {
-      return "Evening";
+      return "Night";
     }
   };
 
