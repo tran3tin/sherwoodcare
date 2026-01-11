@@ -238,10 +238,9 @@
 }
 
 .chat-msg.user .msg-content {
-  background: #ffffff;
-  color: #2d3748;
-  box-shadow: 0 2px 8px rgba(4, 41, 84, 0.1);
-  border: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #042954 0%, #031d40 100%);
+  color: #ffffff !important;
+  box-shadow: 0 2px 12px rgba(4, 41, 84, 0.25);
 }
 
 .chat-msg.error .msg-content {
@@ -252,6 +251,7 @@
 
 .msg-content p {
   margin: 0;
+  color: inherit;
 }
 
 .msg-content p + p {
@@ -264,7 +264,11 @@
 }
 
 .chat-msg.user .msg-content strong {
-  color: #ffa901;
+  color: #ffffff !important;
+}
+
+.chat-msg.user .msg-content p {
+  color: #ffffff !important;
 }
 
 .msg-content em {
