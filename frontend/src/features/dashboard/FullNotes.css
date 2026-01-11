@@ -67,6 +67,11 @@
   color: #fff;
 }
 
+.btn-icon.btn-pin:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .note-pin-badge {
   margin-left: 8px;
   color: #5f3dc4;

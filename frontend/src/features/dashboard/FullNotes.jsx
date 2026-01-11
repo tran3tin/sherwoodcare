@@ -32,6 +32,8 @@ export default function FullNotes() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [removeAttachment, setRemoveAttachment] = useState(false);
 
+  const [pinAvailable, setPinAvailable] = useState(true);
+
   const [formData, setFormData] = useState({
     note_type: "customer",
     entity_id: "",
@@ -228,7 +230,19 @@ export default function FullNotes() {
       loadNotes();
     } catch (error) {
       console.error("Error pinning note:", error);
-      toast.error("Failed to pin note");
+      const status = error?.response?.status;
+      const apiMessage = error?.response?.data?.error;
+
+      if (status === 409) {
+        setPinAvailable(false);
+        toast.warning(
+          apiMessage ||
+            "Pinning is not available until the database is migrated."
+        );
+        return;
+      }
+
+      toast.error(apiMessage || "Failed to pin note");
     }
   };
 
@@ -470,7 +484,14 @@ export default function FullNotes() {
                       note.is_pinned ? "active" : ""
                     }`}
                     onClick={() => handleTogglePin(note)}
-                    title={note.is_pinned ? "Unpin" : "Pin"}
+                    disabled={!pinAvailable}
+                    title={
+                      !pinAvailable
+                        ? "Pinning requires database migration"
+                        : note.is_pinned
+                        ? "Unpin"
+                        : "Pin"
+                    }
                   >
                     <i className="fas fa-thumbtack"></i>
                   </button>
