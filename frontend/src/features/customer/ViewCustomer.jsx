@@ -55,17 +55,10 @@ export default function ViewCustomer() {
   return (
     <Layout title="View Customer" breadcrumb={["Home", "Customer", "View"]}>
       <div className="form-page-container">
-        <div
-          className="form-header"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <h2 style={{ margin: 0 }}>Customer Details</h2>
+        <div className="form-header">
+          <h2>Customer Details</h2>
 
-          <div className="action-buttons" style={{ marginTop: 0 }}>
+          <div className="action-buttons">
             <button
               type="button"
               className="btn-action btn-edit"
@@ -99,12 +92,39 @@ export default function ViewCustomer() {
                 <label>Full Name</label>
                 <div className="form-field-display">{customer.full_name}</div>
               </div>
-            </div>
-            <div className="form-row">
               <div className="form-field">
                 <label>Reference</label>
                 <div className="form-field-display">
                   {customer.reference || "-"}
+                </div>
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-field">
+                <label>Room</label>
+                <div className="form-field-display">{customer.room || "-"}</div>
+              </div>
+              <div className="form-field">
+                <label>Payment Method (Rent)</label>
+                <div className="form-field-display">
+                  {customer.payment_method_1 || "-"}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="form-section">
+          <div className="form-section-header">
+            <i className="fas fa-credit-card"></i>
+            Payment
+          </div>
+          <div className="form-section-body">
+            <div className="form-row">
+              <div className="form-field">
+                <label>Payment Method (DA)</label>
+                <div className="form-field-display">
+                  {customer.payment_method_2 || "-"}
                 </div>
               </div>
               <div className="form-field">
@@ -112,22 +132,17 @@ export default function ViewCustomer() {
                 <div className="form-field-display">{customer.room || "-"}</div>
               </div>
             </div>
-            <div className="form-row">
+          </div>
+        </div>
+
+        <div className="form-section">
+          <div className="form-section-header">
+            <i className="fas fa-sticky-note"></i>
+            Note
+          </div>
+          <div className="form-section-body">
+            <div className="form-row form-row-single">
               <div className="form-field">
-                <label>Payment Method 1</label>
-                <div className="form-field-display">
-                  {customer.payment_method_1 || "-"}
-                </div>
-              </div>
-              <div className="form-field">
-                <label>Payment Method 2</label>
-                <div className="form-field-display">
-                  {customer.payment_method_2 || "-"}
-                </div>
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-field" style={{ flex: "1 1 100%" }}>
                 <label>Note</label>
                 <div className="form-field-display">{customer.note || "-"}</div>
               </div>

@@ -146,7 +146,7 @@ export default function CreateCustomer() {
               </div>
 
               <div className="form-row">
-                <div className="form-field" style={{ flex: "1 1 100%" }}>
+                <div className="form-field form-field-full">
                   <label>Note</label>
                   <textarea
                     value={form.note}

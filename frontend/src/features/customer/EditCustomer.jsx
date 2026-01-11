@@ -116,38 +116,8 @@ export default function EditCustomer() {
     <Layout title="Edit Customer" breadcrumb={["Home", "Customer", "Edit"]}>
       <div className="form-page-container">
         <form onSubmit={handleSubmit}>
-          <div
-            className="form-header"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <h2 style={{ margin: 0 }}>Edit Customer</h2>
-
-            <div className="action-buttons" style={{ marginTop: 0 }}>
-              <button
-                type="submit"
-                className="btn-action btn-save"
-                disabled={submitting}
-                title="Save"
-                aria-label="Save"
-              >
-                <i className="fas fa-save"></i>
-              </button>
-
-              <button
-                type="button"
-                className="btn-action btn-cancel"
-                onClick={() => navigate("/customer")}
-                disabled={submitting}
-                title="Cancel"
-                aria-label="Cancel"
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
+          <div className="form-header">
+            <h2>Edit Customer</h2>
           </div>
 
           <div className="form-section">
@@ -234,7 +204,7 @@ export default function EditCustomer() {
               </div>
 
               <div className="form-row">
-                <div className="form-field" style={{ flex: "1 1 100%" }}>
+                <div className="form-field form-field-full">
                   <label htmlFor="note">Note</label>
                   <textarea
                     id="note"
@@ -245,6 +215,26 @@ export default function EditCustomer() {
                     rows="3"
                   />
                 </div>
+              </div>
+
+              <div className="form-actions">
+                <button
+                  type="submit"
+                  className="btn-primary-submit"
+                  disabled={submitting}
+                >
+                  <i className="fas fa-save"></i>
+                  Save
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary-back"
+                  onClick={() => navigate("/customer")}
+                  disabled={submitting}
+                >
+                  <i className="fas fa-times"></i>
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
