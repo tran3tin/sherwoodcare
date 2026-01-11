@@ -39,6 +39,21 @@ async function runAutoMigrations() {
       console.log("✅ Cập nhật các trường mới thành công!");
     }
 
+    // Run the alter table migration for pinning notes
+    const pinNotesFile = path.join(
+      __dirname,
+      "..",
+      "migrations",
+      "02_alter_notes_add_pinning.sql"
+    );
+
+    if (fs.existsSync(pinNotesFile)) {
+      console.log("📝 Chạy migration: 02_alter_notes_add_pinning.sql");
+      const pinNotesSql = fs.readFileSync(pinNotesFile, "utf8");
+      await db.pool.query(pinNotesSql);
+      console.log("✅ Cập nhật pin notes thành công!");
+    }
+
     console.log("✅ Database đã được tạo thành công!");
     console.log("✅ Tất cả các bảng đã sẵn sàng.\n");
   } catch (error) {

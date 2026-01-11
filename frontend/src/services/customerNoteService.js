@@ -86,6 +86,12 @@ export const customerNoteService = {
     return response.data;
   },
 
+  // Toggle note pin
+  togglePin: async (noteId) => {
+    const response = await axios.patch(`${API_URL}/customer-notes/${noteId}/pin`);
+    return response.data;
+  },
+
   // Delete note
   delete: async (noteId) => {
     const response = await axios.delete(`${API_URL}/customer-notes/${noteId}`);

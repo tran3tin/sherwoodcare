@@ -1,0 +1,82 @@
+.full-notes-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.full-notes-filters .type-filter {
+  justify-content: flex-end;
+}
+
+.note-source {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 10px 0;
+}
+
+.source-badge {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid #e0e0e0;
+  background: #f8f9fa;
+  color: #333;
+  white-space: nowrap;
+}
+
+.source-badge.customer {
+  background: #e8f0ff;
+  border-color: #cddcff;
+  color: #1f4dd6;
+}
+
+.source-badge.employee {
+  background: #fff3e0;
+  border-color: #ffe0b2;
+  color: #a15c00;
+}
+
+.source-link {
+  border: none;
+  background: transparent;
+  color: #4e73df;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.source-link:hover {
+  text-decoration: underline;
+}
+
+.btn-icon.btn-pin {
+  background: #f3f0ff;
+  color: #5f3dc4;
+}
+
+.btn-icon.btn-pin:hover {
+  background: #e5dbff;
+}
+
+.btn-icon.btn-pin.active {
+  background: #5f3dc4;
+  color: #fff;
+}
+
+.note-pin-badge {
+  margin-left: 8px;
+  color: #5f3dc4;
+  font-size: 14px;
+}
+
+.note-card.pinned {
+  border-left: 4px solid #5f3dc4;
+}
+
+.full-notes-modal-row {
+  gap: 12px;
+}

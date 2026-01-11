@@ -80,6 +80,7 @@ router.put(
   customerNoteController.updateNote
 );
 router.patch("/:noteId/toggle", customerNoteController.toggleNoteComplete);
+router.patch("/:noteId/pin", customerNoteController.toggleNotePin);
 router.delete("/:noteId", customerNoteController.deleteNote);
 
 module.exports = router;

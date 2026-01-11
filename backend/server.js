@@ -135,6 +135,10 @@ app.use("/api/customer-notes", customerNoteRoutes);
 const employeeNoteRoutes = require("./routes/employeeNotes");
 app.use("/api/employee-notes", employeeNoteRoutes);
 
+// Full notes (combined customer + employee)
+const fullNotesRoutes = require("./routes/fullNotes");
+app.use("/api/full-notes", fullNotesRoutes);
+
 // Notification routes
 const notificationRoutes = require("./routes/notifications");
 app.use("/api/notifications", notificationRoutes);

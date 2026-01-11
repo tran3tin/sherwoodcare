@@ -29,6 +29,7 @@ import CustomerInvoiceList from "./features/invoice/CustomerInvoiceList";
 import CreateCustomerInvoice from "./features/invoice/CreateCustomerInvoice";
 import EditCustomerInvoice from "./features/invoice/EditCustomerInvoice";
 import KanbanBoard from "./features/tasks/KanbanBoard";
+import FullNotes from "./features/dashboard/FullNotes";
 import "./assets/styles/home.css";
 
 export default function App() {
@@ -36,6 +37,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/dashboard/tasks" element={<KanbanBoard />} />
+      <Route path="/dashboard/notes" element={<FullNotes />} />
       <Route path="/payroll/timesheets" element={<TimeSheetList />} />
       <Route path="/payroll/reports" element={<TimeSheetReportList />} />
       <Route path="/payroll/time-sheet" element={<TimeSheetForm />} />

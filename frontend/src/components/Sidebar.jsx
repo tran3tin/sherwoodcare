@@ -6,7 +6,10 @@ const menuItems = [
   {
     title: "Dashboard",
     icon: "flaticon-dashboard",
-    submenu: [{ title: "Task Board", path: "/dashboard/tasks" }],
+    submenu: [
+      { title: "Task Board", path: "/dashboard/tasks" },
+      { title: "Full Notes", path: "/dashboard/notes" },
+    ],
   },
   {
     title: "Payroll",

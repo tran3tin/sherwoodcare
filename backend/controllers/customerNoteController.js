@@ -164,6 +164,25 @@ const toggleNoteComplete = async (req, res) => {
   }
 };
 
+// Toggle pin status
+const toggleNotePin = async (req, res) => {
+  try {
+    const { noteId } = req.params;
+
+    const toggled = await CustomerNoteModel.togglePin(noteId);
+
+    if (!toggled) {
+      return res.status(404).json({ success: false, error: "Note not found" });
+    }
+
+    const updatedNote = await CustomerNoteModel.getById(noteId);
+    res.json({ success: true, data: updatedNote });
+  } catch (error) {
+    console.error("Error pinning note:", error);
+    res.status(500).json({ success: false, error: "Failed to pin note" });
+  }
+};
+
 // Delete note
 const deleteNote = async (req, res) => {
   try {
@@ -223,6 +242,7 @@ module.exports = {
   createNote,
   updateNote,
   toggleNoteComplete,
+  toggleNotePin,
   deleteNote,
   getNotesCount,
 };

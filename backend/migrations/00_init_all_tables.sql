@@ -97,6 +97,8 @@ CREATE TABLE IF NOT EXISTS customer_notes (
   priority VARCHAR(10) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high')),
   due_date DATE NULL,
   is_completed BOOLEAN DEFAULT FALSE,
+  is_pinned BOOLEAN DEFAULT FALSE,
+  pinned_at TIMESTAMP NULL,
   attachment_url VARCHAR(500) NULL,
   attachment_name VARCHAR(255) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -104,6 +106,8 @@ CREATE TABLE IF NOT EXISTS customer_notes (
 );
 CREATE INDEX IF NOT EXISTS idx_customer_notes_customer_id ON customer_notes(customer_id);
 CREATE INDEX IF NOT EXISTS idx_customer_notes_is_completed ON customer_notes(is_completed);
+CREATE INDEX IF NOT EXISTS idx_customer_notes_is_pinned ON customer_notes(is_pinned);
+CREATE INDEX IF NOT EXISTS idx_customer_notes_pinned_at ON customer_notes(pinned_at);
 CREATE INDEX IF NOT EXISTS idx_customer_notes_priority ON customer_notes(priority);
 CREATE INDEX IF NOT EXISTS idx_customer_notes_due_date ON customer_notes(due_date);
 
@@ -118,6 +122,8 @@ CREATE TABLE IF NOT EXISTS employee_notes (
   priority VARCHAR(10) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high')),
   due_date DATE NULL,
   is_completed BOOLEAN DEFAULT FALSE,
+  is_pinned BOOLEAN DEFAULT FALSE,
+  pinned_at TIMESTAMP NULL,
   attachment_url VARCHAR(500) NULL,
   attachment_name VARCHAR(255) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -125,6 +131,8 @@ CREATE TABLE IF NOT EXISTS employee_notes (
 );
 CREATE INDEX IF NOT EXISTS idx_employee_notes_employee_id ON employee_notes(employee_id);
 CREATE INDEX IF NOT EXISTS idx_employee_notes_is_completed ON employee_notes(is_completed);
+CREATE INDEX IF NOT EXISTS idx_employee_notes_is_pinned ON employee_notes(is_pinned);
+CREATE INDEX IF NOT EXISTS idx_employee_notes_pinned_at ON employee_notes(pinned_at);
 CREATE INDEX IF NOT EXISTS idx_employee_notes_priority ON employee_notes(priority);
 CREATE INDEX IF NOT EXISTS idx_employee_notes_due_date ON employee_notes(due_date);
 
