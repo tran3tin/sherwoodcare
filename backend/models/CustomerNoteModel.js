@@ -3,13 +3,31 @@ const db = require("../config/db");
 class CustomerNoteModel {
   // Get all notes for a customer
   static async getByCustomerId(customerId) {
-    const { rows } = await db.query(
-      `SELECT * FROM customer_notes 
-       WHERE customer_id = $1 
-       ORDER BY is_pinned DESC, COALESCE(pinned_at, created_at) DESC, is_completed ASC, created_at DESC`,
-      [customerId]
-    );
-    return rows;
+    try {
+      const { rows } = await db.query(
+        `SELECT * FROM customer_notes 
+         WHERE customer_id = $1 
+         ORDER BY is_pinned DESC, COALESCE(pinned_at, created_at) DESC, is_completed ASC, created_at DESC`,
+        [customerId]
+      );
+      return rows;
+    } catch (err) {
+      const message = (err && err.message) || "";
+      const missingPinColumns =
+        message.includes('column "is_pinned" does not exist') ||
+        message.includes('column "pinned_at" does not exist');
+
+      if (!missingPinColumns) throw err;
+
+      // Backward-compatible fallback if DB hasn't been migrated yet
+      const { rows } = await db.query(
+        `SELECT * FROM customer_notes
+         WHERE customer_id = $1
+         ORDER BY is_completed ASC, created_at DESC`,
+        [customerId]
+      );
+      return rows;
+    }
   }
 
   // Get single note by ID
@@ -99,15 +117,28 @@ class CustomerNoteModel {
 
   // Toggle pin status
   static async togglePin(noteId) {
-    const { rowCount } = await db.query(
-      `UPDATE customer_notes
-       SET is_pinned = NOT is_pinned,
-           pinned_at = CASE WHEN is_pinned = false THEN CURRENT_TIMESTAMP ELSE NULL END,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE note_id = $1`,
-      [noteId]
-    );
-    return rowCount > 0;
+    try {
+      const { rowCount } = await db.query(
+        `UPDATE customer_notes
+         SET is_pinned = NOT is_pinned,
+             pinned_at = CASE WHEN is_pinned = false THEN CURRENT_TIMESTAMP ELSE NULL END,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE note_id = $1`,
+        [noteId]
+      );
+      return rowCount > 0;
+    } catch (err) {
+      const message = (err && err.message) || "";
+      const missingPinColumns =
+        message.includes('column "is_pinned" does not exist') ||
+        message.includes('column "pinned_at" does not exist');
+
+      if (missingPinColumns) {
+        err.code = "PIN_COLUMNS_MISSING";
+      }
+
+      throw err;
+    }
   }
 
   // Delete note

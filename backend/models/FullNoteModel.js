@@ -70,8 +70,69 @@ class FullNoteModel {
         created_at DESC;
     `;
 
-    const { rows } = await db.query(sql, params);
-    return rows;
+    try {
+      const { rows } = await db.query(sql, params);
+      return rows;
+    } catch (err) {
+      const message = (err && err.message) || "";
+      const missingPinColumns =
+        message.includes('column "is_pinned" does not exist') ||
+        message.includes('column "pinned_at" does not exist');
+
+      if (!missingPinColumns) throw err;
+
+      // Backward-compatible fallback if DB hasn't been migrated yet
+      const fallbackSql = `
+        WITH n AS (
+          SELECT
+            'customer'::text AS note_type,
+            cn.note_id,
+            cn.customer_id AS entity_id,
+            COALESCE(c.full_name, '') AS entity_name,
+            cn.title,
+            cn.content,
+            cn.priority,
+            cn.due_date,
+            cn.is_completed,
+            false::boolean AS is_pinned,
+            NULL::timestamp AS pinned_at,
+            cn.attachment_url,
+            cn.attachment_name,
+            cn.created_at,
+            cn.updated_at
+          FROM customer_notes cn
+          LEFT JOIN customers c ON c.customer_id = cn.customer_id
+
+          UNION ALL
+
+          SELECT
+            'employee'::text AS note_type,
+            en.note_id,
+            en.employee_id AS entity_id,
+            COALESCE(e.preferred_name, CONCAT(e.first_name, ' ', e.last_name), '') AS entity_name,
+            en.title,
+            en.content,
+            en.priority,
+            en.due_date,
+            en.is_completed,
+            false::boolean AS is_pinned,
+            NULL::timestamp AS pinned_at,
+            en.attachment_url,
+            en.attachment_name,
+            en.created_at,
+            en.updated_at
+          FROM employee_notes en
+          LEFT JOIN employees e ON e.employee_id = en.employee_id
+        )
+        SELECT *
+        FROM n
+        ${whereClause}
+        ORDER BY created_at DESC;
+      `;
+
+      const { rows } = await db.query(fallbackSql, params);
+      return rows;
+    }
   }
 }
 

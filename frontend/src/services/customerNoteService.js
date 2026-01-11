@@ -88,7 +88,9 @@ export const customerNoteService = {
 
   // Toggle note pin
   togglePin: async (noteId) => {
-    const response = await axios.patch(`${API_URL}/customer-notes/${noteId}/pin`);
+    const response = await axios.patch(
+      `${API_URL}/customer-notes/${noteId}/pin`
+    );
     return response.data;
   },
 

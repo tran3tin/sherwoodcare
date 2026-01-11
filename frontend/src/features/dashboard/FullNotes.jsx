@@ -273,7 +273,10 @@ export default function FullNotes() {
 
   if (loading) {
     return (
-      <Layout title="Full Notes" breadcrumb={["Home", "Dashboard", "Full Notes"]}>
+      <Layout
+        title="Full Notes"
+        breadcrumb={["Home", "Dashboard", "Full Notes"]}
+      >
         <div className="loading-spinner">Loading...</div>
       </Layout>
     );
@@ -287,7 +290,9 @@ export default function FullNotes() {
             <h2>All Notes</h2>
             <div className="notes-stats">
               <span className="stat pending">{stats.pending} Pending</span>
-              <span className="stat completed">{stats.completed} Completed</span>
+              <span className="stat completed">
+                {stats.completed} Completed
+              </span>
             </div>
           </div>
 
@@ -318,13 +323,17 @@ export default function FullNotes() {
               All ({stats.total})
             </button>
             <button
-              className={`filter-btn ${statusFilter === "pending" ? "active" : ""}`}
+              className={`filter-btn ${
+                statusFilter === "pending" ? "active" : ""
+              }`}
               onClick={() => setStatusFilter("pending")}
             >
               Pending ({stats.pending})
             </button>
             <button
-              className={`filter-btn ${statusFilter === "completed" ? "active" : ""}`}
+              className={`filter-btn ${
+                statusFilter === "completed" ? "active" : ""
+              }`}
               onClick={() => setStatusFilter("completed")}
             >
               Completed ({stats.completed})
@@ -339,13 +348,17 @@ export default function FullNotes() {
               All Types
             </button>
             <button
-              className={`filter-btn ${typeFilter === "customer" ? "active" : ""}`}
+              className={`filter-btn ${
+                typeFilter === "customer" ? "active" : ""
+              }`}
               onClick={() => setTypeFilter("customer")}
             >
               Customer
             </button>
             <button
-              className={`filter-btn ${typeFilter === "employee" ? "active" : ""}`}
+              className={`filter-btn ${
+                typeFilter === "employee" ? "active" : ""
+              }`}
               onClick={() => setTypeFilter("employee")}
             >
               Employee
@@ -387,7 +400,9 @@ export default function FullNotes() {
                     </h4>
                     <span
                       className="note-priority"
-                      style={{ backgroundColor: getPriorityColor(note.priority) }}
+                      style={{
+                        backgroundColor: getPriorityColor(note.priority),
+                      }}
                     >
                       {note.priority}
                     </span>
@@ -413,13 +428,17 @@ export default function FullNotes() {
                     </button>
                   </div>
 
-                  {note.content && <p className="note-description">{note.content}</p>}
+                  {note.content && (
+                    <p className="note-description">{note.content}</p>
+                  )}
 
                   <div className="note-meta">
                     {note.due_date && (
                       <span
                         className={`note-due ${
-                          isOverdue(note.due_date, note.is_completed) ? "overdue" : ""
+                          isOverdue(note.due_date, note.is_completed)
+                            ? "overdue"
+                            : ""
                         }`}
                       >
                         <i className="fas fa-calendar"></i>
@@ -439,13 +458,17 @@ export default function FullNotes() {
                       </a>
                     )}
 
-                    <span className="note-created">Created: {formatDate(note.created_at)}</span>
+                    <span className="note-created">
+                      Created: {formatDate(note.created_at)}
+                    </span>
                   </div>
                 </div>
 
                 <div className="note-actions">
                   <button
-                    className={`btn-icon btn-pin ${note.is_pinned ? "active" : ""}`}
+                    className={`btn-icon btn-pin ${
+                      note.is_pinned ? "active" : ""
+                    }`}
                     onClick={() => handleTogglePin(note)}
                     title={note.is_pinned ? "Unpin" : "Pin"}
                   >
@@ -503,10 +526,17 @@ export default function FullNotes() {
                 </div>
 
                 <div className="form-group">
-                  <label>{formData.note_type === "customer" ? "Customer" : "Employee"} *</label>
+                  <label>
+                    {formData.note_type === "customer"
+                      ? "Customer"
+                      : "Employee"}{" "}
+                    *
+                  </label>
                   <select
                     value={formData.entity_id}
-                    onChange={(e) => setFormData({ ...formData, entity_id: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, entity_id: e.target.value })
+                    }
                     required={!editingNote}
                     disabled={!!editingNote}
                   >
@@ -525,7 +555,9 @@ export default function FullNotes() {
                 <input
                   type="text"
                   value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
                   placeholder="Enter note title"
                   required
                 />
@@ -535,7 +567,9 @@ export default function FullNotes() {
                 <label>Description</label>
                 <textarea
                   value={formData.content}
-                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, content: e.target.value })
+                  }
                   placeholder="Enter note description"
                   rows="4"
                 />
@@ -546,7 +580,9 @@ export default function FullNotes() {
                   <label>Priority</label>
                   <select
                     value={formData.priority}
-                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, priority: e.target.value })
+                    }
                   >
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
@@ -559,7 +595,9 @@ export default function FullNotes() {
                   <input
                     type="date"
                     value={formData.due_date}
-                    onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, due_date: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -604,7 +642,11 @@ export default function FullNotes() {
               </div>
 
               <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={handleCloseModal}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={handleCloseModal}
+                >
                   Cancel
                 </button>
                 <button type="submit" className="btn-primary">

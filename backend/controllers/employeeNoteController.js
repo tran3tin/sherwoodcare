@@ -178,6 +178,13 @@ const toggleNotePin = async (req, res) => {
     const updatedNote = await EmployeeNoteModel.getById(noteId);
     res.json({ success: true, data: updatedNote });
   } catch (error) {
+    if (error && error.code === "PIN_COLUMNS_MISSING") {
+      return res.status(409).json({
+        success: false,
+        error:
+          "Pinning is not available until the database is migrated (missing is_pinned/pinned_at).",
+      });
+    }
     console.error("Error pinning note:", error);
     res.status(500).json({ success: false, error: "Failed to pin note" });
   }
