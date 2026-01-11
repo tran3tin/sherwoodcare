@@ -26,6 +26,8 @@ const isSupabase =
 
 const pool = new Pool({
   connectionString: databaseUrl,
+  // Force IPv4 to avoid ENETUNREACH on IPv6-only resolution in some hosts
+  family: 4,
   // SSL required for Supabase
   ssl: isSupabase ? { rejectUnauthorized: false } : false,
   // Connection timeout
