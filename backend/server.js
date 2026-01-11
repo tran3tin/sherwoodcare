@@ -132,6 +132,28 @@ app.use("/api/chatbot", chatbotRoutes);
 // Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "public", "uploads")));
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Auto-run migrations on startup (only if AUTO_MIGRATE=true in env)
+const runAutoMigrations = require("./scripts/auto-migrate");
+const shouldAutoMigrate = process.env.AUTO_MIGRATE === "true" || process.env.NODE_ENV === "production";
+
+if (shouldAutoMigrate) {
+  console.log("🔄 AUTO_MIGRATE enabled, đang tạo database...");
+  runAutoMigrations()
+    .then(() => {
+      startServer();
+    })
+    .catch((err) => {
+      console.error("❌ Lỗi tạo database:", err.message);
+      console.log("⚠️  Server vẫn khởi động (có thể thiếu bảng)...\n");
+      startServer();
+    });
+} else {
+  console.log("ℹ️  AUTO_MIGRATE=false - bỏ qua tự động tạo database.\n");
+  startServer();
+}
+
+function startServer() {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
