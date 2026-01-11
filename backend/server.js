@@ -40,6 +40,24 @@ app.use(
 );
 app.use(express.json());
 
+// Root endpoint - for Uptime Robot and health monitoring
+app.get("/", (req, res) => {
+  res.status(200).json({
+    message: "SherwoodCare Backend API is running!",
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: "/api/health",
+      ping: "/ping",
+    },
+  });
+});
+
+// Ping endpoint - simple health check
+app.get("/ping", (req, res) => {
+  res.status(200).send("Pong!");
+});
+
 // If production, optionally serve static frontend from ../frontend/dist
 const path = require("path");
 const distPath = path.join(__dirname, "..", "frontend", "dist");
