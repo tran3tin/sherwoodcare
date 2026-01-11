@@ -6,14 +6,21 @@ class CustomerModel {
     const sql = `
       SELECT 
         customer_id,
-        first_name,
-        last_name,
-        COALESCE(last_name || ' ' || first_name, full_name) as full_name,
-        reference,
-        room,
-        payment_method_1,
-        payment_method_2,
-        note,
+        COALESCE(first_name, '') as first_name,
+        COALESCE(last_name, '') as last_name,
+        COALESCE(
+          CASE 
+            WHEN last_name IS NOT NULL AND first_name IS NOT NULL 
+            THEN last_name || ' ' || first_name
+            ELSE full_name
+          END,
+          full_name
+        ) as full_name,
+        COALESCE(reference, '') as reference,
+        COALESCE(room, '') as room,
+        COALESCE(payment_method_1, '') as payment_method_1,
+        COALESCE(payment_method_2, '') as payment_method_2,
+        COALESCE(note, '') as note,
         created_at,
         updated_at
       FROM customers
@@ -28,14 +35,21 @@ class CustomerModel {
     const sql = `
       SELECT 
         customer_id,
-        first_name,
-        last_name,
-        COALESCE(last_name || ' ' || first_name, full_name) as full_name,
-        reference,
-        room,
-        payment_method_1,
-        payment_method_2,
-        note,
+        COALESCE(first_name, '') as first_name,
+        COALESCE(last_name, '') as last_name,
+        COALESCE(
+          CASE 
+            WHEN last_name IS NOT NULL AND first_name IS NOT NULL 
+            THEN last_name || ' ' || first_name
+            ELSE full_name
+          END,
+          full_name
+        ) as full_name,
+        COALESCE(reference, '') as reference,
+        COALESCE(room, '') as room,
+        COALESCE(payment_method_1, '') as payment_method_1,
+        COALESCE(payment_method_2, '') as payment_method_2,
+        COALESCE(note, '') as note,
         created_at,
         updated_at
       FROM customers

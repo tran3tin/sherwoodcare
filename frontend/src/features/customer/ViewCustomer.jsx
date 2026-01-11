@@ -127,7 +127,7 @@ export default function ViewCustomer() {
               </div>
             </div>
             <div className="form-row">
-              <div className="form-field">
+              <div className="form-field" style={{ flex: "1 1 100%" }}>
                 <label>Note</label>
                 <div className="form-field-display">{customer.note || "-"}</div>
               </div>

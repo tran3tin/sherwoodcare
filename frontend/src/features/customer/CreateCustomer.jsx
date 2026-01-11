@@ -126,7 +126,7 @@ export default function CreateCustomer() {
 
               <div className="form-row">
                 <div className="form-field">
-                  <label>Payment Method 1</label>
+                  <label>Payment Method (Rent)</label>
                   <input
                     type="text"
                     value={form.payment_method_1}
@@ -135,7 +135,7 @@ export default function CreateCustomer() {
                   />
                 </div>
                 <div className="form-field">
-                  <label>Payment Method 2</label>
+                  <label>Payment Method (DA)</label>
                   <input
                     type="text"
                     value={form.payment_method_2}
@@ -146,7 +146,7 @@ export default function CreateCustomer() {
               </div>
 
               <div className="form-row">
-                <div className="form-field">
+                <div className="form-field" style={{ flex: "1 1 100%" }}>
                   <label>Note</label>
                   <textarea
                     value={form.note}
