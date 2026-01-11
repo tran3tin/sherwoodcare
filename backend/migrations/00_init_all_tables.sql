@@ -7,7 +7,15 @@
 CREATE TABLE IF NOT EXISTS customers (
   customer_id SERIAL PRIMARY KEY,
   full_name VARCHAR(255) NOT NULL,
+  first_name VARCHAR(255),
+  last_name VARCHAR(255),
+  reference VARCHAR(255),
+  room VARCHAR(255),
+  payment_method_1 VARCHAR(255),
+  payment_method_2 VARCHAR(255),
+  note TEXT,
   
+  -- Legacy payment frequency fields (kept for backward compatibility)
   rent_monthly BOOLEAN DEFAULT FALSE,
   rent_monthly_email BOOLEAN DEFAULT FALSE,
   rent_fortnightly BOOLEAN DEFAULT FALSE,
@@ -21,6 +29,8 @@ CREATE TABLE IF NOT EXISTS customers (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_customer_name ON customers(full_name);
+CREATE INDEX IF NOT EXISTS idx_customer_last_name ON customers(last_name);
+CREATE INDEX IF NOT EXISTS idx_customer_first_name ON customers(first_name);
 
 -- ============================================
 -- 2. EMPLOYERS TABLE

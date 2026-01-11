@@ -30,31 +30,30 @@ async function getCustomer(req, res) {
 async function createCustomer(req, res) {
   try {
     const {
-      full_name,
-      rent_monthly,
-      rent_monthly_email,
-      rent_fortnightly,
-      rent_fortnightly_email,
-      da_weekly,
-      da_weekly_email,
-      social_fortnightly,
-      social_fortnightly_email,
+      first_name,
+      last_name,
+      reference,
+      room,
+      payment_method_1,
+      payment_method_2,
+      note,
     } = req.body;
 
-    if (!full_name || !full_name.trim()) {
-      return res.status(400).json({ error: "Full name is required" });
+    if (!first_name || !first_name.trim()) {
+      return res.status(400).json({ error: "First name is required" });
+    }
+    if (!last_name || !last_name.trim()) {
+      return res.status(400).json({ error: "Last name is required" });
     }
 
     const customer = await CustomerModel.create({
-      full_name: full_name.trim(),
-      rent_monthly,
-      rent_monthly_email,
-      rent_fortnightly,
-      rent_fortnightly_email,
-      da_weekly,
-      da_weekly_email,
-      social_fortnightly,
-      social_fortnightly_email,
+      first_name: first_name.trim(),
+      last_name: last_name.trim(),
+      reference,
+      room,
+      payment_method_1,
+      payment_method_2,
+      note,
     });
 
     res.status(201).json({ success: true, data: customer });
@@ -69,31 +68,30 @@ async function updateCustomer(req, res) {
   try {
     const { id } = req.params;
     const {
-      full_name,
-      rent_monthly,
-      rent_monthly_email,
-      rent_fortnightly,
-      rent_fortnightly_email,
-      da_weekly,
-      da_weekly_email,
-      social_fortnightly,
-      social_fortnightly_email,
+      first_name,
+      last_name,
+      reference,
+      room,
+      payment_method_1,
+      payment_method_2,
+      note,
     } = req.body;
 
-    if (!full_name || !full_name.trim()) {
-      return res.status(400).json({ error: "Full name is required" });
+    if (!first_name || !first_name.trim()) {
+      return res.status(400).json({ error: "First name is required" });
+    }
+    if (!last_name || !last_name.trim()) {
+      return res.status(400).json({ error: "Last name is required" });
     }
 
     const customer = await CustomerModel.update(id, {
-      full_name: full_name.trim(),
-      rent_monthly,
-      rent_monthly_email,
-      rent_fortnightly,
-      rent_fortnightly_email,
-      da_weekly,
-      da_weekly_email,
-      social_fortnightly,
-      social_fortnightly_email,
+      first_name: first_name.trim(),
+      last_name: last_name.trim(),
+      reference,
+      room,
+      payment_method_1,
+      payment_method_2,
+      note,
     });
 
     if (!customer) {

@@ -6,22 +6,38 @@ async function runAutoMigrations() {
   try {
     console.log("\n🔄 Bắt đầu tự động tạo database...");
 
-    const migrationFile = path.join(
+    // Run the main initialization file
+    const initFile = path.join(
       __dirname,
       "..",
       "migrations",
       "00_init_all_tables.sql"
     );
 
-    if (!fs.existsSync(migrationFile)) {
+    if (!fs.existsSync(initFile)) {
       console.log("❌ Không tìm thấy file migration!");
       return;
     }
 
-    const sql = fs.readFileSync(migrationFile, "utf8");
+    console.log("📝 Chạy migration: 00_init_all_tables.sql");
+    const initSql = fs.readFileSync(initFile, "utf8");
+    await db.pool.query(initSql);
+    console.log("✅ Khởi tạo bảng thành công!");
 
-    // Execute the migration SQL
-    await db.pool.query(sql);
+    // Run the alter table migration for new fields
+    const alterFile = path.join(
+      __dirname,
+      "..",
+      "migrations",
+      "01_alter_customers_add_new_fields.sql"
+    );
+
+    if (fs.existsSync(alterFile)) {
+      console.log("📝 Chạy migration: 01_alter_customers_add_new_fields.sql");
+      const alterSql = fs.readFileSync(alterFile, "utf8");
+      await db.pool.query(alterSql);
+      console.log("✅ Cập nhật các trường mới thành công!");
+    }
 
     console.log("✅ Database đã được tạo thành công!");
     console.log("✅ Tất cả các bảng đã sẵn sàng.\n");

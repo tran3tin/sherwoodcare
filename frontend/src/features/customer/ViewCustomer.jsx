@@ -91,7 +91,7 @@ export default function ViewCustomer() {
         <div className="form-section">
           <div className="form-section-header">
             <i className="fas fa-user"></i>
-            Basic Information
+            Customer Information
           </div>
           <div className="form-section-body">
             <div className="form-row">
@@ -100,122 +100,36 @@ export default function ViewCustomer() {
                 <div className="form-field-display">{customer.full_name}</div>
               </div>
             </div>
-          </div>
-        </div>
-
-        <div className="form-section">
-          <div className="form-section-header">
-            <i className="fas fa-calendar-alt"></i>
-            Payment Frequency
-          </div>
-          <div className="form-section-body">
-            <div className="form-field-checkbox-group">
-              <div
-                className={`checkbox-card ${
-                  customer.rent_monthly ? "active" : ""
-                }`}
-              >
-                <div className="checkbox-main">
-                  <input
-                    type="checkbox"
-                    checked={customer.rent_monthly}
-                    disabled
-                    readOnly
-                  />
-                  <label>Rent/Monthly</label>
+            <div className="form-row">
+              <div className="form-field">
+                <label>Reference</label>
+                <div className="form-field-display">
+                  {customer.reference || "-"}
                 </div>
-                {customer.rent_monthly && (
-                  <div className="checkbox-sub">
-                    <input
-                      type="checkbox"
-                      checked={customer.rent_monthly_email}
-                      disabled
-                      readOnly
-                    />
-                    <label>Send Email</label>
-                  </div>
-                )}
               </div>
-
-              <div
-                className={`checkbox-card ${
-                  customer.rent_fortnightly ? "active" : ""
-                }`}
-              >
-                <div className="checkbox-main">
-                  <input
-                    type="checkbox"
-                    checked={customer.rent_fortnightly}
-                    disabled
-                    readOnly
-                  />
-                  <label>Rent/Fortnightly</label>
-                </div>
-                {customer.rent_fortnightly && (
-                  <div className="checkbox-sub">
-                    <input
-                      type="checkbox"
-                      checked={customer.rent_fortnightly_email}
-                      disabled
-                      readOnly
-                    />
-                    <label>Send Email</label>
-                  </div>
-                )}
+              <div className="form-field">
+                <label>Room</label>
+                <div className="form-field-display">{customer.room || "-"}</div>
               </div>
-
-              <div
-                className={`checkbox-card ${
-                  customer.da_weekly ? "active" : ""
-                }`}
-              >
-                <div className="checkbox-main">
-                  <input
-                    type="checkbox"
-                    checked={customer.da_weekly}
-                    disabled
-                    readOnly
-                  />
-                  <label>DA/Weekly</label>
+            </div>
+            <div className="form-row">
+              <div className="form-field">
+                <label>Payment Method 1</label>
+                <div className="form-field-display">
+                  {customer.payment_method_1 || "-"}
                 </div>
-                {customer.da_weekly && (
-                  <div className="checkbox-sub">
-                    <input
-                      type="checkbox"
-                      checked={customer.da_weekly_email}
-                      disabled
-                      readOnly
-                    />
-                    <label>Send Email</label>
-                  </div>
-                )}
               </div>
-
-              <div
-                className={`checkbox-card ${
-                  customer.social_fortnightly ? "active" : ""
-                }`}
-              >
-                <div className="checkbox-main">
-                  <input
-                    type="checkbox"
-                    checked={customer.social_fortnightly}
-                    disabled
-                    readOnly
-                  />
-                  <label>Social/Fortnightly</label>
+              <div className="form-field">
+                <label>Payment Method 2</label>
+                <div className="form-field-display">
+                  {customer.payment_method_2 || "-"}
                 </div>
-                {customer.social_fortnightly && (
-                  <div className="checkbox-sub">
-                    <input
-                      type="checkbox"
-                      checked={customer.social_fortnightly_email}
-                      disabled
-                      readOnly
-                    />
-                    <label>Send Email</label>
-                  </div>
-                )}
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-field">
+                <label>Note</label>
+                <div className="form-field-display">{customer.note || "-"}</div>
               </div>
             </div>
           </div>

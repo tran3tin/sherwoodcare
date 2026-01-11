@@ -13,15 +13,13 @@ export default function EditCustomer() {
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
-    full_name: "",
-    rent_monthly: false,
-    rent_monthly_email: false,
-    rent_fortnightly: false,
-    rent_fortnightly_email: false,
-    da_weekly: false,
-    da_weekly_email: false,
-    social_fortnightly: false,
-    social_fortnightly_email: false,
+    first_name: "",
+    last_name: "",
+    reference: "",
+    room: "",
+    payment_method_1: "",
+    payment_method_2: "",
+    note: "",
   });
 
   useEffect(() => {
@@ -36,15 +34,13 @@ export default function EditCustomer() {
       const response = await customerService.getById(id);
       const customer = response.data;
       setFormData({
-        full_name: customer.full_name || "",
-        rent_monthly: customer.rent_monthly || false,
-        rent_monthly_email: customer.rent_monthly_email || false,
-        rent_fortnightly: customer.rent_fortnightly || false,
-        rent_fortnightly_email: customer.rent_fortnightly_email || false,
-        da_weekly: customer.da_weekly || false,
-        da_weekly_email: customer.da_weekly_email || false,
-        social_fortnightly: customer.social_fortnightly || false,
-        social_fortnightly_email: customer.social_fortnightly_email || false,
+        first_name: customer.first_name || "",
+        last_name: customer.last_name || "",
+        reference: customer.reference || "",
+        room: customer.room || "",
+        payment_method_1: customer.payment_method_1 || "",
+        payment_method_2: customer.payment_method_2 || "",
+        note: customer.note || "",
       });
     } catch (error) {
       console.error("Error fetching customer:", error);
@@ -59,29 +55,25 @@ export default function EditCustomer() {
   };
 
   const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: value,
     }));
-  };
-
-  const handleMainCheckboxChange = (frequencyName, emailName) => {
-    setFormData((prev) => {
-      const newValue = !prev[frequencyName];
-      return {
-        ...prev,
-        [frequencyName]: newValue,
-        [emailName]: newValue ? prev[emailName] : false,
-      };
-    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.full_name.trim()) {
-      toast.error("Full name is required", {
+    if (!formData.first_name.trim()) {
+      toast.error("First name is required", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+    if (!formData.last_name.trim()) {
+      toast.error("Last name is required", {
         position: "top-right",
         autoClose: 3000,
       });
@@ -166,137 +158,92 @@ export default function EditCustomer() {
             <div className="form-section-body">
               <div className="form-row">
                 <div className="form-field required">
-                  <label htmlFor="full_name">Full Name</label>
+                  <label htmlFor="last_name">Last Name</label>
                   <input
                     type="text"
-                    id="full_name"
-                    name="full_name"
-                    value={formData.full_name}
+                    id="last_name"
+                    name="last_name"
+                    value={formData.last_name}
                     onChange={handleInputChange}
                     required
-                    placeholder="Enter full name"
+                    placeholder="Enter last name"
+                  />
+                </div>
+                <div className="form-field required">
+                  <label htmlFor="first_name">First Name</label>
+                  <input
+                    type="text"
+                    id="first_name"
+                    name="first_name"
+                    value={formData.first_name}
+                    onChange={handleInputChange}
+                    required
+                    placeholder="Enter first name"
                   />
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div className="form-section">
-            <div className="form-section-header">
-              <i className="fas fa-calendar-alt"></i>
-              Payment Frequency
-            </div>
-            <div className="form-section-body">
-              <div className="form-field-checkbox-group">
-                <div className="checkbox-card">
-                  <div className="checkbox-main">
-                    <input
-                      type="checkbox"
-                      id="rent_monthly"
-                      checked={formData.rent_monthly}
-                      onChange={() =>
-                        handleMainCheckboxChange(
-                          "rent_monthly",
-                          "rent_monthly_email"
-                        )
-                      }
-                    />
-                    <label htmlFor="rent_monthly">Rent/Monthly</label>
-                  </div>
-                  <div className="checkbox-sub">
-                    <input
-                      type="checkbox"
-                      id="rent_monthly_email"
-                      name="rent_monthly_email"
-                      checked={formData.rent_monthly_email}
-                      onChange={handleInputChange}
-                      disabled={!formData.rent_monthly}
-                    />
-                    <label htmlFor="rent_monthly_email">Send Email</label>
-                  </div>
+              <div className="form-row">
+                <div className="form-field">
+                  <label htmlFor="reference">Reference</label>
+                  <input
+                    type="text"
+                    id="reference"
+                    name="reference"
+                    value={formData.reference}
+                    onChange={handleInputChange}
+                    placeholder="Enter reference"
+                  />
                 </div>
-
-                <div className="checkbox-card">
-                  <div className="checkbox-main">
-                    <input
-                      type="checkbox"
-                      id="rent_fortnightly"
-                      checked={formData.rent_fortnightly}
-                      onChange={() =>
-                        handleMainCheckboxChange(
-                          "rent_fortnightly",
-                          "rent_fortnightly_email"
-                        )
-                      }
-                    />
-                    <label htmlFor="rent_fortnightly">Rent/Fortnightly</label>
-                  </div>
-                  <div className="checkbox-sub">
-                    <input
-                      type="checkbox"
-                      id="rent_fortnightly_email"
-                      name="rent_fortnightly_email"
-                      checked={formData.rent_fortnightly_email}
-                      onChange={handleInputChange}
-                      disabled={!formData.rent_fortnightly}
-                    />
-                    <label htmlFor="rent_fortnightly_email">Send Email</label>
-                  </div>
+                <div className="form-field">
+                  <label htmlFor="room">Room</label>
+                  <input
+                    type="text"
+                    id="room"
+                    name="room"
+                    value={formData.room}
+                    onChange={handleInputChange}
+                    placeholder="Enter room"
+                  />
                 </div>
+              </div>
 
-                <div className="checkbox-card">
-                  <div className="checkbox-main">
-                    <input
-                      type="checkbox"
-                      id="da_weekly"
-                      checked={formData.da_weekly}
-                      onChange={() =>
-                        handleMainCheckboxChange("da_weekly", "da_weekly_email")
-                      }
-                    />
-                    <label htmlFor="da_weekly">DA/Weekly</label>
-                  </div>
-                  <div className="checkbox-sub">
-                    <input
-                      type="checkbox"
-                      id="da_weekly_email"
-                      name="da_weekly_email"
-                      checked={formData.da_weekly_email}
-                      onChange={handleInputChange}
-                      disabled={!formData.da_weekly}
-                    />
-                    <label htmlFor="da_weekly_email">Send Email</label>
-                  </div>
+              <div className="form-row">
+                <div className="form-field">
+                  <label htmlFor="payment_method_1">Payment Method 1</label>
+                  <input
+                    type="text"
+                    id="payment_method_1"
+                    name="payment_method_1"
+                    value={formData.payment_method_1}
+                    onChange={handleInputChange}
+                    placeholder="Enter payment method 1"
+                  />
                 </div>
+                <div className="form-field">
+                  <label htmlFor="payment_method_2">Payment Method 2</label>
+                  <input
+                    type="text"
+                    id="payment_method_2"
+                    name="payment_method_2"
+                    value={formData.payment_method_2}
+                    onChange={handleInputChange}
+                    placeholder="Enter payment method 2"
+                  />
+                </div>
+              </div>
 
-                <div className="checkbox-card">
-                  <div className="checkbox-main">
-                    <input
-                      type="checkbox"
-                      id="social_fortnightly"
-                      checked={formData.social_fortnightly}
-                      onChange={() =>
-                        handleMainCheckboxChange(
-                          "social_fortnightly",
-                          "social_fortnightly_email"
-                        )
-                      }
-                    />
-                    <label htmlFor="social_fortnightly">
-                      Social/Fortnightly
-                    </label>
-                  </div>
-                  <div className="checkbox-sub">
-                    <input
-                      type="checkbox"
-                      id="social_fortnightly_email"
-                      name="social_fortnightly_email"
-                      checked={formData.social_fortnightly_email}
-                      onChange={handleInputChange}
-                      disabled={!formData.social_fortnightly}
-                    />
-                    <label htmlFor="social_fortnightly_email">Send Email</label>
-                  </div>
+              <div className="form-row">
+                <div className="form-field">
+                  <label htmlFor="note">Note</label>
+                  <textarea
+                    id="note"
+                    name="note"
+                    value={formData.note}
+                    onChange={handleInputChange}
+                    placeholder="Enter note"
+                    rows="3"
+                  />
                 </div>
               </div>
             </div>
