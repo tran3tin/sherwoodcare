@@ -129,6 +129,10 @@ app.use("/api/tasks", taskRoutes);
 const chatbotRoutes = require("./routes/chatbot");
 app.use("/api/chatbot", chatbotRoutes);
 
+// Upload routes (Firebase + Supabase)
+const uploadRoutes = require("./routes/upload");
+app.use("/api/upload", uploadRoutes);
+
 // Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "public", "uploads")));
 
