@@ -39,11 +39,11 @@ const getSessionFromTime = (timeStr) => {
   }
 
   // Morning: 6am (6:00) to before 6pm (17:59)
-  // Evening: 6pm (18:00) to before 6am (5:59)
+  // Night: 6pm (18:00) to before 6am (5:59)
   if (hours >= 6 && hours < 18) {
     return "Morning";
   } else {
-    return "Evening";
+    return "Night";
   }
 };
 
