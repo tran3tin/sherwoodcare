@@ -90,7 +90,9 @@ async function createPool() {
   const port = Number(parsed.port || 5432);
   const user = decodeURIComponent(parsed.username || "");
   const password = decodeURIComponent(parsed.password || "");
-  const database = decodeURIComponent((parsed.pathname || "").replace(/^\//, ""));
+  const database = decodeURIComponent(
+    (parsed.pathname || "").replace(/^\//, "")
+  );
 
   const pool = new Pool({
     host: ipv4Host,

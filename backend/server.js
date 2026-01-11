@@ -134,7 +134,8 @@ app.use("/uploads", express.static(path.join(__dirname, "public", "uploads")));
 
 // Auto-run migrations on startup (only if AUTO_MIGRATE=true in env)
 const runAutoMigrations = require("./scripts/auto-migrate");
-const shouldAutoMigrate = process.env.AUTO_MIGRATE === "true" || process.env.NODE_ENV === "production";
+const shouldAutoMigrate =
+  process.env.AUTO_MIGRATE === "true" || process.env.NODE_ENV === "production";
 
 if (shouldAutoMigrate) {
   console.log("🔄 AUTO_MIGRATE enabled, đang tạo database...");

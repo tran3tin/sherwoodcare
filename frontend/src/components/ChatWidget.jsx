@@ -9,8 +9,7 @@ export default function ChatWidget() {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      content:
-        "Xin chào! 👋\n\nBạn cần tôi giúp gì?",
+      content: "Xin chào! 👋\n\nBạn cần tôi giúp gì?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -135,20 +134,42 @@ export default function ChatWidget() {
               key={index}
               className={`chat-msg ${msg.role} ${msg.isError ? "error" : ""}`}
             >
-              <div className="msg-content">
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
+              {msg.role === "assistant" && (
+                <div className="msg-avatar ai">
+                  <i className="fas fa-robot"></i>
+                </div>
+              )}
+              <div className="msg-content-wrapper">
+                <div className="msg-content">
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                </div>
+                <div className="msg-time">
+                  {new Date().toLocaleTimeString("vi-VN", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </div>
               </div>
-              <div className="msg-time">{new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</div>
+              {msg.role === "user" && (
+                <div className="msg-avatar user">
+                  <i className="fas fa-user"></i>
+                </div>
+              )}
             </div>
           ))}
 
           {loading && (
             <div className="chat-msg assistant">
-              <div className="msg-content">
-                <div className="typing-dots">
-                  <span></span>
-                  <span></span>
-                  <span></span>
+              <div className="msg-avatar ai">
+                <i className="fas fa-robot"></i>
+              </div>
+              <div className="msg-content-wrapper">
+                <div className="msg-content">
+                  <div className="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -183,10 +204,7 @@ export default function ChatWidget() {
         {isOpen ? (
           <i className="fas fa-times"></i>
         ) : (
-          <>
-            <i className="fas fa-comments"></i>
-            <span className="notification-badge">AI</span>
-          </>
+          <i className="fas fa-robot"></i>
         )}
       </button>
     </>

@@ -31,7 +31,9 @@ const PayrollNexgenuslist = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`${API_BASE_WITH_API_PREFIX}/payroll-nexgenus`);
+      const response = await fetch(
+        `${API_BASE_WITH_API_PREFIX}/payroll-nexgenus`
+      );
       if (!response.ok) {
         throw new Error("Failed to load payrolls");
       }
