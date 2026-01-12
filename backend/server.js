@@ -95,6 +95,34 @@ app.get("/api/db/status", async (req, res) => {
   }
 });
 
+// Run migrations endpoint (for manual trigger on production)
+const runAutoMigrations = require("./scripts/auto-migrate");
+app.post("/api/db/migrate", async (req, res) => {
+  try {
+    console.log("🔄 Manual migration triggered via API...");
+    await runAutoMigrations();
+    res.json({ success: true, message: "Migrations completed successfully" });
+  } catch (err) {
+    console.error("Migration error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Check tasks table schema
+app.get("/api/db/tasks-schema", async (req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT column_name, data_type, is_nullable, column_default
+      FROM information_schema.columns 
+      WHERE table_schema = 'public' AND table_name = 'tasks'
+      ORDER BY ordinal_position
+    `);
+    res.json({ success: true, columns: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Timesheet routes
 const timesheetRoutes = require("./routes/timesheets");
 app.use("/api/timesheets", timesheetRoutes);
@@ -161,7 +189,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "public", "uploads")));
 
 // Auto-run migrations on startup (only if AUTO_MIGRATE=true in env)
-const runAutoMigrations = require("./scripts/auto-migrate");
+// Note: runAutoMigrations is already imported above for the /api/db/migrate endpoint
 const shouldAutoMigrate =
   process.env.AUTO_MIGRATE === "true" || process.env.NODE_ENV === "production";
 

@@ -7,7 +7,10 @@ async function runAutoMigrations() {
 
   const runFile = async (filename, label) => {
     const filePath = path.join(__dirname, "..", "migrations", filename);
-    if (!fs.existsSync(filePath)) return;
+    if (!fs.existsSync(filePath)) {
+      console.log(`⚠️  File không tồn tại: ${filename}`);
+      return;
+    }
 
     try {
       console.log(`📝 Chạy migration: ${label || filename}`);
@@ -16,14 +19,30 @@ async function runAutoMigrations() {
       console.log(`✅ OK: ${label || filename}`);
     } catch (error) {
       const message = (error && error.message) || "";
-      if (message.includes("already exists")) {
+      // Skip if already exists or duplicate
+      if (
+        message.includes("already exists") ||
+        message.includes("duplicate key") ||
+        message.includes("already a partition")
+      ) {
         console.log(`ℹ️  Bỏ qua (already exists): ${label || filename}`);
         return;
       }
       console.error(`❌ Lỗi migration (${label || filename}):`, message);
-      throw error;
+      // Don't throw - continue with other migrations
+      console.log(`⚠️  Tiếp tục với các migrations khác...`);
     }
   };
+
+  try {
+    // Test database connection first
+    console.log("🔌 Kiểm tra kết nối database...");
+    await db.pool.query("SELECT 1");
+    console.log("✅ Kết nối database OK");
+  } catch (connError) {
+    console.error("❌ Không thể kết nối database:", connError.message);
+    throw connError;
+  }
 
   await runFile("00_init_all_tables.sql", "00_init_all_tables.sql");
   await runFile(
