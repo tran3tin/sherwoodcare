@@ -261,7 +261,12 @@ export default function KanbanBoard() {
       loadTasks();
     } catch (error) {
       console.error("Error saving task:", error);
-      toast.error("Failed to save task");
+      // Show more detailed error message
+      const errorDetails =
+        error?.response?.data?.details ||
+        error?.response?.data?.error ||
+        error.message;
+      toast.error(`Failed to save task: ${errorDetails}`);
     }
   };
 

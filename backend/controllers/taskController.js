@@ -86,13 +86,21 @@ const getTaskById = async (req, res) => {
   }
 };
 
+// Helper function to convert empty strings to null
+const toNullIfEmpty = (value) => {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+  return value;
+};
+
 // Create new task
 const createTask = async (req, res) => {
   try {
     const { title, description, status, priority, due_date, assigned_to } =
       req.body;
 
-    if (!title) {
+    if (!title || !title.trim()) {
       return res
         .status(400)
         .json({ success: false, error: "Title is required" });
@@ -106,26 +114,31 @@ const createTask = async (req, res) => {
       attachment_name = req.file.originalname;
     }
 
+    // Convert empty strings to null for database compatibility (PostgreSQL DATE type)
     const taskData = {
-      title,
+      title: title.trim(),
       description: description || "",
       status: status || "todo",
       priority: priority || "medium",
-      due_date: due_date || null,
-      assigned_to: assigned_to || null,
+      due_date: toNullIfEmpty(due_date),
+      assigned_to: toNullIfEmpty(assigned_to),
       attachment_url,
       attachment_name,
     };
+
+    console.log("Creating task with data:", JSON.stringify(taskData, null, 2));
 
     const newTask = await TaskModel.create(taskData);
     res.status(201).json({ success: true, data: newTask });
   } catch (error) {
     console.error("Error creating task:", error);
-    // Return actual error in dev/debug mode or specifically for this issue
+    console.error("Error stack:", error.stack);
+    // Return actual error for debugging
     res.status(500).json({
       success: false,
       error: "Failed to create task",
       details: error.message,
+      hint: error.hint || null,
     });
   }
 };
@@ -177,14 +190,19 @@ const updateTask = async (req, res) => {
     }
 
     const taskData = {
-      title: title || existingTask.title,
+      title: title ? title.trim() : existingTask.title,
       description:
         description !== undefined ? description : existingTask.description,
       status: status || existingTask.status,
       priority: priority || existingTask.priority,
-      due_date: due_date !== undefined ? due_date : existingTask.due_date,
+      due_date:
+        due_date !== undefined
+          ? toNullIfEmpty(due_date)
+          : existingTask.due_date,
       assigned_to:
-        assigned_to !== undefined ? assigned_to : existingTask.assigned_to,
+        assigned_to !== undefined
+          ? toNullIfEmpty(assigned_to)
+          : existingTask.assigned_to,
       position: position !== undefined ? position : existingTask.position,
       attachment_url,
       attachment_name,

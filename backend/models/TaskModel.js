@@ -26,6 +26,11 @@ class TaskModel {
     return rows[0];
   }
 
+  // Helper to convert empty strings to null (PostgreSQL compatibility)
+  static toNull(value) {
+    return value === "" || value === undefined ? null : value;
+  }
+
   // Create new task
   static async create(taskData) {
     const {
@@ -57,11 +62,11 @@ class TaskModel {
         description,
         status,
         priority,
-        due_date,
-        assigned_to,
+        TaskModel.toNull(due_date), // Ensure null not empty string
+        TaskModel.toNull(assigned_to), // Ensure null not empty string
         nextPosition,
-        attachment_url,
-        attachment_name,
+        TaskModel.toNull(attachment_url),
+        TaskModel.toNull(attachment_name),
       ]
     );
 
@@ -94,11 +99,11 @@ class TaskModel {
         description,
         status,
         priority,
-        due_date,
-        assigned_to,
+        TaskModel.toNull(due_date), // Ensure null not empty string
+        TaskModel.toNull(assigned_to), // Ensure null not empty string
         position,
-        attachment_url,
-        attachment_name,
+        TaskModel.toNull(attachment_url),
+        TaskModel.toNull(attachment_name),
         taskId,
       ]
     );

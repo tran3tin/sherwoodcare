@@ -21,29 +21,39 @@ export const taskService = {
   create: async (taskData, file = null) => {
     const formData = new FormData();
     Object.keys(taskData).forEach((key) => {
-      if (
-        taskData[key] !== null &&
-        taskData[key] !== undefined &&
-        taskData[key] !== ""
-      ) {
-        formData.append(key, taskData[key]);
+      const value = taskData[key];
+      // Only append non-empty values (skip null, undefined, empty string)
+      // This prevents PostgreSQL DATE type error with empty strings
+      if (value !== null && value !== undefined && value !== "") {
+        formData.append(key, value);
       }
     });
     if (file) {
       formData.append("attachment", file);
     }
-    const response = await axios.post(`${API_URL}/tasks`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    return response.data;
+
+    try {
+      const response = await axios.post(`${API_URL}/tasks`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return response.data;
+    } catch (error) {
+      console.error(
+        "Task create error:",
+        error.response?.data || error.message
+      );
+      throw error;
+    }
   },
 
   // Update task (with file upload)
   update: async (taskId, taskData, file = null, removeAttachment = false) => {
     const formData = new FormData();
     Object.keys(taskData).forEach((key) => {
-      if (taskData[key] !== null && taskData[key] !== undefined) {
-        formData.append(key, taskData[key]);
+      const value = taskData[key];
+      // Append all values except null/undefined (allow empty string for clearing fields)
+      if (value !== null && value !== undefined) {
+        formData.append(key, value);
       }
     });
     if (file) {
@@ -52,10 +62,19 @@ export const taskService = {
     if (removeAttachment) {
       formData.append("remove_attachment", "true");
     }
-    const response = await axios.put(`${API_URL}/tasks/${taskId}`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    return response.data;
+
+    try {
+      const response = await axios.put(`${API_URL}/tasks/${taskId}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return response.data;
+    } catch (error) {
+      console.error(
+        "Task update error:",
+        error.response?.data || error.message
+      );
+      throw error;
+    }
   },
 
   // Update task position (drag & drop)
