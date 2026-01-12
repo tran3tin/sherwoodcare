@@ -51,7 +51,7 @@ class TaskModel {
       `INSERT INTO tasks 
        (title, description, status, priority, due_date, assigned_to, position, attachment_url, attachment_name) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING task_id`,
+       RETURNING *`,
       [
         title,
         description,
@@ -65,8 +65,7 @@ class TaskModel {
       ]
     );
 
-    const insertId = result[0].task_id;
-    return this.getById(insertId);
+    return result[0];
   }
 
   // Update task
