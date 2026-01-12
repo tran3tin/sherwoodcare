@@ -208,19 +208,31 @@ const updateTask = async (req, res) => {
       attachment_name,
     };
 
+    console.log("Updating task with data:", JSON.stringify(taskData, null, 2));
+
     const updated = await TaskModel.update(taskId, taskData);
 
     if (!updated) {
+      console.error("TaskModel.update returned false for taskId:", taskId);
       return res
         .status(400)
-        .json({ success: false, error: "Failed to update task" });
+        .json({
+          success: false,
+          error: "Failed to update task - no rows affected",
+        });
     }
 
     const updatedTask = await TaskModel.getById(taskId);
     res.json({ success: true, data: updatedTask });
   } catch (error) {
     console.error("Error updating task:", error);
-    res.status(500).json({ success: false, error: "Failed to update task" });
+    console.error("Error stack:", error.stack);
+    res.status(500).json({
+      success: false,
+      error: "Failed to update task",
+      details: error.message,
+      hint: error.hint || null,
+    });
   }
 };
 

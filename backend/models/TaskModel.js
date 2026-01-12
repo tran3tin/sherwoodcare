@@ -87,28 +87,33 @@ class TaskModel {
       attachment_name,
     } = taskData;
 
-    const { rowCount } = await db.query(
-      `UPDATE tasks 
-       SET title = $1, description = $2, status = $3, priority = $4, 
-           due_date = $5, assigned_to = $6, position = $7,
-           attachment_url = $8, attachment_name = $9,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE task_id = $10`,
-      [
-        title,
-        description,
-        status,
-        priority,
-        TaskModel.toNull(due_date), // Ensure null not empty string
-        TaskModel.toNull(assigned_to), // Ensure null not empty string
-        position,
-        TaskModel.toNull(attachment_url),
-        TaskModel.toNull(attachment_name),
-        taskId,
-      ]
-    );
+    try {
+      const { rowCount } = await db.query(
+        `UPDATE tasks 
+         SET title = $1, description = $2, status = $3, priority = $4, 
+             due_date = $5, assigned_to = $6, position = $7,
+             attachment_url = $8, attachment_name = $9,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE task_id = $10`,
+        [
+          title,
+          description,
+          status,
+          priority,
+          TaskModel.toNull(due_date), // Ensure null not empty string
+          TaskModel.toNull(assigned_to), // Ensure null not empty string
+          position,
+          TaskModel.toNull(attachment_url),
+          TaskModel.toNull(attachment_name),
+          taskId,
+        ]
+      );
 
-    return rowCount > 0;
+      return rowCount > 0;
+    } catch (error) {
+      console.error("TaskModel.update error:", error.message);
+      throw error; // Re-throw to be caught by controller
+    }
   }
 
   // Update task status and position (for drag & drop)

@@ -142,7 +142,7 @@ const pool = {
 
 async function query(sql, params) {
   const res = await pool.query(sql, params);
-  return { rows: res.rows };
+  return { rows: res.rows, rowCount: res.rowCount };
 }
 
 module.exports = { client: "pg", query, pool, getPool: () => poolPromise };
