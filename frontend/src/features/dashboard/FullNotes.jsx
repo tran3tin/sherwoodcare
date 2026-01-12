@@ -223,16 +223,17 @@ export default function FullNotes() {
       await service.toggleComplete(note.note_id);
       loadNotes();
     } catch (error) {
-      console.error("Error toggling note:", error);
       const status = error?.response?.status;
 
-      // If note not found, reload to sync with server
+      // If note not found, reload to sync with server (don't log as error - this is expected when data is stale)
       if (status === 404) {
         toast.warning("Note not found. Refreshing list...");
         loadNotes();
         return;
       }
 
+      // Log only unexpected errors
+      console.error("Error toggling note:", error);
       toast.error("Failed to update note");
     }
   };
@@ -243,7 +244,6 @@ export default function FullNotes() {
       await service.togglePin(note.note_id);
       loadNotes();
     } catch (error) {
-      console.error("Error pinning note:", error);
       const status = error?.response?.status;
       const apiMessage = error?.response?.data?.error;
 
@@ -256,13 +256,15 @@ export default function FullNotes() {
         return;
       }
 
-      // If note not found, reload to sync with server
+      // If note not found, reload to sync with server (don't log as error - this is expected when data is stale)
       if (status === 404) {
         toast.warning("Note not found. Refreshing list...");
         loadNotes();
         return;
       }
 
+      // Log only unexpected errors
+      console.error("Error pinning note:", error);
       toast.error(apiMessage || "Failed to pin note");
     }
   };
@@ -276,16 +278,17 @@ export default function FullNotes() {
       toast.success("Note deleted");
       loadNotes();
     } catch (error) {
-      console.error("Error deleting note:", error);
       const status = error?.response?.status;
 
-      // If note not found, reload to sync with server
+      // If note not found, reload to sync with server (don't log as error - this is expected when data is stale)
       if (status === 404) {
         toast.warning("Note already deleted. Refreshing list...");
         loadNotes();
         return;
       }
 
+      // Log only unexpected errors
+      console.error("Error deleting note:", error);
       toast.error("Failed to delete note");
     }
   };
