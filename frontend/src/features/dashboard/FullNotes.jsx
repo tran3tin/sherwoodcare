@@ -224,6 +224,15 @@ export default function FullNotes() {
       loadNotes();
     } catch (error) {
       console.error("Error toggling note:", error);
+      const status = error?.response?.status;
+
+      // If note not found, reload to sync with server
+      if (status === 404) {
+        toast.warning("Note not found. Refreshing list...");
+        loadNotes();
+        return;
+      }
+
       toast.error("Failed to update note");
     }
   };
@@ -247,6 +256,13 @@ export default function FullNotes() {
         return;
       }
 
+      // If note not found, reload to sync with server
+      if (status === 404) {
+        toast.warning("Note not found. Refreshing list...");
+        loadNotes();
+        return;
+      }
+
       toast.error(apiMessage || "Failed to pin note");
     }
   };
@@ -261,6 +277,15 @@ export default function FullNotes() {
       loadNotes();
     } catch (error) {
       console.error("Error deleting note:", error);
+      const status = error?.response?.status;
+
+      // If note not found, reload to sync with server
+      if (status === 404) {
+        toast.warning("Note already deleted. Refreshing list...");
+        loadNotes();
+        return;
+      }
+
       toast.error("Failed to delete note");
     }
   };
