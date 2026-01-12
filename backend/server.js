@@ -118,6 +118,7 @@ app.use("/api/customer-invoices", customerInvoiceRoutes);
 // AI routes (OpenAI)
 const aiRoutes = require("./routes/ai");
 app.use("/api/ai", aiRoutes);
+const generalNoteRoutes = require("./routes/generalNotes");
 
 // Social sheet routes
 const socialSheetRoutes = require("./routes/socialSheets");
@@ -134,6 +135,7 @@ app.use("/api/customer-notes", customerNoteRoutes);
 // Employee notes routes
 const employeeNoteRoutes = require("./routes/employeeNotes");
 app.use("/api/employee-notes", employeeNoteRoutes);
+app.use("/api/general-notes", generalNoteRoutes);
 
 // Full notes (combined customer + employee)
 const fullNotesRoutes = require("./routes/fullNotes");

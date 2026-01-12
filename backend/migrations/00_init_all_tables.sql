@@ -137,6 +137,29 @@ CREATE INDEX IF NOT EXISTS idx_employee_notes_priority ON employee_notes(priorit
 CREATE INDEX IF NOT EXISTS idx_employee_notes_due_date ON employee_notes(due_date);
 
 -- ============================================
+-- 6b. GENERAL NOTES TABLE (OTHER)
+-- ============================================
+CREATE TABLE IF NOT EXISTS general_notes (
+  note_id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL DEFAULT '',
+  content TEXT,
+  priority VARCHAR(10) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high')),
+  due_date DATE NULL,
+  is_completed BOOLEAN DEFAULT FALSE,
+  is_pinned BOOLEAN DEFAULT FALSE,
+  pinned_at TIMESTAMP NULL,
+  attachment_url VARCHAR(500) NULL,
+  attachment_name VARCHAR(255) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_general_notes_is_completed ON general_notes(is_completed);
+CREATE INDEX IF NOT EXISTS idx_general_notes_is_pinned ON general_notes(is_pinned);
+CREATE INDEX IF NOT EXISTS idx_general_notes_pinned_at ON general_notes(pinned_at);
+CREATE INDEX IF NOT EXISTS idx_general_notes_priority ON general_notes(priority);
+CREATE INDEX IF NOT EXISTS idx_general_notes_due_date ON general_notes(due_date);
+
+-- ============================================
 -- 7. TIMESHEET TABLES
 -- ============================================
 CREATE TABLE IF NOT EXISTS timesheet_periods (
@@ -259,11 +282,16 @@ CREATE INDEX IF NOT EXISTS idx_payroll_nexgenus_entries_payroll_id ON payroll_ne
 -- 11. TASKS TABLE (Kanban Board)
 -- ============================================
 CREATE TABLE IF NOT EXISTS tasks (
-  id SERIAL PRIMARY KEY,
+  task_id SERIAL PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
   description TEXT,
-  status VARCHAR(50) NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'in-progress', 'done')),
+  status VARCHAR(50) NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'inprogress', 'review', 'done')),
+  priority VARCHAR(20) NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  due_date DATE NULL,
+  assigned_to VARCHAR(255) NULL,
   position INTEGER NOT NULL DEFAULT 0,
+  attachment_url VARCHAR(500) NULL,
+  attachment_name VARCHAR(255) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

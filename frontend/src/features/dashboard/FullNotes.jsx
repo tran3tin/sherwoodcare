@@ -10,6 +10,7 @@ import "./FullNotes.css";
 import { fullNoteService } from "../../services/fullNoteService";
 import { customerNoteService } from "../../services/customerNoteService";
 import { employeeNoteService } from "../../services/employeeNoteService";
+import { generalNoteService } from "../../services/generalNoteService";
 import { customerService } from "../../services/customerService";
 import { employeeService } from "../../services/employeeService";
 import { API_BASE_URL } from "../../config/api";
@@ -21,7 +22,7 @@ export default function FullNotes() {
   const [loading, setLoading] = useState(true);
 
   const [statusFilter, setStatusFilter] = useState("all"); // all, pending, completed
-  const [typeFilter, setTypeFilter] = useState("all"); // all, customer, employee
+  const [typeFilter, setTypeFilter] = useState("all"); // all, customer, employee, other
 
   const [showModal, setShowModal] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
@@ -154,7 +155,9 @@ export default function FullNotes() {
   };
 
   const getNoteService = (noteType) => {
-    return noteType === "employee" ? employeeNoteService : customerNoteService;
+    if (noteType === "employee") return employeeNoteService;
+    if (noteType === "other") return generalNoteService;
+    return customerNoteService;
   };
 
   const handleSubmit = async (e) => {
@@ -165,7 +168,7 @@ export default function FullNotes() {
       return;
     }
 
-    if (!editingNote && !formData.entity_id) {
+    if (!editingNote && formData.note_type !== "other" && !formData.entity_id) {
       toast.warning("Please select a customer/employee");
       return;
     }
@@ -194,11 +197,13 @@ export default function FullNotes() {
             { ...payload, customer_id: formData.entity_id },
             selectedFile
           );
-        } else {
+        } else if (formData.note_type === "employee") {
           await service.create(
             { ...payload, employee_id: formData.entity_id },
             selectedFile
           );
+        } else {
+          await service.create(payload, selectedFile);
         }
 
         toast.success("Note created successfully");
@@ -273,6 +278,9 @@ export default function FullNotes() {
   };
 
   const entityOptions = useMemo(() => {
+    if (formData.note_type === "other") {
+      return [];
+    }
     if (formData.note_type === "employee") {
       return employees.map((e) => ({
         id: e.employee_id,
@@ -377,6 +385,12 @@ export default function FullNotes() {
             >
               Employee
             </button>
+            <button
+              className={`filter-btn ${typeFilter === "other" ? "active" : ""}`}
+              onClick={() => setTypeFilter("other")}
+            >
+              Other
+            </button>
           </div>
         </div>
 
@@ -424,22 +438,35 @@ export default function FullNotes() {
 
                   <div className="note-source">
                     <span className={`source-badge ${note.note_type}`}>
-                      {note.note_type === "customer" ? "Customer" : "Employee"}
+                      {note.note_type === "customer"
+                        ? "Customer"
+                        : note.note_type === "employee"
+                        ? "Employee"
+                        : "Other"}
                     </span>
-                    <button
-                      type="button"
-                      className="source-link"
-                      onClick={() =>
-                        navigate(
-                          note.note_type === "customer"
-                            ? `/customer/${note.entity_id}/notes`
-                            : `/employee/${note.entity_id}/notes`
-                        )
-                      }
-                      title="Open notes"
-                    >
-                      {note.entity_name || `#${note.entity_id}`}
-                    </button>
+                    {note.note_type === "other" ? (
+                      <span
+                        className="source-link"
+                        style={{ cursor: "default" }}
+                      >
+                        General
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="source-link"
+                        onClick={() =>
+                          navigate(
+                            note.note_type === "customer"
+                              ? `/customer/${note.entity_id}/notes`
+                              : `/employee/${note.entity_id}/notes`
+                          )
+                        }
+                        title="Open notes"
+                      >
+                        {note.entity_name || `#${note.entity_id}`}
+                      </button>
+                    )}
                   </div>
 
                   {note.content && (
@@ -543,32 +570,35 @@ export default function FullNotes() {
                   >
                     <option value="customer">Customer</option>
                     <option value="employee">Employee</option>
+                    <option value="other">Other</option>
                   </select>
                 </div>
 
-                <div className="form-group">
-                  <label>
-                    {formData.note_type === "customer"
-                      ? "Customer"
-                      : "Employee"}{" "}
-                    *
-                  </label>
-                  <select
-                    value={formData.entity_id}
-                    onChange={(e) =>
-                      setFormData({ ...formData, entity_id: e.target.value })
-                    }
-                    required={!editingNote}
-                    disabled={!!editingNote}
-                  >
-                    <option value="">Select...</option>
-                    {entityOptions.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {formData.note_type !== "other" && (
+                  <div className="form-group">
+                    <label>
+                      {formData.note_type === "customer"
+                        ? "Customer"
+                        : "Employee"}{" "}
+                      *
+                    </label>
+                    <select
+                      value={formData.entity_id}
+                      onChange={(e) =>
+                        setFormData({ ...formData, entity_id: e.target.value })
+                      }
+                      required={!editingNote}
+                      disabled={!!editingNote}
+                    >
+                      <option value="">Select...</option>
+                      {entityOptions.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div className="form-group">

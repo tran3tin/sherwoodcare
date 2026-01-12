@@ -40,6 +40,12 @@
   color: #a15c00;
 }
 
+.source-badge.other {
+  background: #e6fffa;
+  border-color: #b2f5ea;
+  color: #0c5460;
+}
+
 .source-link {
   border: none;
   background: transparent;

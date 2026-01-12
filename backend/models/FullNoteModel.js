@@ -20,6 +20,9 @@ class FullNoteModel {
       { table: "customer_notes", column: "pinned_at" },
       { table: "employee_notes", column: "is_pinned" },
       { table: "employee_notes", column: "pinned_at" },
+      { table: "general_notes", column: "note_id" },
+      { table: "general_notes", column: "is_pinned" },
+      { table: "general_notes", column: "pinned_at" },
       { table: "customers", column: "full_name" },
       { table: "employees", column: "preferred_name" },
       { table: "employees", column: "first_name" },
@@ -52,6 +55,11 @@ class FullNoteModel {
         isPinned: has("employee_notes", "is_pinned"),
         pinnedAt: has("employee_notes", "pinned_at"),
       },
+      generalNotes: {
+        exists: has("general_notes", "note_id"),
+        isPinned: has("general_notes", "is_pinned"),
+        pinnedAt: has("general_notes", "pinned_at"),
+      },
       customers: {
         fullName: has("customers", "full_name"),
       },
@@ -70,6 +78,10 @@ class FullNoteModel {
   static async getAll({ status = "all", type = "all" } = {}) {
     const caps = await FullNoteModel._getCapabilities();
 
+    if (type === "other" && !caps.generalNotes.exists) {
+      return [];
+    }
+
     const filters = [];
     const params = [];
 
@@ -83,6 +95,8 @@ class FullNoteModel {
       filters.push("n.note_type = 'customer'");
     } else if (type === "employee") {
       filters.push("n.note_type = 'employee'");
+    } else if (type === "other") {
+      filters.push("n.note_type = 'other'");
     }
 
     const whereClause = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
@@ -109,8 +123,15 @@ class FullNoteModel {
       ? "COALESCE(e.preferred_name, CONCAT(e.first_name, ' ', e.last_name), '')"
       : "COALESCE(CONCAT(e.first_name, ' ', e.last_name), '')";
 
-    const sql = `
-      WITH n AS (
+    const gnPinnedSelect = caps.generalNotes.isPinned
+      ? "gn.is_pinned"
+      : "false::boolean";
+    const gnPinnedAtSelect = caps.generalNotes.pinnedAt
+      ? "gn.pinned_at"
+      : "NULL::timestamp";
+
+    const unionParts = [
+      `
         SELECT
           'customer'::text AS note_type,
           cn.note_id,
@@ -129,9 +150,8 @@ class FullNoteModel {
           cn.updated_at
         FROM customer_notes cn
         LEFT JOIN customers c ON c.customer_id = cn.customer_id
-
-        UNION ALL
-
+      `,
+      `
         SELECT
           'employee'::text AS note_type,
           en.note_id,
@@ -150,6 +170,34 @@ class FullNoteModel {
           en.updated_at
         FROM employee_notes en
         LEFT JOIN employees e ON e.employee_id = en.employee_id
+      `,
+    ];
+
+    if (caps.generalNotes.exists) {
+      unionParts.push(`
+        SELECT
+          'other'::text AS note_type,
+          gn.note_id,
+          NULL::int AS entity_id,
+          ''::text AS entity_name,
+          gn.title,
+          gn.content,
+          gn.priority,
+          gn.due_date,
+          gn.is_completed,
+          ${gnPinnedSelect} AS is_pinned,
+          ${gnPinnedAtSelect} AS pinned_at,
+          gn.attachment_url,
+          gn.attachment_name,
+          gn.created_at,
+          gn.updated_at
+        FROM general_notes gn
+      `);
+    }
+
+    const sql = `
+      WITH n AS (
+        ${unionParts.join("\n\n        UNION ALL\n\n")}
       )
       SELECT *
       FROM n
