@@ -40,6 +40,10 @@ async function runAutoMigrations() {
   );
 
   await runFile("04_create_general_notes.sql", "04_create_general_notes.sql");
+  await runFile(
+    "05_alter_tasks_add_pinning.sql",
+    "05_alter_tasks_add_pinning.sql"
+  );
 
   console.log("✅ Database migrations finished.\n");
 }

@@ -87,4 +87,10 @@ export const taskService = {
     const response = await axios.get(`${API_URL}/tasks/counts`);
     return response.data;
   },
+
+  // Toggle task pin
+  togglePin: async (taskId) => {
+    const response = await axios.patch(`${API_URL}/tasks/${taskId}/pin`);
+    return response.data;
+  },
 };

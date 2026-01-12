@@ -5,6 +5,7 @@ import Layout from "../../components/Layout";
 import { taskService } from "../../services/taskService";
 import { API_BASE_URL } from "../../config/api";
 import "./KanbanBoard.css";
+import "./TaskPin.css";
 
 const COLUMNS = {
   todo: { id: "todo", title: "To Do", color: "#6c757d" },
@@ -34,6 +35,7 @@ export default function KanbanBoard() {
   const [attachmentPreview, setAttachmentPreview] = useState(null);
   const [removeAttachment, setRemoveAttachment] = useState(false);
   const fileInputRef = useRef(null);
+  const [pinAvailable, setPinAvailable] = useState(true);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -276,6 +278,28 @@ export default function KanbanBoard() {
     }
   };
 
+  const handleTogglePin = async (task) => {
+    try {
+      await taskService.togglePin(task.task_id);
+      loadTasks();
+    } catch (error) {
+      console.error("Error pinning task:", error);
+      const status = error?.response?.status;
+      const apiMessage = error?.response?.data?.error;
+
+      if (status === 409) {
+        setPinAvailable(false);
+        toast.warning(
+          apiMessage ||
+            "Pinning is not available until the database is migrated."
+        );
+        return;
+      }
+
+      toast.error(apiMessage || "Failed to pin task");
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -383,6 +407,22 @@ export default function KanbanBoard() {
                                 </span>
                                 <div className="task-actions">
                                   <button
+                                    className={`btn-icon ${
+                                      task.is_pinned ? "pinned" : ""
+                                    }`}
+                                    onClick={() => handleTogglePin(task)}
+                                    disabled={!pinAvailable}
+                                    title={
+                                      !pinAvailable
+                                        ? "Pinning requires database migration"
+                                        : task.is_pinned
+                                        ? "Unpin"
+                                        : "Pin"
+                                    }
+                                  >
+                                    <i className="fas fa-thumbtack"></i>
+                                  </button>
+                                  <button
                                     className="btn-icon"
                                     onClick={() => handleOpenModal(task)}
                                     title="Edit"
@@ -399,7 +439,17 @@ export default function KanbanBoard() {
                                 </div>
                               </div>
 
-                              <h4 className="task-title">{task.title}</h4>
+                              <h4 className="task-title">
+                                {task.title}
+                                {task.is_pinned && (
+                                  <span
+                                    className="task-pin-badge"
+                                    title="Pinned"
+                                  >
+                                    <i className="fas fa-thumbtack"></i>
+                                  </span>
+                                )}
+                              </h4>
 
                               {task.description && (
                                 <p className="task-description">

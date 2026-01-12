@@ -28,6 +28,9 @@ router.put(
 // Update task position (drag & drop)
 router.patch("/:taskId/position", taskController.updateTaskPosition);
 
+// Toggle task pin
+router.patch("/:taskId/pin", taskController.toggleTaskPin);
+
 // Reorder tasks in a column
 router.post("/reorder", taskController.reorderTasks);
 

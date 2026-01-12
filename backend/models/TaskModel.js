@@ -65,7 +65,8 @@ class TaskModel {
       ]
     );
 
-    return { task_id: result[0].task_id, ...taskData, position: nextPosition };
+    const insertId = result[0].task_id;
+    return this.getById(insertId);
   }
 
   // Update task
@@ -143,6 +144,36 @@ class TaskModel {
       `SELECT status, COUNT(*) as count FROM tasks GROUP BY status`
     );
     return rows;
+  }
+
+  // Toggle task pin
+  static async togglePin(taskId) {
+    // Check if pin columns exist
+    const { rows: schemaCheck } = await db.query(
+      `SELECT column_name FROM information_schema.columns 
+       WHERE table_schema = 'public' AND table_name = 'tasks' 
+       AND column_name IN ('is_pinned', 'pinned_at')`
+    );
+
+    if (schemaCheck.length < 2) {
+      const err = new Error(
+        "Pinning is not available until the database is migrated (missing is_pinned/pinned_at columns)."
+      );
+      err.code = "PIN_COLUMNS_MISSING";
+      throw err;
+    }
+
+    const { rows } = await db.query(
+      `UPDATE tasks 
+       SET is_pinned = NOT is_pinned, 
+           pinned_at = CASE WHEN is_pinned THEN NULL ELSE CURRENT_TIMESTAMP END,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE task_id = $1
+       RETURNING is_pinned`,
+      [taskId]
+    );
+
+    return rows.length > 0;
   }
 }
 

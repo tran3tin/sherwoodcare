@@ -1,0 +1,20 @@
+/* Task pin styling */
+.task-card .btn-icon.pinned {
+  background: #5f3dc4;
+  color: #fff;
+}
+
+.task-card .btn-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.task-pin-badge {
+  margin-left: 8px;
+  color: #5f3dc4;
+  font-size: 12px;
+}
+
+.task-card.pinned {
+  border-left: 3px solid #5f3dc4;
+}

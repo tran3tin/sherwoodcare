@@ -290,6 +290,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   due_date DATE NULL,
   assigned_to VARCHAR(255) NULL,
   position INTEGER NOT NULL DEFAULT 0,
+  is_pinned BOOLEAN DEFAULT FALSE,
+  pinned_at TIMESTAMP NULL,
   attachment_url VARCHAR(500) NULL,
   attachment_name VARCHAR(255) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -297,3 +299,5 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_position ON tasks(position);
+CREATE INDEX IF NOT EXISTS idx_tasks_is_pinned ON tasks(is_pinned);
+CREATE INDEX IF NOT EXISTS idx_tasks_pinned_at ON tasks(pinned_at);

@@ -287,6 +287,32 @@ const getTaskCounts = async (req, res) => {
   }
 };
 
+// Toggle task pin
+const toggleTaskPin = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+
+    const toggled = await TaskModel.togglePin(taskId);
+
+    if (!toggled) {
+      return res.status(404).json({ success: false, error: "Task not found" });
+    }
+
+    const updatedTask = await TaskModel.getById(taskId);
+    res.json({ success: true, data: updatedTask });
+  } catch (error) {
+    if (error && error.code === "PIN_COLUMNS_MISSING") {
+      return res.status(409).json({
+        success: false,
+        error:
+          "Pinning is not available until the database is migrated (missing is_pinned/pinned_at).",
+      });
+    }
+    console.error("Error pinning task:", error);
+    res.status(500).json({ success: false, error: "Failed to pin task" });
+  }
+};
+
 module.exports = {
   getAllTasks,
   getTaskById,
@@ -296,5 +322,6 @@ module.exports = {
   reorderTasks,
   deleteTask,
   getTaskCounts,
+  toggleTaskPin,
   upload,
 };
