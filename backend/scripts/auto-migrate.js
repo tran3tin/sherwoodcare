@@ -63,6 +63,10 @@ async function runAutoMigrations() {
     "05_alter_tasks_add_pinning.sql",
     "05_alter_tasks_add_pinning.sql"
   );
+  await runFile(
+    "06_create_task_attachments.sql",
+    "06_create_task_attachments.sql"
+  );
 
   console.log("✅ Database migrations finished.\n");
 }

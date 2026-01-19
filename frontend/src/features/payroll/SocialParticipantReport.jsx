@@ -107,7 +107,7 @@ export default function SocialParticipantReport() {
     if (deleting) return;
 
     const confirmed = window.confirm(
-      "Delete this social sheet? This action cannot be undone."
+      "Delete this social sheet? This action cannot be undone.",
     );
     if (!confirmed) return;
 
@@ -215,7 +215,7 @@ export default function SocialParticipantReport() {
         .replace(/\//g, "-")}`;
       const name = window.prompt(
         "Enter name for this Social Sheet:",
-        defaultName
+        defaultName,
       );
 
       if (!name) return; // User cancelled
@@ -268,7 +268,7 @@ export default function SocialParticipantReport() {
             {
               position: "top-right",
               autoClose: 4000,
-            }
+            },
           );
           setRawRows([]);
           return;
@@ -283,7 +283,7 @@ export default function SocialParticipantReport() {
             {
               position: "top-right",
               autoClose: 3500,
-            }
+            },
           );
           setRawRows([]);
           return;

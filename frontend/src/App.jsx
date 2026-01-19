@@ -36,7 +36,10 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/dashboard" element={<Navigate to="/dashboard/tasks" replace />} />
+      <Route
+        path="/dashboard"
+        element={<Navigate to="/dashboard/tasks" replace />}
+      />
       <Route path="/dashboard/tasks" element={<KanbanBoard />} />
       <Route path="/dashboard/notes" element={<FullNotes />} />
       <Route path="/payroll/timesheets" element={<TimeSheetList />} />

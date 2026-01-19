@@ -20,6 +20,60 @@ const createEmptyRow = (id) => ({
   details_of_activity: "",
 });
 
+
+// Parse Excel clipboard data handling quotes and newlines
+const parseClipboardData = (str) => {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuote = false;
+
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
+    const next = str[i + 1];
+
+    if (inQuote) {
+      if (c === '"') {
+        if (next === '"') {
+          cell += '"';
+          i++;
+        } else {
+          inQuote = false;
+        }
+      } else {
+        cell += c;
+      }
+    } else {
+      if (c === '"') {
+        inQuote = true;
+      } else if (c === '\t') {
+        row.push(cell);
+        cell = "";
+      } else if (c === '\n' || (c === '\r' && next === '\n')) {
+        row.push(cell);
+        rows.push(row);
+        row = [];
+        cell = "";
+        if (c === '\r') i++;
+      } else if (c === '\r') {
+        row.push(cell);
+        rows.push(row);
+        row = [];
+        cell = "";
+      } else {
+        cell += c;
+      }
+    }
+  }
+
+  if (cell.length > 0 || row.length > 0) {
+    row.push(cell);
+    rows.push(row);
+  }
+
+  return rows;
+};
+
 export default function EditSocialSheet() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -66,9 +120,16 @@ export default function EditSocialSheet() {
     e.preventDefault();
 
     const clipboardText = e.clipboardData.getData("text");
-    const pastedRows = clipboardText
-      .split(/\r\n|\n|\r/)
-      .filter((r) => r.length > 0);
+    let pastedRows = parseClipboardData(clipboardText);
+
+    // Remove trailing empty row if exists (common from Excel copy)
+    if (
+      pastedRows.length > 0 &&
+      pastedRows[pastedRows.length - 1].length === 1 &&
+      pastedRows[pastedRows.length - 1][0] === ""
+    ) {
+      pastedRows.pop();
+    }
 
     const columns = [
       "date",
@@ -93,8 +154,7 @@ export default function EditSocialSheet() {
         const targetRowIndex = rowIndex + rOffset;
         if (targetRowIndex >= next.length) return;
 
-        const cols = rowData.split("\t");
-        cols.forEach((cellData, cOffset) => {
+        rowData.forEach((cellData, cOffset) => {
           const targetAbsCol = startAbsCol + cOffset;
           if (targetAbsCol >= columns.length) return;
 
@@ -305,9 +365,8 @@ export default function EditSocialSheet() {
                   </td>
 
                   <td>
-                    <input
+                    <textarea
                       id={`cell-${rowIndex}-date`}
-                      type="text"
                       value={row.date || ""}
                       onChange={(e) =>
                         handleInputChange(rowIndex, "date", e.target.value)
@@ -318,9 +377,8 @@ export default function EditSocialSheet() {
                   </td>
 
                   <td>
-                    <input
+                    <textarea
                       id={`cell-${rowIndex}-worker_name`}
-                      type="text"
                       value={row.worker_name || ""}
                       onChange={(e) =>
                         handleInputChange(
@@ -339,9 +397,8 @@ export default function EditSocialSheet() {
                   </td>
 
                   <td>
-                    <input
+                    <textarea
                       id={`cell-${rowIndex}-number_of_participants`}
-                      type="text"
                       value={row.number_of_participants || ""}
                       onChange={(e) =>
                         handleInputChange(
@@ -360,9 +417,8 @@ export default function EditSocialSheet() {
                   </td>
 
                   <td>
-                    <input
+                    <textarea
                       id={`cell-${rowIndex}-participant_1`}
-                      type="text"
                       value={row.participant_1 || ""}
                       onChange={(e) =>
                         handleInputChange(
@@ -381,9 +437,8 @@ export default function EditSocialSheet() {
                   </td>
 
                   <td>
-                    <input
+                    <textarea
                       id={`cell-${rowIndex}-shift_starts`}
-                      type="text"
                       value={row.shift_starts || ""}
                       onChange={(e) =>
                         handleInputChange(
@@ -402,9 +457,8 @@ export default function EditSocialSheet() {
                   </td>
 
                   <td>
-                    <input
+                    <textarea
                       id={`cell-${rowIndex}-shift_ends`}
-                      type="text"
                       value={row.shift_ends || ""}
                       onChange={(e) =>
                         handleInputChange(
@@ -421,9 +475,8 @@ export default function EditSocialSheet() {
                   </td>
 
                   <td>
-                    <input
+                    <textarea
                       id={`cell-${rowIndex}-actual_hours`}
-                      type="text"
                       value={row.actual_hours || ""}
                       onChange={(e) =>
                         handleInputChange(
@@ -442,9 +495,8 @@ export default function EditSocialSheet() {
                   </td>
 
                   <td>
-                    <input
+                    <textarea
                       id={`cell-${rowIndex}-use_own_car`}
-                      type="text"
                       value={row.use_own_car || ""}
                       onChange={(e) =>
                         handleInputChange(
@@ -463,9 +515,8 @@ export default function EditSocialSheet() {
                   </td>
 
                   <td>
-                    <input
+                    <textarea
                       id={`cell-${rowIndex}-total_mileage`}
-                      type="text"
                       value={row.total_mileage || ""}
                       onChange={(e) =>
                         handleInputChange(
@@ -484,9 +535,8 @@ export default function EditSocialSheet() {
                   </td>
 
                   <td>
-                    <input
+                    <textarea
                       id={`cell-${rowIndex}-details_of_activity`}
-                      type="text"
                       value={row.details_of_activity || ""}
                       onChange={(e) =>
                         handleInputChange(

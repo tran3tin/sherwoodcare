@@ -32,10 +32,10 @@ export const taskService = {
     if (files) {
       if (files instanceof FileList || Array.isArray(files)) {
         Array.from(files).forEach((file) => {
-           formData.append("attachments", file);
+          formData.append("attachments", file);
         });
       } else {
-         formData.append("attachments", files);
+        formData.append("attachments", files);
       }
     }
 
@@ -47,7 +47,7 @@ export const taskService = {
     } catch (error) {
       console.error(
         "Task create error:",
-        error.response?.data || error.message
+        error.response?.data || error.message,
       );
       throw error;
     }
@@ -63,19 +63,22 @@ export const taskService = {
         formData.append(key, value);
       }
     });
-    
+
     if (files) {
       if (files instanceof FileList || Array.isArray(files)) {
         Array.from(files).forEach((file) => {
-           formData.append("attachments", file);
+          formData.append("attachments", file);
         });
       } else {
-         formData.append("attachments", files);
+        formData.append("attachments", files);
       }
     }
-    
+
     if (removeAttachmentIds && removeAttachmentIds.length > 0) {
-      formData.append("remove_attachment_ids", JSON.stringify(removeAttachmentIds));
+      formData.append(
+        "remove_attachment_ids",
+        JSON.stringify(removeAttachmentIds),
+      );
     }
 
     try {
@@ -86,7 +89,7 @@ export const taskService = {
     } catch (error) {
       console.error(
         "Task update error:",
-        error.response?.data || error.message
+        error.response?.data || error.message,
       );
       throw error;
     }

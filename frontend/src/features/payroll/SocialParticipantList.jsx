@@ -39,7 +39,7 @@ const SocialParticipantList = () => {
       setError(
         err.response?.data?.error ||
           err.message ||
-          "Failed to load social sheets"
+          "Failed to load social sheets",
       );
     } finally {
       setLoading(false);
@@ -67,7 +67,7 @@ const SocialParticipantList = () => {
         {
           position: "top-right",
           autoClose: 5000,
-        }
+        },
       );
     }
   };
@@ -229,7 +229,7 @@ const SocialParticipantList = () => {
                           onClick={() =>
                             handleDelete(
                               s.sheet_id,
-                              s.name || `Social Sheet #${s.sheet_id}`
+                              s.name || `Social Sheet #${s.sheet_id}`,
                             )
                           }
                           title="Delete"

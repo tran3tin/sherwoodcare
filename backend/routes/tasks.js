@@ -15,14 +15,14 @@ router.get("/:taskId", taskController.getTaskById);
 router.post(
   "/",
   taskController.upload.array("attachments"),
-  taskController.createTask
+  taskController.createTask,
 );
 
 // Update task (with file upload)
 router.put(
   "/:taskId",
   taskController.upload.array("attachments"),
-  taskController.updateTask
+  taskController.updateTask,
 );
 
 // Update task position (drag & drop)

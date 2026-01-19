@@ -8,7 +8,7 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = path.join(
       __dirname,
-      "../public/uploads/task-attachments"
+      "../public/uploads/task-attachments",
     );
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
@@ -214,12 +214,10 @@ const updateTask = async (req, res) => {
 
     if (!updated) {
       console.error("TaskModel.update returned false for taskId:", taskId);
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "Failed to update task - no rows affected",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "Failed to update task - no rows affected",
+      });
     }
 
     const updatedTask = await TaskModel.getById(taskId);

@@ -106,7 +106,7 @@ export default function SocialEmployeeReport() {
     if (deleting) return;
 
     const confirmed = window.confirm(
-      "Delete this social sheet? This action cannot be undone."
+      "Delete this social sheet? This action cannot be undone.",
     );
     if (!confirmed) return;
 
@@ -215,7 +215,7 @@ export default function SocialEmployeeReport() {
         .replace(/\//g, "-")}`;
       const name = window.prompt(
         "Enter name for this Social Sheet:",
-        defaultName
+        defaultName,
       );
 
       if (!name) return; // User cancelled
@@ -226,7 +226,7 @@ export default function SocialEmployeeReport() {
         name,
         rows: rawRows,
       });
-      
+
       localStorage.removeItem(DRAFT_KEY);
 
       toast.success("Social sheet saved successfully.", {
@@ -268,7 +268,7 @@ export default function SocialEmployeeReport() {
             {
               position: "top-right",
               autoClose: 4000,
-            }
+            },
           );
           setRawRows([]);
           return;
@@ -283,7 +283,7 @@ export default function SocialEmployeeReport() {
             {
               position: "top-right",
               autoClose: 3500,
-            }
+            },
           );
           setRawRows([]);
           return;
