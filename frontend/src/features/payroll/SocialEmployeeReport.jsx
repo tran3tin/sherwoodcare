@@ -31,6 +31,71 @@ const splitName = (fullName) => {
   return { firstName, lastName };
 };
 
+const formatDateToDisplay = (dateStr) => {
+  if (!dateStr) return "";
+  // Check if already in dd/mm/yyyy
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) return dateStr;
+
+  // Try yyyy-mm-dd
+  const parts = dateStr.split("-");
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+};
+
+const getPayrollCategory = (level, dateStr, timeStr) => {
+  if (!level) return "";
+
+  // Parse Date
+  let dateObj = null;
+  const dStr = String(dateStr || "").trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dStr)) {
+    // yyyy-mm-dd
+    const [y, m, d] = dStr.split("-").map(Number);
+    dateObj = new Date(y, m - 1, d);
+  } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dStr)) {
+    // dd/mm/yyyy
+    const [d, m, y] = dStr.split("/").map(Number);
+    dateObj = new Date(y, m - 1, d);
+  }
+
+  if (!dateObj || isNaN(dateObj.getTime())) return level;
+
+  const day = dateObj.getDay(); // 0 = Sun, 6 = Sat
+
+  if (day === 0) return `${level} - Sun`;
+  if (day === 6) return `${level} - Sat`;
+
+  // Weekday logic
+  const normalizedTime = String(timeStr || "")
+    .trim()
+    .toLowerCase();
+  const match = normalizedTime.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+
+  // If time can't be parsed, default to level
+  if (!match) return level;
+
+  let hours = parseInt(match[1], 10);
+  const meridiem = match[3]?.toLowerCase();
+
+  // Convert to 24-hour format
+  if (meridiem === "pm" && hours !== 12) {
+    hours += 12;
+  } else if (meridiem === "am" && hours === 12) {
+    hours = 0;
+  }
+
+  // 12:00 to 18:00 -> Level - Afternoon
+  if (hours >= 12 && hours <= 18) {
+    return `${level} - Afternoon`;
+  }
+
+  // 6:00 to 11:59 (implicit else if morning) -> Level
+  return level;
+};
+
 const getSessionFromTime = (timeStr) => {
   if (!timeStr) return "";
 
@@ -163,7 +228,7 @@ export default function SocialEmployeeReport() {
       const { firstName: wFirst, lastName: wLast } = splitName(group.employee);
       group.activities.forEach((activity) => {
         const { firstName: pFirst, lastName: pLast } = splitName(
-          activity.participant
+          activity.participant,
         );
         exportData.push({
           "Worker's Last Name": wLast,
@@ -252,26 +317,33 @@ export default function SocialEmployeeReport() {
         emp = employees.find(
           (e) =>
             (e.first_name || "").toLowerCase() === wFirst.toLowerCase() &&
-            (e.last_name || "").toLowerCase() === wLast.toLowerCase()
+            (e.last_name || "").toLowerCase() === wLast.toLowerCase(),
         );
       }
 
-      const payrollCategory = emp?.social_level || "";
+      const socialLevel = emp?.social_level || "";
 
       group.activities.forEach((activity) => {
         const { firstName: pFirst, lastName: pLast } = splitName(
-          activity.participant
+          activity.participant,
         );
+
+        const category = getPayrollCategory(
+          socialLevel,
+          activity.date,
+          activity.shift_starts,
+        );
+        const displayDate = formatDateToDisplay(activity.date);
 
         const row = [
           wLast, // Employee Co./Last Name
           wFirst, // Employee First Name
-          payrollCategory, // Payroll Category
+          category, // Payroll Category
           activity.participant, // Job
           pLast, // Customer Co./Last Name
           pFirst, // Customer First Name
           activity.details_of_activity, // Notes
-          activity.date, // Date
+          displayDate, // Date
           activity.actual_hours, // Units
           "", // Employee Card ID
           "", // Employee Record ID
@@ -290,13 +362,12 @@ export default function SocialEmployeeReport() {
     link.href = url;
     link.setAttribute(
       "download",
-      `Social_Export_${new Date().toISOString().slice(0, 10)}.txt`
+      `Social_Export_${new Date().toISOString().slice(0, 10)}.txt`,
     );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
-
 
   const handleSave = async () => {
     if (saving || deleting) return;
@@ -574,9 +645,14 @@ export default function SocialEmployeeReport() {
                 <tr>
                   <th style={{ width: "120px" }}>Worker&apos;s Last Name</th>
                   <th style={{ width: "120px" }}>Worker&apos;s First Name</th>
+                  <th style={{ width: "120px" }}>Payroll Category</th>
                   <th style={{ width: "100px" }}>Date</th>
-                  <th style={{ width: "120px" }}>Participants&apos;s Last Name</th>
-                  <th style={{ width: "120px" }}>Participants&apos;s First Name</th>
+                  <th style={{ width: "120px" }}>
+                    Participants&apos;s Last Name
+                  </th>
+                  <th style={{ width: "120px" }}>
+                    Participants&apos;s First Name
+                  </th>
                   <th style={{ width: "100px" }}>Shift Starts</th>
                   <th style={{ width: "100px" }}>Shift Ends</th>
                   <th style={{ width: "100px" }}>Actual Hours</th>
@@ -586,12 +662,43 @@ export default function SocialEmployeeReport() {
               <tbody>
                 {employeeGroups.map((group) => {
                   const { firstName: wFirst, lastName: wLast } = splitName(
-                    group.employee
+                    group.employee,
                   );
+
+                  // Find employee for Social Level
+                  // Using the same logic as export
+                  // We need the employees list here. Since we are inside map, it's fine.
+                  // But to optimize we might want a map, but array.find is okay for small lists.
+                  const fullNameSearch = group.employee.trim().toLowerCase();
+                  let emp = employees.find((e) => {
+                    const n = `${e.first_name || ""} ${e.last_name || ""}`
+                      .trim()
+                      .toLowerCase();
+                    return n === fullNameSearch;
+                  });
+                  if (!emp) {
+                    emp = employees.find(
+                      (e) =>
+                        (e.first_name || "").toLowerCase() ===
+                          wFirst.toLowerCase() &&
+                        (e.last_name || "").toLowerCase() ===
+                          wLast.toLowerCase(),
+                    );
+                  }
+                  const socialLevel = emp?.social_level || "";
+
                   return group.activities.map((a, idx) => {
                     const { firstName: pFirst, lastName: pLast } = splitName(
-                      a.participant
+                      a.participant,
                     );
+
+                    const category = getPayrollCategory(
+                      socialLevel,
+                      a.date,
+                      a.shift_starts,
+                    );
+                    const displayDate = formatDateToDisplay(a.date);
+
                     return (
                       <tr key={`${group.employee}-${a.id ?? idx}-${idx}`}>
                         {idx === 0 && (
@@ -600,7 +707,8 @@ export default function SocialEmployeeReport() {
                             <td rowSpan={group.activities.length}>{wFirst}</td>
                           </>
                         )}
-                        <td>{a.date}</td>
+                        <td>{category}</td>
+                        <td>{displayDate}</td>
                         <td>{pLast}</td>
                         <td>{pFirst}</td>
                         <td>{a.shift_starts}</td>

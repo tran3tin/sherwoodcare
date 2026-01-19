@@ -2,7 +2,13 @@ const db = require("../config/db");
 
 class EmployeeModel {
   // Create a new employee
-  static async create({ lastName, firstName, preferredName, level, socialLevel }) {
+  static async create({
+    lastName,
+    firstName,
+    preferredName,
+    level,
+    socialLevel,
+  }) {
     const sql = `INSERT INTO employees (last_name, first_name, preferred_name, level, social_level) 
            VALUES ($1, $2, $3, $4, $5) RETURNING employee_id`;
 
@@ -57,7 +63,7 @@ class EmployeeModel {
   // Update employee
   static async update(
     employeeId,
-    { lastName, firstName, preferredName, level, socialLevel }
+    { lastName, firstName, preferredName, level, socialLevel },
   ) {
     const sql = `UPDATE employees 
            SET last_name = $1, first_name = $2, preferred_name = $3, level = $4, social_level = $5,
