@@ -169,6 +169,7 @@ export default function SocialEmployeeReport() {
   const [sortDir, setSortDir] = useState("asc");
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [manualMappings, setManualMappings] = useState({});
 
   const handleBack = () => {
     if (id) {
@@ -215,6 +216,38 @@ export default function SocialEmployeeReport() {
     }
   };
 
+  const getEffectiveEmployee = (groupName) => {
+    // 1. Manual override
+    if (manualMappings[groupName]) return manualMappings[groupName];
+
+    // 2. Fuzzy match
+    const normalized = groupName.trim().toLowerCase(); // groupName is from rawRows (Excel)
+    const exact = employees.find((e) => {
+      // Construct employee full name
+      const n = `${e.first_name || ""} ${e.last_name || ""}`
+        .trim()
+        .toLowerCase();
+      return n === normalized;
+    });
+    if (exact) return exact;
+
+    // 3. Fallback split match
+    const { firstName, lastName } = splitName(groupName);
+    return employees.find(
+      (e) =>
+        (e.first_name || "").toLowerCase() === firstName.toLowerCase() &&
+        (e.last_name || "").toLowerCase() === lastName.toLowerCase()
+    );
+  };
+
+  const handleEmployeeChange = (groupName, employeeId) => {
+    const emp = employees.find((e) => String(e.employee_id) === String(employeeId));
+    setManualMappings((prev) => ({
+      ...prev,
+      [groupName]: emp,
+    }));
+  };
+
   const handleExportExcel = () => {
     if (!employeeGroups || employeeGroups.length === 0) {
       toast.warning("No data to export");
@@ -225,7 +258,19 @@ export default function SocialEmployeeReport() {
 
     // Flatten the grouped data
     employeeGroups.forEach((group) => {
-      const { firstName: wFirst, lastName: wLast } = splitName(group.employee);
+      // Use effective employee for names if available, else fallback to group name
+      const effEmp = getEffectiveEmployee(group.employee);
+      
+      let wFirst, wLast;
+      if (effEmp) {
+        wFirst = effEmp.first_name || "";
+        wLast = effEmp.last_name || "";
+      } else {
+        const split = splitName(group.employee);
+        wFirst = split.firstName;
+        wLast = split.lastName;
+      }
+
       group.activities.forEach((activity) => {
         const { firstName: pFirst, lastName: pLast } = splitName(
           activity.participant,
@@ -295,33 +340,20 @@ export default function SocialEmployeeReport() {
 
     const lines = [headers.join("\t")];
 
-    // Create a map for fast employee lookup
-    const employeesMap = new Map();
-    employees.forEach((emp) => {
-      // Construct full name as "FirstName LastName" to match worker_name format
-      const fullName = `${emp.first_name || ""} ${emp.last_name || ""}`
-        .trim()
-        .toLowerCase();
-      employeesMap.set(fullName, emp);
-    });
-
     employeeGroups.forEach((group) => {
-      const { firstName: wFirst, lastName: wLast } = splitName(group.employee);
+      const effEmp = getEffectiveEmployee(group.employee);
 
-      // Attempt to find employee to get social level
-      const fullName = group.employee.trim().toLowerCase();
-      let emp = employeesMap.get(fullName);
-
-      // Fallback: search by firstname/lastname parts if exact match fails
-      if (!emp) {
-        emp = employees.find(
-          (e) =>
-            (e.first_name || "").toLowerCase() === wFirst.toLowerCase() &&
-            (e.last_name || "").toLowerCase() === wLast.toLowerCase(),
-        );
+      let wFirst, wLast;
+      if (effEmp) {
+        wFirst = effEmp.first_name || "";
+        wLast = effEmp.last_name || "";
+      } else {
+        const split = splitName(group.employee);
+        wFirst = split.firstName;
+        wLast = split.lastName;
       }
 
-      const socialLevel = emp?.social_level || "";
+      const socialLevel = effEmp?.social_level || "";
 
       group.activities.forEach((activity) => {
         const { firstName: pFirst, lastName: pLast } = splitName(
@@ -643,6 +675,7 @@ export default function SocialEmployeeReport() {
             <table className="timesheet-table" id="socialEmployeeReportTable">
               <thead>
                 <tr>
+                  <th style={{ width: "160px" }}>Worker&apos;s Fullname</th>
                   <th style={{ width: "120px" }}>Worker&apos;s Last Name</th>
                   <th style={{ width: "120px" }}>Worker&apos;s First Name</th>
                   <th style={{ width: "120px" }}>Payroll Category</th>
@@ -660,32 +693,23 @@ export default function SocialEmployeeReport() {
                 </tr>
               </thead>
               <tbody>
-                {employeeGroups.map((group) => {
-                  const { firstName: wFirst, lastName: wLast } = splitName(
-                    group.employee,
-                  );
-
-                  // Find employee for Social Level
-                  // Using the same logic as export
-                  // We need the employees list here. Since we are inside map, it's fine.
-                  // But to optimize we might want a map, but array.find is okay for small lists.
-                  const fullNameSearch = group.employee.trim().toLowerCase();
-                  let emp = employees.find((e) => {
-                    const n = `${e.first_name || ""} ${e.last_name || ""}`
-                      .trim()
-                      .toLowerCase();
-                    return n === fullNameSearch;
-                  });
-                  if (!emp) {
-                    emp = employees.find(
-                      (e) =>
-                        (e.first_name || "").toLowerCase() ===
-                          wFirst.toLowerCase() &&
-                        (e.last_name || "").toLowerCase() ===
-                          wLast.toLowerCase(),
-                    );
+                {e/* 
+                     We use the effective employee (from selection or auto-match) 
+                     to drive the name columns and payroll category
+                  */
+                  const effEmp = getEffectiveEmployee(group.employee);
+                  
+                  let wFirst, wLast, socialLevel;
+                  if (effEmp) {
+                     wFirst = effEmp.first_name || "";
+                     wLast = effEmp.last_name || "";
+                     socialLevel = effEmp.social_level || "";
+                  } else {
+                     const split = splitName(group.employee);
+                     wFirst = split.firstName;
+                     wLast = split.lastName;
+                     socialLevel = "";
                   }
-                  const socialLevel = emp?.social_level || "";
 
                   return group.activities.map((a, idx) => {
                     const { firstName: pFirst, lastName: pLast } = splitName(
@@ -702,6 +726,22 @@ export default function SocialEmployeeReport() {
                     return (
                       <tr key={`${group.employee}-${a.id ?? idx}-${idx}`}>
                         {idx === 0 && (
+                          <>
+                            <td rowSpan={group.activities.length}>
+                               <select 
+                                 className="table-select"
+                                 value={effEmp?.employee_id || ""}
+                                 onChange={(e) => handleEmployeeChange(group.employee, e.target.value)}
+                                 style={{ width: "100%" }}
+                               >
+                                 <option value="">-- Match Employee --</option>
+                                 {employees.map(emp => (
+                                   <option key={emp.employee_id} value={emp.employee_id}>
+                                     {emp.first_name} {emp.last_name}
+                                   </option>
+                                 ))}
+                               </select>
+                            </tdx === 0 && (
                           <>
                             <td rowSpan={group.activities.length}>{wLast}</td>
                             <td rowSpan={group.activities.length}>{wFirst}</td>

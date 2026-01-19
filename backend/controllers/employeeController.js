@@ -3,12 +3,12 @@ const EmployeeModel = require("../models/EmployeeModel");
 // Create a new employee
 async function createEmployee(req, res) {
   try {
-    const { lastName, firstName, preferredName, level } = req.body;
+    const { lastName, firstName, preferredName, level, socialLevel } = req.body;
 
     // Validation
-    if (!lastName || !firstName || !level) {
+    if (!lastName || !firstName) {
       return res.status(400).json({
-        error: "Missing required fields: lastName, firstName, level",
+        error: "Missing required fields: lastName, firstName",
       });
     }
 
@@ -18,6 +18,7 @@ async function createEmployee(req, res) {
       firstName,
       preferredName,
       level,
+      socialLevel,
     });
 
     res.status(201).json({
@@ -62,7 +63,7 @@ async function getEmployee(req, res) {
 async function updateEmployee(req, res) {
   try {
     const { id } = req.params;
-    const { lastName, firstName, preferredName, level } = req.body;
+    const { lastName, firstName, preferredName, level, socialLevel } = req.body;
 
     // Check if employee exists
     const employee = await EmployeeModel.getById(id);
@@ -71,9 +72,9 @@ async function updateEmployee(req, res) {
     }
 
     // Validation
-    if (!lastName || !firstName || !level) {
+    if (!lastName || !firstName) {
       return res.status(400).json({
-        error: "Missing required fields: lastName, firstName, level",
+        error: "Missing required fields: lastName, firstName",
       });
     }
 
@@ -83,6 +84,7 @@ async function updateEmployee(req, res) {
       firstName,
       preferredName,
       level,
+      socialLevel,
     });
 
     res.json({ message: "Employee updated successfully" });
