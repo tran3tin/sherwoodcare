@@ -8,7 +8,8 @@ import "../../assets/styles/list.css";
 // Format yyyy-mm-dd to dd/mm/yyyy
 const formatDate = (dateStr) => {
   if (!dateStr) return "-";
-  const parts = dateStr.split("-");
+  const datePart = String(dateStr).split("T")[0];
+  const parts = datePart.split("-");
   if (parts.length === 3) {
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
   }

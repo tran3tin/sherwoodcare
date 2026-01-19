@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
 import TimeSheetForm from "./features/payroll/TimeSheetForm";
 import TimeSheetList from "./features/payroll/TimeSheetList";
@@ -36,6 +36,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/dashboard" element={<Navigate to="/dashboard/tasks" replace />} />
       <Route path="/dashboard/tasks" element={<KanbanBoard />} />
       <Route path="/dashboard/notes" element={<FullNotes />} />
       <Route path="/payroll/timesheets" element={<TimeSheetList />} />

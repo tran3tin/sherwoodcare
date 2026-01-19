@@ -140,10 +140,55 @@ export default function SocialEmployeeReport() {
   };
 
   const handleExportExcel = () => {
-    toast.info("Excel export feature coming soon.", {
-      position: "top-right",
-      autoClose: 3000,
+    if (!employeeGroups || employeeGroups.length === 0) {
+      toast.warning("No data to export");
+      return;
+    }
+
+    const exportData = [];
+
+    // Flatten the grouped data
+    employeeGroups.forEach((group) => {
+      group.activities.forEach((activity) => {
+        exportData.push({
+          "Worker's Name": group.employee,
+          Date: activity.date,
+          Participant: activity.participant,
+          "# Participants": activity.number_of_participants,
+          "Shift Starts": activity.shift_starts,
+          "Shift Ends": activity.shift_ends,
+          Session: getSessionFromTime(activity.shift_starts),
+          "Actual Hours": activity.actual_hours,
+          "Total Mileage": activity.total_mileage,
+          "Details of activity": activity.details_of_activity,
+        });
+      });
     });
+
+    try {
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(exportData);
+
+      // Auto-width columns
+      const colWidths = Object.keys(exportData[0]).map((key) => ({
+        wch: Math.max(key.length, 15),
+      }));
+      ws["!cols"] = colWidths;
+
+      XLSX.utils.book_append_sheet(wb, ws, "Social Employee Report");
+
+      const fileName = id
+        ? `Social_Employee_Report_${id}.xlsx`
+        : `Social_Employee_Report_${new Date()
+            .toISOString()
+            .slice(0, 10)}.xlsx`;
+
+      XLSX.writeFile(wb, fileName);
+      toast.success("Export successful");
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export Excel");
+    }
   };
 
   const handleSave = async () => {
@@ -157,25 +202,38 @@ export default function SocialEmployeeReport() {
     }
 
     try {
-      setSaving(true);
-      const name = `Social Sheet ${new Date().toLocaleDateString()}`;
-
       if (id) {
-        toast.info("Report is already saved.", {
+        toast.info("Report is already saved in database.", {
           position: "top-right",
           autoClose: 3000,
         });
-      } else {
-        const response = await socialSheetService.createSheet({
-          name,
-          rows: rawRows,
-        });
-        toast.success("Social sheet saved to database.", {
-          position: "top-right",
-          autoClose: 3000,
-        });
-        navigate("/payroll/social-participants");
+        return;
       }
+
+      const defaultName = `Social Sheet ${new Date()
+        .toLocaleDateString()
+        .replace(/\//g, "-")}`;
+      const name = window.prompt(
+        "Enter name for this Social Sheet:",
+        defaultName
+      );
+
+      if (!name) return; // User cancelled
+
+      setSaving(true);
+
+      await socialSheetService.createSheet({
+        name,
+        rows: rawRows,
+      });
+      
+      localStorage.removeItem(DRAFT_KEY);
+
+      toast.success("Social sheet saved successfully.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      navigate("/payroll/social-participants");
     } catch (error) {
       console.error("Error saving:", error);
       toast.error(error?.response?.data?.error || "Failed to save.", {

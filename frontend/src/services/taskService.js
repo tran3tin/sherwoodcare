@@ -18,7 +18,7 @@ export const taskService = {
   },
 
   // Create new task (with file upload)
-  create: async (taskData, file = null) => {
+  create: async (taskData, files = null) => {
     const formData = new FormData();
     Object.keys(taskData).forEach((key) => {
       const value = taskData[key];
@@ -28,8 +28,15 @@ export const taskService = {
         formData.append(key, value);
       }
     });
-    if (file) {
-      formData.append("attachment", file);
+
+    if (files) {
+      if (files instanceof FileList || Array.isArray(files)) {
+        Array.from(files).forEach((file) => {
+           formData.append("attachments", file);
+        });
+      } else {
+         formData.append("attachments", files);
+      }
     }
 
     try {
@@ -47,7 +54,7 @@ export const taskService = {
   },
 
   // Update task (with file upload)
-  update: async (taskId, taskData, file = null, removeAttachment = false) => {
+  update: async (taskId, taskData, files = null, removeAttachmentIds = []) => {
     const formData = new FormData();
     Object.keys(taskData).forEach((key) => {
       const value = taskData[key];
@@ -56,11 +63,19 @@ export const taskService = {
         formData.append(key, value);
       }
     });
-    if (file) {
-      formData.append("attachment", file);
+    
+    if (files) {
+      if (files instanceof FileList || Array.isArray(files)) {
+        Array.from(files).forEach((file) => {
+           formData.append("attachments", file);
+        });
+      } else {
+         formData.append("attachments", files);
+      }
     }
-    if (removeAttachment) {
-      formData.append("remove_attachment", "true");
+    
+    if (removeAttachmentIds && removeAttachmentIds.length > 0) {
+      formData.append("remove_attachment_ids", JSON.stringify(removeAttachmentIds));
     }
 
     try {

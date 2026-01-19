@@ -107,11 +107,14 @@ const createTask = async (req, res) => {
     }
 
     // Handle file upload
-    let attachment_url = null;
-    let attachment_name = null;
-    if (req.file) {
-      attachment_url = `/uploads/task-attachments/${req.file.filename}`;
-      attachment_name = req.file.originalname;
+    const files = [];
+    if (req.files && req.files.length > 0) {
+      req.files.forEach((file) => {
+        files.push({
+          url: `/uploads/task-attachments/${file.filename}`,
+          name: file.originalname,
+        });
+      });
     }
 
     // Convert empty strings to null for database compatibility (PostgreSQL DATE type)
@@ -122,8 +125,7 @@ const createTask = async (req, res) => {
       priority: priority || "medium",
       due_date: toNullIfEmpty(due_date),
       assigned_to: toNullIfEmpty(assigned_to),
-      attachment_url,
-      attachment_name,
+      files,
     };
 
     console.log("Creating task with data:", JSON.stringify(taskData, null, 2));
@@ -155,7 +157,7 @@ const updateTask = async (req, res) => {
       due_date,
       assigned_to,
       position,
-      remove_attachment,
+      remove_attachment_ids,
     } = req.body;
 
     const existingTask = await TaskModel.getById(taskId);
@@ -163,30 +165,29 @@ const updateTask = async (req, res) => {
       return res.status(404).json({ success: false, error: "Task not found" });
     }
 
-    // Handle file upload
-    let attachment_url = existingTask.attachment_url;
-    let attachment_name = existingTask.attachment_name;
-
-    // Remove old attachment if requested or if new file is uploaded
-    if (remove_attachment === "true" || req.file) {
-      if (existingTask.attachment_url) {
-        const oldFilePath = path.join(
-          __dirname,
-          "../public",
-          existingTask.attachment_url
-        );
-        if (fs.existsSync(oldFilePath)) {
-          fs.unlinkSync(oldFilePath);
+    // Handle removal of attachments
+    if (remove_attachment_ids) {
+      try {
+        const ids = JSON.parse(remove_attachment_ids);
+        if (Array.isArray(ids)) {
+          for (const id of ids) {
+            await TaskModel.removeAttachment(id);
+          }
         }
+      } catch (e) {
+        console.error("Error processing remove_attachment_ids", e);
       }
-      attachment_url = null;
-      attachment_name = null;
     }
 
-    // Set new attachment if file uploaded
-    if (req.file) {
-      attachment_url = `/uploads/task-attachments/${req.file.filename}`;
-      attachment_name = req.file.originalname;
+    // Handle new files
+    const files = [];
+    if (req.files && req.files.length > 0) {
+      req.files.forEach((file) => {
+        files.push({
+          url: `/uploads/task-attachments/${file.filename}`,
+          name: file.originalname,
+        });
+      });
     }
 
     const taskData = {
@@ -204,8 +205,7 @@ const updateTask = async (req, res) => {
           ? toNullIfEmpty(assigned_to)
           : existingTask.assigned_to,
       position: position !== undefined ? position : existingTask.position,
-      attachment_url,
-      attachment_name,
+      files,
     };
 
     console.log("Updating task with data:", JSON.stringify(taskData, null, 2));

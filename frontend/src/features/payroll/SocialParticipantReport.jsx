@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import * as XLSX from "xlsx";
 import Layout from "../../components/Layout";
 import { toast } from "react-toastify";
 import socialSheetService from "../../services/socialSheetService";
@@ -140,10 +141,54 @@ export default function SocialParticipantReport() {
   };
 
   const handleExportExcel = () => {
-    toast.info("Excel export feature coming soon.", {
-      position: "top-right",
-      autoClose: 3000,
+    if (!participantGroups || participantGroups.length === 0) {
+      toast.warning("No data to export");
+      return;
+    }
+
+    const exportData = [];
+
+    // Flatten the grouped data
+    participantGroups.forEach((group) => {
+      group.activities.forEach((activity) => {
+        exportData.push({
+          Participant: group.participant,
+          Date: activity.date,
+          "# Participants": activity.number_of_participants,
+          "Shift Starts": activity.shift_starts,
+          "Shift Ends": activity.shift_ends,
+          Session: getSessionFromTime(activity.shift_starts),
+          "Actual Hours": activity.actual_hours,
+          "Total Mileage": activity.total_mileage,
+          "Details of activity": activity.details_of_activity,
+        });
+      });
     });
+
+    try {
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(exportData);
+
+      // Auto-width columns
+      const colWidths = Object.keys(exportData[0] || {}).map((key) => ({
+        wch: Math.max(key.length, 15),
+      }));
+      ws["!cols"] = colWidths;
+
+      XLSX.utils.book_append_sheet(wb, ws, "Social Participant Report");
+
+      const fileName = id
+        ? `Social_Participant_Report_${id}.xlsx`
+        : `Social_Participant_Report_${new Date()
+            .toISOString()
+            .slice(0, 10)}.xlsx`;
+
+      XLSX.writeFile(wb, fileName);
+      toast.success("Export successful");
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export Excel");
+    }
   };
 
   const handleSave = async () => {
@@ -157,25 +202,38 @@ export default function SocialParticipantReport() {
     }
 
     try {
-      setSaving(true);
-      const name = `Social Sheet ${new Date().toLocaleDateString()}`;
-
       if (id) {
-        toast.info("Report is already saved.", {
+        toast.info("Report is already saved in database.", {
           position: "top-right",
           autoClose: 3000,
         });
-      } else {
-        const response = await socialSheetService.createSheet({
-          name,
-          rows: rawRows,
-        });
-        toast.success("Social sheet saved to database.", {
-          position: "top-right",
-          autoClose: 3000,
-        });
-        navigate("/payroll/social-participants");
+        return;
       }
+
+      const defaultName = `Social Sheet ${new Date()
+        .toLocaleDateString()
+        .replace(/\//g, "-")}`;
+      const name = window.prompt(
+        "Enter name for this Social Sheet:",
+        defaultName
+      );
+
+      if (!name) return; // User cancelled
+
+      setSaving(true);
+
+      await socialSheetService.createSheet({
+        name,
+        rows: rawRows,
+      });
+
+      localStorage.removeItem(DRAFT_KEY);
+
+      toast.success("Social sheet saved successfully.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      navigate("/payroll/social-participants");
     } catch (error) {
       console.error("Error saving:", error);
       toast.error(error?.response?.data?.error || "Failed to save.", {

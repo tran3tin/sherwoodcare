@@ -1,11 +1,26 @@
 const db = require("../config/db");
 
 class TaskModel {
-  // Get all tasks
+  // Get all tasks with attachments
   static async getAll() {
-    const { rows } = await db.query(
-      `SELECT * FROM tasks ORDER BY position ASC, created_at DESC`
-    );
+    const query = `
+      SELECT t.*,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', ta.attachment_id,
+              'url', ta.file_url,
+              'name', ta.file_name
+            )
+          ) FILTER (WHERE ta.attachment_id IS NOT NULL),
+          '[]'
+        ) as attachments
+      FROM tasks t
+      LEFT JOIN task_attachments ta ON t.task_id = ta.task_id
+      GROUP BY t.task_id
+      ORDER BY t.position ASC, t.created_at DESC
+    `;
+    const { rows } = await db.query(query);
     return rows;
   }
 
@@ -20,9 +35,24 @@ class TaskModel {
 
   // Get single task by ID
   static async getById(taskId) {
-    const { rows } = await db.query(`SELECT * FROM tasks WHERE task_id = $1`, [
-      taskId,
-    ]);
+    const query = `
+      SELECT t.*,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', ta.attachment_id,
+              'url', ta.file_url,
+              'name', ta.file_name
+            )
+          ) FILTER (WHERE ta.attachment_id IS NOT NULL),
+          '[]'
+        ) as attachments
+      FROM tasks t
+      LEFT JOIN task_attachments ta ON t.task_id = ta.task_id
+      WHERE t.task_id = $1
+      GROUP BY t.task_id
+    `;
+    const { rows } = await db.query(query, [taskId]);
     return rows[0];
   }
 
@@ -41,36 +71,57 @@ class TaskModel {
       due_date = null,
       assigned_to = null,
       position = 0,
-      attachment_url = null,
-      attachment_name = null,
+      files = [], // Array of { url, name }
     } = taskData;
 
-    // Get max position for the status
-    const { rows: posRows } = await db.query(
-      `SELECT COALESCE(MAX(position), -1) + 1 as next_pos FROM tasks WHERE status = $1`,
-      [status]
-    );
-    const nextPosition = posRows[0]?.next_pos || 0;
+    try {
+      await db.query("BEGIN");
 
-    const { rows: result } = await db.query(
-      `INSERT INTO tasks 
-       (title, description, status, priority, due_date, assigned_to, position, attachment_url, attachment_name) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING *`,
-      [
-        title,
-        description,
-        status,
-        priority,
-        TaskModel.toNull(due_date), // Ensure null not empty string
-        TaskModel.toNull(assigned_to), // Ensure null not empty string
-        nextPosition,
-        TaskModel.toNull(attachment_url),
-        TaskModel.toNull(attachment_name),
-      ]
-    );
+      // Get max position for the status
+      const { rows: posRows } = await db.query(
+        `SELECT COALESCE(MAX(position), -1) + 1 as next_pos FROM tasks WHERE status = $1`,
+        [status]
+      );
+      const nextPosition = posRows[0]?.next_pos || 0;
 
-    return result[0];
+      // Insert task
+      const { rows: result } = await db.query(
+        `INSERT INTO tasks 
+         (title, description, status, priority, due_date, assigned_to, position) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING task_id`,
+        [
+          title,
+          description,
+          status,
+          priority,
+          TaskModel.toNull(due_date),
+          TaskModel.toNull(assigned_to),
+          nextPosition,
+        ]
+      );
+
+      const taskId = result[0].task_id;
+
+      // Insert attachments
+      if (files && files.length > 0) {
+        for (const file of files) {
+          await db.query(
+            `INSERT INTO task_attachments (task_id, file_url, file_name) VALUES ($1, $2, $3)`,
+            [taskId, file.url, file.name]
+          );
+        }
+      }
+
+      await db.query("COMMIT");
+      
+      // Return the complete task
+      return await TaskModel.getById(taskId);
+
+    } catch (error) {
+      await db.query("ROLLBACK");
+      throw error;
+    }
   }
 
   // Update task
@@ -83,37 +134,61 @@ class TaskModel {
       due_date,
       assigned_to,
       position,
-      attachment_url,
-      attachment_name,
+      files = [], // New files to add
     } = taskData;
 
     try {
+      await db.query("BEGIN");
+
       const { rowCount } = await db.query(
         `UPDATE tasks 
          SET title = $1, description = $2, status = $3, priority = $4, 
              due_date = $5, assigned_to = $6, position = $7,
-             attachment_url = $8, attachment_name = $9,
              updated_at = CURRENT_TIMESTAMP
-         WHERE task_id = $10`,
+         WHERE task_id = $8`,
         [
           title,
           description,
           status,
           priority,
-          TaskModel.toNull(due_date), // Ensure null not empty string
-          TaskModel.toNull(assigned_to), // Ensure null not empty string
+          TaskModel.toNull(due_date),
+          TaskModel.toNull(assigned_to),
           position,
-          TaskModel.toNull(attachment_url),
-          TaskModel.toNull(attachment_name),
           taskId,
         ]
       );
 
-      return rowCount > 0;
+      if (rowCount === 0) {
+        await db.query("ROLLBACK");
+        throw new Error("Task not found");
+      }
+
+      // Add new attachments
+      if (files && files.length > 0) {
+        for (const file of files) {
+          await db.query(
+            `INSERT INTO task_attachments (task_id, file_url, file_name) VALUES ($1, $2, $3)`,
+            [taskId, file.url, file.name]
+          );
+        }
+      }
+
+      await db.query("COMMIT");
+      return true;
+
     } catch (error) {
+      await db.query("ROLLBACK");
       console.error("TaskModel.update error:", error.message);
-      throw error; // Re-throw to be caught by controller
+      throw error;
     }
+  }
+
+  static async removeAttachment(attachmentId) {
+    const { rowCount } = await db.query(
+        `DELETE FROM task_attachments WHERE attachment_id = $1`,
+        [attachmentId]
+    );
+    return rowCount > 0;
   }
 
   // Update task status and position (for drag & drop)

@@ -14,14 +14,14 @@ router.get("/:taskId", taskController.getTaskById);
 // Create new task (with file upload)
 router.post(
   "/",
-  taskController.upload.single("attachment"),
+  taskController.upload.array("attachments"),
   taskController.createTask
 );
 
 // Update task (with file upload)
 router.put(
   "/:taskId",
-  taskController.upload.single("attachment"),
+  taskController.upload.array("attachments"),
   taskController.updateTask
 );
 
