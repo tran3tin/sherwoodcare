@@ -693,7 +693,8 @@ export default function SocialEmployeeReport() {
                 </tr>
               </thead>
               <tbody>
-                {e/* 
+                {employeeGroups.map((group) => {
+                  /* 
                      We use the effective employee (from selection or auto-match) 
                      to drive the name columns and payroll category
                   */
