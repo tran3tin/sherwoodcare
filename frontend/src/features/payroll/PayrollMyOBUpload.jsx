@@ -91,7 +91,7 @@ export default function PayrollMyOBUpload() {
         // Base values for Payroll Category; final value is decided per-day (Sat/Sun rules)
         const level = String(job?.level ?? "").trim();
         const baseSession = String(
-          job?.session || getSessionFromPeriod(job?.period) || ""
+          job?.session || getSessionFromPeriod(job?.period) || "",
         ).trim();
 
         // For each day that has a value, create a row
@@ -205,14 +205,14 @@ export default function PayrollMyOBUpload() {
   const handleFieldChange = (id, field, value) => {
     setPayrollData(
       payrollData.map((row) =>
-        row.id === id ? { ...row, [field]: value } : row
-      )
+        row.id === id ? { ...row, [field]: value } : row,
+      ),
     );
   };
 
   const handleEmployeeSelect = (id, fullName) => {
     const selectedEmployee = employees.find(
-      (emp) => `${emp.first_name} ${emp.last_name}` === fullName
+      (emp) => `${emp.first_name} ${emp.last_name}` === fullName,
     );
 
     if (selectedEmployee) {
@@ -224,8 +224,8 @@ export default function PayrollMyOBUpload() {
                 firstName: selectedEmployee.first_name,
                 lastName: selectedEmployee.last_name,
               }
-            : row
-        )
+            : row,
+        ),
       );
     }
   };
@@ -301,11 +301,12 @@ export default function PayrollMyOBUpload() {
       "Customer Record ID",
     ];
 
-    // Helper to escape CSV values
+    // Helper to escape TSV values (Tab Separated)
     const escape = (val) => {
       if (val === null || val === undefined) return "";
       const str = String(val);
-      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+      // Standard TSV: if value contains tab, newline, or quote, wrap in quotes
+      if (str.includes("\t") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
         return `"${str.replace(/"/g, '""')}"`;
       }
       return str;
@@ -313,7 +314,7 @@ export default function PayrollMyOBUpload() {
 
     const lines = [];
     // Add header
-    lines.push(headers.join(","));
+    lines.push(headers.join("\t"));
 
     // Add rows
     payrollData.forEach((row) => {
@@ -332,7 +333,7 @@ export default function PayrollMyOBUpload() {
         "", // Start/Stop Time
         "", // Customer Card ID
         "", // Customer Record ID
-      ].join(",");
+      ].join("\t");
       lines.push(line);
     });
 
@@ -344,7 +345,7 @@ export default function PayrollMyOBUpload() {
     link.href = url;
     link.setAttribute(
       "download",
-      `MYOB_Import_${new Date().toISOString().split("T")[0]}.txt`
+      `MYOB_Import_${new Date().toISOString().split("T")[0]}.txt`,
     );
     document.body.appendChild(link);
     link.click();
@@ -359,7 +360,7 @@ export default function PayrollMyOBUpload() {
   const handleClear = () => {
     if (
       window.confirm(
-        "Are you sure you want to clear all data? This cannot be undone."
+        "Are you sure you want to clear all data? This cannot be undone.",
       )
     ) {
       setPayrollData([]);
@@ -514,7 +515,7 @@ export default function PayrollMyOBUpload() {
                           handleFieldChange(
                             row.id,
                             "payrollCategory",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         placeholder="Payroll Category"
