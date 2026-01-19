@@ -16,6 +16,7 @@ export default function EditEmployee() {
     firstName: "",
     preferredName: "",
     level: "",
+    socialLevel: "",
   });
 
   useEffect(() => {
@@ -34,6 +35,7 @@ export default function EditEmployee() {
         firstName: employee.first_name || "",
         preferredName: employee.preferred_name || "",
         level: employee.level || "",
+        socialLevel: employee.social_level || "",
       });
     } catch (error) {
       console.error("Error fetching employee:", error);
@@ -58,7 +60,7 @@ export default function EditEmployee() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.lastName || !formData.firstName || !formData.level) {
+    if (!formData.lastName || !formData.firstName) {
       toast.error("Please fill in all required fields", {
         position: "top-right",
         autoClose: 3000,
@@ -73,6 +75,7 @@ export default function EditEmployee() {
         firstName: formData.firstName,
         preferredName: formData.preferredName,
         level: formData.level,
+        socialLevel: formData.socialLevel,
       });
 
       toast.success("Employee updated successfully", {
@@ -196,16 +199,26 @@ export default function EditEmployee() {
                 </div>
 
                 <div className="form-field">
-                  <label>
-                    Level <span className="required">*</span>
-                  </label>
+                  <label>Level</label>
                   <input
                     type="text"
                     name="level"
                     value={formData.level}
                     onChange={handleInputChange}
                     placeholder="Enter employee level"
-                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-field">
+                  <label>Social Level</label>
+                  <input
+                    type="text"
+                    name="socialLevel"
+                    value={formData.socialLevel}
+                    onChange={handleInputChange}
+                    placeholder="Enter social level"
                   />
                 </div>
               </div>

@@ -306,7 +306,12 @@ export default function PayrollMyOBUpload() {
       if (val === null || val === undefined) return "";
       const str = String(val);
       // Standard TSV: if value contains tab, newline, or quote, wrap in quotes
-      if (str.includes("\t") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+      if (
+        str.includes("\t") ||
+        str.includes('"') ||
+        str.includes("\n") ||
+        str.includes("\r")
+      ) {
         return `"${str.replace(/"/g, '""')}"`;
       }
       return str;

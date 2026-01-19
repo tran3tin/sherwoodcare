@@ -2,15 +2,16 @@ const db = require("../config/db");
 
 class EmployeeModel {
   // Create a new employee
-  static async create({ lastName, firstName, preferredName, level }) {
-    const sql = `INSERT INTO employees (last_name, first_name, preferred_name, level) 
-           VALUES ($1, $2, $3, $4) RETURNING employee_id`;
+  static async create({ lastName, firstName, preferredName, level, socialLevel }) {
+    const sql = `INSERT INTO employees (last_name, first_name, preferred_name, level, social_level) 
+           VALUES ($1, $2, $3, $4, $5) RETURNING employee_id`;
 
     const { rows } = await db.query(sql, [
       lastName,
       firstName,
       preferredName || null,
-      level,
+      level || null,
+      socialLevel || null,
     ]);
 
     return rows[0].employee_id;
@@ -25,6 +26,7 @@ class EmployeeModel {
         first_name,
         preferred_name,
         level,
+        social_level,
         created_at,
         updated_at
       FROM employees
@@ -42,6 +44,7 @@ class EmployeeModel {
             first_name,
             preferred_name,
             level,
+            social_level,
             created_at,
             updated_at
            FROM employees
@@ -54,18 +57,19 @@ class EmployeeModel {
   // Update employee
   static async update(
     employeeId,
-    { lastName, firstName, preferredName, level }
+    { lastName, firstName, preferredName, level, socialLevel }
   ) {
     const sql = `UPDATE employees 
-           SET last_name = $1, first_name = $2, preferred_name = $3, level = $4, 
+           SET last_name = $1, first_name = $2, preferred_name = $3, level = $4, social_level = $5,
                updated_at = CURRENT_TIMESTAMP 
-           WHERE employee_id = $5`;
+           WHERE employee_id = $6`;
 
     await db.query(sql, [
       lastName,
       firstName,
       preferredName || null,
-      level,
+      level || null,
+      socialLevel || null,
       employeeId,
     ]);
   }

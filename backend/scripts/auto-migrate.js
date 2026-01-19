@@ -67,6 +67,10 @@ async function runAutoMigrations() {
     "06_create_task_attachments.sql",
     "06_create_task_attachments.sql",
   );
+  await runFile(
+    "07_alter_employees_social_level.sql",
+    "07_alter_employees_social_level.sql",
+  );
 
   console.log("✅ Database migrations finished.\n");
 }

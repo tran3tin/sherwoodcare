@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 import Layout from "../../components/Layout";
 import { toast } from "react-toastify";
 import socialSheetService from "../../services/socialSheetService";
+import { employeeService } from "../../services/employeeService";
 import "../../assets/styles/list.css";
 import "./TimeSheetForm.css";
 
@@ -19,6 +20,15 @@ const parseDraftRows = (draft) => {
   if (Array.isArray(draft.rows)) return draft.rows;
 
   return [];
+};
+
+const splitName = (fullName) => {
+  if (!fullName) return { firstName: "", lastName: "" };
+  const parts = fullName.trim().split(" ");
+  if (parts.length === 1) return { firstName: parts[0], lastName: "" };
+  const firstName = parts[0];
+  const lastName = parts.slice(1).join(" ");
+  return { firstName, lastName };
 };
 
 const getSessionFromTime = (timeStr) => {
@@ -89,6 +99,7 @@ export default function SocialEmployeeReport() {
   const { id } = useParams();
 
   const [rawRows, setRawRows] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [employeeFilter, setEmployeeFilter] = useState("");
   const [sortDir, setSortDir] = useState("asc");
   const [deleting, setDeleting] = useState(false);
@@ -149,17 +160,20 @@ export default function SocialEmployeeReport() {
 
     // Flatten the grouped data
     employeeGroups.forEach((group) => {
+      const { firstName: wFirst, lastName: wLast } = splitName(group.employee);
       group.activities.forEach((activity) => {
+        const { firstName: pFirst, lastName: pLast } = splitName(
+          activity.participant
+        );
         exportData.push({
-          "Worker's Name": group.employee,
+          "Worker's Last Name": wLast,
+          "Worker's First Name": wFirst,
           Date: activity.date,
-          Participant: activity.participant,
-          "# Participants": activity.number_of_participants,
+          "Participants's Last Name": pLast,
+          "Participants's First Name": pFirst,
           "Shift Starts": activity.shift_starts,
           "Shift Ends": activity.shift_ends,
-          Session: getSessionFromTime(activity.shift_starts),
           "Actual Hours": activity.actual_hours,
-          "Total Mileage": activity.total_mileage,
           "Details of activity": activity.details_of_activity,
         });
       });
@@ -190,6 +204,99 @@ export default function SocialEmployeeReport() {
       toast.error("Failed to export Excel");
     }
   };
+
+  const handleExportTxt = () => {
+    if (!employeeGroups || employeeGroups.length === 0) {
+      toast.warning("No data to export");
+      return;
+    }
+
+    const headers = [
+      "Employee Co./Last Name",
+      "Employee First Name",
+      "Payroll Category",
+      "Job",
+      "Customer Co./Last Name",
+      "Customer First Name",
+      "Notes",
+      "Date",
+      "Units",
+      "Employee Card ID",
+      "Employee Record ID",
+      "Start/Stop Time",
+      "Customer Card ID",
+      "Customer Record ID",
+    ];
+
+    const lines = [headers.join("\t")];
+
+    // Create a map for fast employee lookup
+    const employeesMap = new Map();
+    employees.forEach((emp) => {
+      // Construct full name as "FirstName LastName" to match worker_name format
+      const fullName = `${emp.first_name || ""} ${emp.last_name || ""}`
+        .trim()
+        .toLowerCase();
+      employeesMap.set(fullName, emp);
+    });
+
+    employeeGroups.forEach((group) => {
+      const { firstName: wFirst, lastName: wLast } = splitName(group.employee);
+
+      // Attempt to find employee to get social level
+      const fullName = group.employee.trim().toLowerCase();
+      let emp = employeesMap.get(fullName);
+
+      // Fallback: search by firstname/lastname parts if exact match fails
+      if (!emp) {
+        emp = employees.find(
+          (e) =>
+            (e.first_name || "").toLowerCase() === wFirst.toLowerCase() &&
+            (e.last_name || "").toLowerCase() === wLast.toLowerCase()
+        );
+      }
+
+      const payrollCategory = emp?.social_level || "";
+
+      group.activities.forEach((activity) => {
+        const { firstName: pFirst, lastName: pLast } = splitName(
+          activity.participant
+        );
+
+        const row = [
+          wLast, // Employee Co./Last Name
+          wFirst, // Employee First Name
+          payrollCategory, // Payroll Category
+          activity.participant, // Job
+          pLast, // Customer Co./Last Name
+          pFirst, // Customer First Name
+          activity.details_of_activity, // Notes
+          activity.date, // Date
+          activity.actual_hours, // Units
+          "", // Employee Card ID
+          "", // Employee Record ID
+          "", // Start/Stop Time
+          "", // Customer Card ID
+          "", // Customer Record ID
+        ];
+        lines.push(row.join("\t"));
+      });
+    });
+
+    const content = lines.join("\n");
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `Social_Export_${new Date().toISOString().slice(0, 10)}.txt`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
 
   const handleSave = async () => {
     if (saving || deleting) return;
@@ -376,6 +483,17 @@ export default function SocialEmployeeReport() {
 
             <button
               type="button"
+              className="btn-action btn-view"
+              onClick={handleExportTxt}
+              title="Export TXT"
+              aria-label="Export TXT"
+              disabled={deleting || saving}
+            >
+              <i className="fas fa-file-alt"></i>
+            </button>
+
+            <button
+              type="button"
               className="btn-action btn-cancel"
               onClick={handleBack}
               title="Back"
@@ -454,38 +572,44 @@ export default function SocialEmployeeReport() {
             <table className="timesheet-table" id="socialEmployeeReportTable">
               <thead>
                 <tr>
-                  <th style={{ width: "220px" }}>Worker&apos;s Name</th>
-                  <th style={{ width: "140px" }}>Date</th>
-                  <th style={{ width: "180px" }}>Participant</th>
-                  <th style={{ width: "160px" }}># Participants</th>
-                  <th style={{ width: "140px" }}>Shift Starts</th>
-                  <th style={{ width: "140px" }}>Shift Ends</th>
-                  <th style={{ width: "120px" }}>Session</th>
-                  <th style={{ width: "120px" }}>Actual Hours</th>
-                  <th style={{ width: "130px" }}>Total Mileage</th>
+                  <th style={{ width: "120px" }}>Worker&apos;s Last Name</th>
+                  <th style={{ width: "120px" }}>Worker&apos;s First Name</th>
+                  <th style={{ width: "100px" }}>Date</th>
+                  <th style={{ width: "120px" }}>Participants&apos;s Last Name</th>
+                  <th style={{ width: "120px" }}>Participants&apos;s First Name</th>
+                  <th style={{ width: "100px" }}>Shift Starts</th>
+                  <th style={{ width: "100px" }}>Shift Ends</th>
+                  <th style={{ width: "100px" }}>Actual Hours</th>
                   <th style={{ width: "260px" }}>Details of activity</th>
                 </tr>
               </thead>
               <tbody>
                 {employeeGroups.map((group) => {
-                  return group.activities.map((a, idx) => (
-                    <tr key={`${group.employee}-${a.id ?? idx}-${idx}`}>
-                      {idx === 0 && (
-                        <td rowSpan={group.activities.length}>
-                          {group.employee}
-                        </td>
-                      )}
-                      <td>{a.date}</td>
-                      <td>{a.participant}</td>
-                      <td>{a.number_of_participants}</td>
-                      <td>{a.shift_starts}</td>
-                      <td>{a.shift_ends}</td>
-                      <td>{getSessionFromTime(a.shift_starts)}</td>
-                      <td>{a.actual_hours}</td>
-                      <td>{a.total_mileage}</td>
-                      <td>{a.details_of_activity}</td>
-                    </tr>
-                  ));
+                  const { firstName: wFirst, lastName: wLast } = splitName(
+                    group.employee
+                  );
+                  return group.activities.map((a, idx) => {
+                    const { firstName: pFirst, lastName: pLast } = splitName(
+                      a.participant
+                    );
+                    return (
+                      <tr key={`${group.employee}-${a.id ?? idx}-${idx}`}>
+                        {idx === 0 && (
+                          <>
+                            <td rowSpan={group.activities.length}>{wLast}</td>
+                            <td rowSpan={group.activities.length}>{wFirst}</td>
+                          </>
+                        )}
+                        <td>{a.date}</td>
+                        <td>{pLast}</td>
+                        <td>{pFirst}</td>
+                        <td>{a.shift_starts}</td>
+                        <td>{a.shift_ends}</td>
+                        <td>{a.actual_hours}</td>
+                        <td>{a.details_of_activity}</td>
+                      </tr>
+                    );
+                  });
                 })}
               </tbody>
             </table>

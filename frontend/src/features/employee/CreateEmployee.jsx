@@ -10,6 +10,7 @@ const initial = {
   firstName: "",
   preferName: "",
   level: "",
+  socialLevel: "",
 };
 
 export default function CreateEmployee() {
@@ -31,6 +32,7 @@ export default function CreateEmployee() {
         firstName: form.firstName,
         preferredName: form.preferName,
         level: form.level,
+        socialLevel: form.socialLevel,
       });
 
       toast.success("Employee created successfully", {
@@ -104,15 +106,24 @@ export default function CreateEmployee() {
                 </div>
 
                 <div className="form-field">
-                  <label>
-                    Level <span className="required">*</span>
-                  </label>
+                  <label>Level</label>
                   <input
                     type="text"
                     value={form.level}
                     onChange={onChange("level")}
                     placeholder="Enter employee level"
-                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-field">
+                  <label>Social Level</label>
+                  <input
+                    type="text"
+                    value={form.socialLevel}
+                    onChange={onChange("socialLevel")}
+                    placeholder="Enter social level"
                   />
                 </div>
               </div>
