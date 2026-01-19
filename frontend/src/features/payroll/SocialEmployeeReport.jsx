@@ -742,8 +742,7 @@ export default function SocialEmployeeReport() {
                                    </option>
                                  ))}
                                </select>
-                            </tdx === 0 && (
-                          <>
+                            </td>
                             <td rowSpan={group.activities.length}>{wLast}</td>
                             <td rowSpan={group.activities.length}>{wFirst}</td>
                           </>
