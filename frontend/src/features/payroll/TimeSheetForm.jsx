@@ -13,6 +13,59 @@ import {
 import "../../assets/styles/list.css";
 import "./TimeSheetForm.css";
 
+// Parse Excel clipboard data handling quotes and newlines
+const parseClipboardData = (str) => {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuote = false;
+
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
+    const next = str[i + 1];
+
+    if (inQuote) {
+      if (c === '"') {
+        if (next === '"') {
+          cell += '"';
+          i++;
+        } else {
+          inQuote = false;
+        }
+      } else {
+        cell += c;
+      }
+    } else {
+      if (c === '"') {
+        inQuote = true;
+      } else if (c === "\t") {
+        row.push(cell);
+        cell = "";
+      } else if (c === "\n" || (c === "\r" && next === "\n")) {
+        row.push(cell);
+        rows.push(row);
+        row = [];
+        cell = "";
+        if (c === "\r") i++;
+      } else if (c === "\r") {
+        row.push(cell);
+        rows.push(row);
+        row = [];
+        cell = "";
+      } else {
+        cell += c;
+      }
+    }
+  }
+
+  if (cell.length > 0 || row.length > 0) {
+    row.push(cell);
+    rows.push(row);
+  }
+
+  return rows;
+};
+
 const TimeSheetForm = () => {
   const navigate = useNavigate();
   const { id } = useParams(); // Get timesheet ID from URL for edit mode
@@ -157,7 +210,7 @@ const TimeSheetForm = () => {
         generateTable(
           savedDate || formattedDate,
           parseInt(savedDays) || 14,
-          parseInt(savedRows) || 40
+          parseInt(savedRows) || 40,
         );
       }
     }
@@ -218,7 +271,7 @@ const TimeSheetForm = () => {
           closeOnClick: true,
           pauseOnHover: true,
           draggable: true,
-        }
+        },
       );
       navigate("/payroll/timesheets");
     } finally {
@@ -236,7 +289,7 @@ const TimeSheetForm = () => {
   const generateTable = (
     start = startDate,
     days = numDays,
-    rowCount = numRows
+    rowCount = numRows,
   ) => {
     if (!start) {
       toast.warning("Please select a start date!", {
@@ -282,9 +335,16 @@ const TimeSheetForm = () => {
   const handlePaste = (e, rowIndex, colIndex, type) => {
     e.preventDefault();
     const clipboardData = e.clipboardData.getData("text");
-    const pastedRows = clipboardData
-      .split(/\r\n|\n|\r/)
-      .filter((row) => row.length > 0);
+    let pastedRows = parseClipboardData(clipboardData);
+
+    // Remove trailing empty row if exists (common from Excel copy)
+    if (
+      pastedRows.length > 0 &&
+      pastedRows[pastedRows.length - 1].length === 1 &&
+      pastedRows[pastedRows.length - 1][0] === ""
+    ) {
+      pastedRows.pop();
+    }
 
     const newRows = [...rows];
 
@@ -292,9 +352,8 @@ const TimeSheetForm = () => {
       const targetRowIndex = rowIndex + rIndex;
       if (targetRowIndex >= newRows.length) return;
 
-      const cols = rowData.split("\t");
-
-      cols.forEach((cellData, cIndex) => {
+      // rowData is already an array of cells from parseClipboardData
+      rowData.forEach((cellData, cIndex) => {
         let startAbsCol = 0;
         if (type === "note") startAbsCol = 1;
         else if (type === "period") startAbsCol = 2;
@@ -302,17 +361,18 @@ const TimeSheetForm = () => {
         else if (type === "day") startAbsCol = 4 + colIndex;
 
         const targetAbsCol = startAbsCol + cIndex;
+        const value = (cellData ?? "").trim();
 
         if (targetAbsCol === 1) {
-          newRows[targetRowIndex].note = cellData.trim();
+          newRows[targetRowIndex].note = value;
         } else if (targetAbsCol === 2) {
-          newRows[targetRowIndex].period = cellData.trim();
+          newRows[targetRowIndex].period = value;
         } else if (targetAbsCol === 3) {
-          newRows[targetRowIndex].hrs = cellData.trim();
+          newRows[targetRowIndex].hrs = value;
         } else if (targetAbsCol >= 4) {
           const dIndex = targetAbsCol - 4;
           if (dIndex < newRows[targetRowIndex].days.length) {
-            newRows[targetRowIndex].days[dIndex] = cellData.trim();
+            newRows[targetRowIndex].days[dIndex] = value;
           }
         }
       });
@@ -448,7 +508,7 @@ const TimeSheetForm = () => {
     const startYmd = normalizeYMD(startDate);
     const endYmd = addDaysYMD(startYmd, parseInt(numDays, 10) - 1);
     const reportName = `TimeSheet ${formatDMFromYMD(
-      startYmd
+      startYmd,
     )} - ${formatDMFromYMD(endYmd)}`;
 
     const payload = {
@@ -533,7 +593,7 @@ const TimeSheetForm = () => {
         jobs: jobKeys.map((key) => {
           const job = jobs[key];
           const dayValues = headers.map((_, dayIndex) =>
-            job.workedDays[dayIndex] ? String(job.hrsValue ?? "") : ""
+            job.workedDays[dayIndex] ? String(job.hrsValue ?? "") : "",
           );
 
           return {
@@ -574,7 +634,7 @@ const TimeSheetForm = () => {
 
     const entries = rows
       .filter(
-        (row) => row.note || row.period || row.hrs || row.days.some((d) => d)
+        (row) => row.note || row.period || row.hrs || row.days.some((d) => d),
       )
       .map((row) => ({
         row_number: row.id,
@@ -592,7 +652,7 @@ const TimeSheetForm = () => {
     const startYmd = normalizeYMD(startDate);
     const endYmd = addDaysYMD(startYmd, parseInt(numDays, 10) - 1);
     const timesheetName = `TimeSheet ${formatDMFromYMD(
-      startYmd
+      startYmd,
     )} - ${formatDMFromYMD(endYmd)}`;
 
     try {
@@ -650,7 +710,7 @@ const TimeSheetForm = () => {
           closeOnClick: true,
           pauseOnHover: true,
           draggable: true,
-        }
+        },
       );
     } finally {
       setSaving(false);
@@ -848,9 +908,8 @@ const TimeSheetForm = () => {
                         <input type="text" value={row.id} readOnly />
                       </td>
                       <td className="note-col">
-                        <input
+                        <textarea
                           id={`cell-${rowIndex}-note-0`}
-                          type="text"
                           value={row.note}
                           onChange={(e) =>
                             handleInputChange(rowIndex, "note", e.target.value)
@@ -862,15 +921,14 @@ const TimeSheetForm = () => {
                         />
                       </td>
                       <td>
-                        <input
+                        <textarea
                           id={`cell-${rowIndex}-period-0`}
-                          type="text"
                           value={row.period}
                           onChange={(e) =>
                             handleInputChange(
                               rowIndex,
                               "period",
-                              e.target.value
+                              e.target.value,
                             )
                           }
                           onPaste={(e) => handlePaste(e, rowIndex, 0, "period")}
@@ -880,9 +938,8 @@ const TimeSheetForm = () => {
                         />
                       </td>
                       <td className="hrs-col">
-                        <input
+                        <textarea
                           id={`cell-${rowIndex}-hrs-0`}
-                          type="text"
                           value={row.hrs}
                           onChange={(e) =>
                             handleInputChange(rowIndex, "hrs", e.target.value)
@@ -900,16 +957,15 @@ const TimeSheetForm = () => {
                             dateHeaders[dayIndex]?.isWeekend ? "weekend" : ""
                           }
                         >
-                          <input
+                          <textarea
                             id={`cell-${rowIndex}-day-${dayIndex}`}
-                            type="text"
                             value={dayValue}
                             onChange={(e) =>
                               handleInputChange(
                                 rowIndex,
                                 "days",
                                 e.target.value,
-                                dayIndex
+                                dayIndex,
                               )
                             }
                             onPaste={(e) =>

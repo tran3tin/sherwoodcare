@@ -275,6 +275,87 @@ export default function PayrollMyOBUpload() {
     });
   };
 
+  const handleExportTxt = () => {
+    if (!payrollData || payrollData.length === 0) {
+      toast.warning("No data to export.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    const headers = [
+      "Employee Co./Last Name",
+      "Employee First Name",
+      "Payroll Category",
+      "Job",
+      "Customer Co./Last Name",
+      "Customer First Name",
+      "Notes",
+      "Date",
+      "Units",
+      "Employee Card ID",
+      "Employee Record ID",
+      "Start/Stop Time",
+      "Customer Card ID",
+      "Customer Record ID",
+    ];
+
+    // Helper to escape CSV values
+    const escape = (val) => {
+      if (val === null || val === undefined) return "";
+      const str = String(val);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const lines = [];
+    // Add header
+    lines.push(headers.join(","));
+
+    // Add rows
+    payrollData.forEach((row) => {
+      const line = [
+        escape(row.lastName),
+        escape(row.firstName),
+        escape(row.payrollCategory),
+        "", // Job
+        "", // Customer Co./Last Name
+        "", // Customer First Name
+        escape(row.nameJob), // Notes
+        escape(row.date),
+        escape(row.units),
+        "", // Employee Card ID
+        "", // Employee Record ID
+        "", // Start/Stop Time
+        "", // Customer Card ID
+        "", // Customer Record ID
+      ].join(",");
+      lines.push(line);
+    });
+
+    const blob = new Blob([lines.join("\r\n")], {
+      type: "text/plain;charset=utf-8",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `MYOB_Import_${new Date().toISOString().split("T")[0]}.txt`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success("Text file exported successfully", {
+      position: "top-right",
+      autoClose: 3000,
+    });
+  };
+
   const handleClear = () => {
     if (
       window.confirm(
@@ -323,6 +404,17 @@ export default function PayrollMyOBUpload() {
               aria-label="Export Excel"
             >
               <i className="fas fa-file-excel"></i>
+            </button>
+
+            <button
+              type="button"
+              className="btn-action btn-view"
+              onClick={handleExportTxt}
+              title="Export TXT"
+              aria-label="Export TXT"
+              style={{ backgroundColor: "#17a2b8" }}
+            >
+              <i className="fas fa-file-alt"></i>
             </button>
 
             <button

@@ -47,25 +47,25 @@ async function runAutoMigrations() {
   await runFile("00_init_all_tables.sql", "00_init_all_tables.sql");
   await runFile(
     "01_alter_customers_add_new_fields.sql",
-    "01_alter_customers_add_new_fields.sql"
+    "01_alter_customers_add_new_fields.sql",
   );
   await runFile(
     "02_alter_notes_add_pinning.sql",
-    "02_alter_notes_add_pinning.sql"
+    "02_alter_notes_add_pinning.sql",
   );
   await runFile(
     "03_alter_tasks_kanban_schema.sql",
-    "03_alter_tasks_kanban_schema.sql"
+    "03_alter_tasks_kanban_schema.sql",
   );
 
   await runFile("04_create_general_notes.sql", "04_create_general_notes.sql");
   await runFile(
     "05_alter_tasks_add_pinning.sql",
-    "05_alter_tasks_add_pinning.sql"
+    "05_alter_tasks_add_pinning.sql",
   );
   await runFile(
     "06_create_task_attachments.sql",
-    "06_create_task_attachments.sql"
+    "06_create_task_attachments.sql",
   );
 
   console.log("✅ Database migrations finished.\n");

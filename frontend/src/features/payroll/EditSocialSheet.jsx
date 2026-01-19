@@ -20,7 +20,6 @@ const createEmptyRow = (id) => ({
   details_of_activity: "",
 });
 
-
 // Parse Excel clipboard data handling quotes and newlines
 const parseClipboardData = (str) => {
   const rows = [];
@@ -46,16 +45,16 @@ const parseClipboardData = (str) => {
     } else {
       if (c === '"') {
         inQuote = true;
-      } else if (c === '\t') {
+      } else if (c === "\t") {
         row.push(cell);
         cell = "";
-      } else if (c === '\n' || (c === '\r' && next === '\n')) {
+      } else if (c === "\n" || (c === "\r" && next === "\n")) {
         row.push(cell);
         rows.push(row);
         row = [];
         cell = "";
-        if (c === '\r') i++;
-      } else if (c === '\r') {
+        if (c === "\r") i++;
+      } else if (c === "\r") {
         row.push(cell);
         rows.push(row);
         row = [];
@@ -239,7 +238,7 @@ export default function EditSocialSheet() {
         {
           position: "top-right",
           autoClose: 5000,
-        }
+        },
       );
     } finally {
       setSaving(false);
@@ -384,7 +383,7 @@ export default function EditSocialSheet() {
                         handleInputChange(
                           rowIndex,
                           "worker_name",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       onPaste={(e) =>
@@ -404,7 +403,7 @@ export default function EditSocialSheet() {
                         handleInputChange(
                           rowIndex,
                           "number_of_participants",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       onPaste={(e) =>
@@ -424,7 +423,7 @@ export default function EditSocialSheet() {
                         handleInputChange(
                           rowIndex,
                           "participant_1",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       onPaste={(e) =>
@@ -444,7 +443,7 @@ export default function EditSocialSheet() {
                         handleInputChange(
                           rowIndex,
                           "shift_starts",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       onPaste={(e) =>
@@ -464,7 +463,7 @@ export default function EditSocialSheet() {
                         handleInputChange(
                           rowIndex,
                           "shift_ends",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       onPaste={(e) => handlePaste(e, rowIndex, 0, "shift_ends")}
@@ -482,7 +481,7 @@ export default function EditSocialSheet() {
                         handleInputChange(
                           rowIndex,
                           "actual_hours",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       onPaste={(e) =>
@@ -502,7 +501,7 @@ export default function EditSocialSheet() {
                         handleInputChange(
                           rowIndex,
                           "use_own_car",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       onPaste={(e) =>
@@ -522,7 +521,7 @@ export default function EditSocialSheet() {
                         handleInputChange(
                           rowIndex,
                           "total_mileage",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       onPaste={(e) =>
@@ -542,7 +541,7 @@ export default function EditSocialSheet() {
                         handleInputChange(
                           rowIndex,
                           "details_of_activity",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       onPaste={(e) =>
