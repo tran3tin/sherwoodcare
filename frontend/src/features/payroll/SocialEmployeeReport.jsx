@@ -354,20 +354,15 @@ export default function SocialEmployeeReport() {
     }
 
     const headers = [
-      "Employee Co./Last Name",
-      "Employee First Name",
-      "Payroll Category",
-      "Job",
-      "Customer Co./Last Name",
-      "Customer First Name",
-      "Notes",
+      "Worker's Last Name",
+      "Worker's First Name",
       "Date",
-      "Units",
-      "Employee Card ID",
-      "Employee Record ID",
-      "Start/Stop Time",
-      "Customer Card ID",
-      "Customer Record ID",
+      "Participants's Last Name",
+      "Participants's First Name",
+      "Shift Starts",
+      "Shift Ends",
+      "Actual Hours",
+      "Details of activity",
     ];
 
     const lines = [headers.join("\t")];
@@ -385,18 +380,11 @@ export default function SocialEmployeeReport() {
         wLast = split.lastName;
       }
 
-      const socialLevel = effEmp?.social_level || "";
-
       group.activities.forEach((activity) => {
         const { firstName: pFirst, lastName: pLast } = splitName(
           activity.participant,
         );
 
-        const category = getPayrollCategory(
-          socialLevel,
-          activity.date,
-          activity.shift_starts,
-        );
         const displayDate = formatDateToDisplay(activity.date);
 
         let details = activity.details_of_activity || "";
@@ -405,20 +393,15 @@ export default function SocialEmployeeReport() {
         }
 
         const row = [
-          wLast, // Employee Co./Last Name
-          wFirst, // Employee First Name
-          category, // Payroll Category
-          activity.participant, // Job
-          pLast, // Customer Co./Last Name
-          pFirst, // Customer First Name
-          details, // Notes
-          displayDate, // Date
-          activity.actual_hours, // Units
-          "", // Employee Card ID
-          "", // Employee Record ID
-          "", // Start/Stop Time
-          "", // Customer Card ID
-          "", // Customer Record ID
+          wLast,
+          wFirst,
+          displayDate,
+          pLast,
+          pFirst,
+          activity.shift_starts,
+          activity.shift_ends,
+          activity.actual_hours,
+          details,
         ];
         lines.push(row.join("\t"));
       });
