@@ -56,6 +56,32 @@ const formatDateToDisplay = (dateStr) => {
   return dStr;
 };
 
+const parseDateObject = (dateStr) => {
+  if (!dateStr) return null;
+  const dStr = String(dateStr).trim();
+
+  // Check if in dd/mm/yy or dd/mm/yyyy
+  if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(dStr)) {
+    const parts = dStr.split("/");
+    let year = parseInt(parts[2], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[0], 10);
+    if (year < 100) year += 2000;
+    return new Date(year, month, day);
+  }
+
+  // Try yyyy-mm-dd
+  const parts = dStr.split("-");
+  if (parts.length === 3) {
+    return new Date(
+      parseInt(parts[0], 10),
+      parseInt(parts[1], 10) - 1,
+      parseInt(parts[2], 10),
+    );
+  }
+  return null;
+};
+
 const getPayrollCategory = (level, dateStr, timeStr) => {
   if (!level) return "";
 
@@ -320,12 +346,12 @@ export default function SocialEmployeeReport() {
           "Employee Co./Last Name": wLast,
           "Employee First Name": wFirst,
           "Payroll Category": category,
-          "Job": activity.participant,
+          Job: `${pFirst} ${pLast}`.trim(),
           "Customer Co./Last Name": pLast,
           "Customer First Name": pFirst,
-          "Notes": details,
-          "Date": displayDate,
-          "Units": activity.actual_hours,
+          Notes: details,
+          Date: parseDateObject(activity.date) || activity.date,
+          Units: activity.actual_hours,
           "Employee Card ID": "",
           "Employee Record ID": "",
           "Start/Stop Time": "",
@@ -422,7 +448,7 @@ export default function SocialEmployeeReport() {
           wLast, // Employee Co./Last Name
           wFirst, // Employee First Name
           category, // Payroll Category
-          activity.participant, // Job
+          `${pFirst} ${pLast}`.trim(), // Job
           pLast, // Customer Co./Last Name
           pFirst, // Customer First Name
           details, // Notes
