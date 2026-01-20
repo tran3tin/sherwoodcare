@@ -434,8 +434,8 @@ export default function SocialParticipantReport() {
                         </td>
                       )}
                       <td>{a.date}</td>
-                      <td>{calculatePayableHours(a.actual_hours)}</td>
                       <td>{a.actual_hours}</td>
+                      <td>{calculatePayableHours(a.actual_hours)}</td>
                       <td>{a.total_mileage}</td>
                       <td>{a.details_of_activity}</td>
                     </tr>

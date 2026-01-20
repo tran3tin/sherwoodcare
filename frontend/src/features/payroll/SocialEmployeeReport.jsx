@@ -33,15 +33,27 @@ const splitName = (fullName) => {
 
 const formatDateToDisplay = (dateStr) => {
   if (!dateStr) return "";
-  // Check if already in dd/mm/yyyy
-  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) return dateStr;
+  
+  // Clean string
+  const dStr = String(dateStr).trim();
+
+  // Check if in dd/mm/yy or dd/mm/yyyy
+  if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(dStr)) {
+    const parts = dStr.split("/");
+    let year = parseInt(parts[2], 10);
+    if (year < 100) year += 2000;
+    return `${parts[0]}/${parts[1]}/${year}`;
+  }
+
+  // Check if already in dd/mm/yyyy (legacy stricter check check)
+  // if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) return dateStr;
 
   // Try yyyy-mm-dd
-  const parts = dateStr.split("-");
+  const parts = dStr.split("-");
   if (parts.length === 3) {
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
   }
-  return dateStr;
+  return dStr;
 };
 
 const getPayrollCategory = (level, dateStr, timeStr) => {
