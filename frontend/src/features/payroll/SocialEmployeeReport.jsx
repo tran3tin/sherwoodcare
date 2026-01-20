@@ -33,7 +33,7 @@ const splitName = (fullName) => {
 
 const formatDateToDisplay = (dateStr) => {
   if (!dateStr) return "";
-  
+
   // Clean string
   const dStr = String(dateStr).trim();
 
@@ -301,16 +301,22 @@ export default function SocialEmployeeReport() {
         const { firstName: pFirst, lastName: pLast } = splitName(
           activity.participant,
         );
+
+        let details = activity.details_of_activity || "";
+        if (details.length > 50) {
+          details = details.substring(0, 50) + "...";
+        }
+
         exportData.push({
           "Worker's Last Name": wLast,
           "Worker's First Name": wFirst,
-          Date: activity.date,
+          Date: formatDateToDisplay(activity.date),
           "Participants's Last Name": pLast,
           "Participants's First Name": pFirst,
           "Shift Starts": activity.shift_starts,
           "Shift Ends": activity.shift_ends,
           "Actual Hours": activity.actual_hours,
-          "Details of activity": activity.details_of_activity,
+          "Details of activity": details,
         });
       });
     });
@@ -393,6 +399,11 @@ export default function SocialEmployeeReport() {
         );
         const displayDate = formatDateToDisplay(activity.date);
 
+        let details = activity.details_of_activity || "";
+        if (details.length > 50) {
+          details = details.substring(0, 50) + "...";
+        }
+
         const row = [
           wLast, // Employee Co./Last Name
           wFirst, // Employee First Name
@@ -400,7 +411,7 @@ export default function SocialEmployeeReport() {
           activity.participant, // Job
           pLast, // Customer Co./Last Name
           pFirst, // Customer First Name
-          activity.details_of_activity, // Notes
+          details, // Notes
           displayDate, // Date
           activity.actual_hours, // Units
           "", // Employee Card ID
