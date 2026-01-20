@@ -37,23 +37,28 @@ const formatDateToDisplay = (dateStr) => {
   // Clean string
   const dStr = String(dateStr).trim();
 
+  let day, month, year;
+
   // Check if in dd/mm/yy or dd/mm/yyyy
   if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(dStr)) {
     const parts = dStr.split("/");
-    let year = parseInt(parts[2], 10);
+    day = parseInt(parts[0], 10);
+    month = parseInt(parts[1], 10);
+    year = parseInt(parts[2], 10);
     if (year < 100) year += 2000;
-    return `${parts[0]}/${parts[1]}/${year}`;
+  } else if (/^\d{4}-\d{2}-\d{2}$/.test(dStr)) {
+    // Try yyyy-mm-dd
+    const parts = dStr.split("-");
+    year = parseInt(parts[0], 10);
+    month = parseInt(parts[1], 10);
+    day = parseInt(parts[2], 10);
+  } else {
+    return dStr;
   }
 
-  // Check if already in dd/mm/yyyy (legacy stricter check check)
-  // if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) return dateStr;
-
-  // Try yyyy-mm-dd
-  const parts = dStr.split("-");
-  if (parts.length === 3) {
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  }
-  return dStr;
+  // Format: d/mm/yyyy (MYOB compatible format)
+  const monthStr = month.toString().padStart(2, "0");
+  return `${day}/${monthStr}/${year}`;
 };
 
 const parseDateObject = (dateStr) => {
@@ -347,7 +352,7 @@ export default function SocialEmployeeReport() {
           "Employee First Name": wFirst,
           "Payroll Category": category,
           Job: `${pFirst} ${pLast}`.trim(),
-          "Customer Co./Last Name": pLast,
+          "Customer Co./Last Name": pLast ? `${pLast}.` : "",
           "Customer First Name": pFirst,
           Notes: details,
           Date: parseDateObject(activity.date) || activity.date,
@@ -449,7 +454,7 @@ export default function SocialEmployeeReport() {
           wFirst, // Employee First Name
           category, // Payroll Category
           `${pFirst} ${pLast}`.trim(), // Job
-          pLast, // Customer Co./Last Name
+          pLast ? `${pLast}.` : "", // Customer Co./Last Name
           pFirst, // Customer First Name
           details, // Notes
           displayDate, // Date
@@ -464,8 +469,8 @@ export default function SocialEmployeeReport() {
       });
     });
 
-    const content = lines.join("\n");
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const content = lines.join("\r\n");
+    const blob = new Blob(["\uFEFF" + content], { type: "text/plain;charset=utf-8" });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
