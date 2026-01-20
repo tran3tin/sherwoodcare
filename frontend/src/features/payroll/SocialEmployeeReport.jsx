@@ -171,6 +171,18 @@ export default function SocialEmployeeReport() {
   const [saving, setSaving] = useState(false);
   const [manualMappings, setManualMappings] = useState({});
 
+  useEffect(() => {
+    const loadEmployees = async () => {
+      try {
+        const result = await employeeService.getAll();
+        setEmployees(result.data || result || []);
+      } catch (error) {
+        console.error("Error loading employees:", error);
+      }
+    };
+    loadEmployees();
+  }, []);
+
   const handleBack = () => {
     if (id) {
       navigate("/payroll/social-participants");
@@ -236,12 +248,14 @@ export default function SocialEmployeeReport() {
     return employees.find(
       (e) =>
         (e.first_name || "").toLowerCase() === firstName.toLowerCase() &&
-        (e.last_name || "").toLowerCase() === lastName.toLowerCase()
+        (e.last_name || "").toLowerCase() === lastName.toLowerCase(),
     );
   };
 
   const handleEmployeeChange = (groupName, employeeId) => {
-    const emp = employees.find((e) => String(e.employee_id) === String(employeeId));
+    const emp = employees.find(
+      (e) => String(e.employee_id) === String(employeeId),
+    );
     setManualMappings((prev) => ({
       ...prev,
       [groupName]: emp,
@@ -260,7 +274,7 @@ export default function SocialEmployeeReport() {
     employeeGroups.forEach((group) => {
       // Use effective employee for names if available, else fallback to group name
       const effEmp = getEffectiveEmployee(group.employee);
-      
+
       let wFirst, wLast;
       if (effEmp) {
         wFirst = effEmp.first_name || "";
@@ -619,44 +633,6 @@ export default function SocialEmployeeReport() {
           </div>
         </div>
 
-        <div className="date-config">
-          <h3>📋 Social Employee Report</h3>
-          <div className="input-group">
-            <div className="input-field" style={{ minWidth: 260 }}>
-              <label htmlFor="employeeFilter">Worker&apos;s Name:</label>
-              <input
-                id="employeeFilter"
-                type="text"
-                placeholder="Type worker name..."
-                value={employeeFilter}
-                onChange={(e) => setEmployeeFilter(e.target.value)}
-              />
-            </div>
-
-            <button
-              type="button"
-              className="ts-btn ts-btn-generate"
-              onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-              title="Toggle sort"
-            >
-              Sort: {sortDir === "asc" ? "A→Z" : "Z→A"}
-            </button>
-
-            <button
-              type="button"
-              className="ts-btn ts-btn-generate"
-              onClick={() => navigate("/payroll/social-sheet")}
-            >
-              Back to Social Sheet
-            </button>
-          </div>
-
-          <div style={{ marginTop: 10, opacity: 0.9 }}>
-            Employees: <strong>{employeeGroups.length}</strong> — Activities:{" "}
-            <strong>{totalActivities}</strong>
-          </div>
-        </div>
-
         <div className="table-container">
           {employeeGroups.length === 0 ? (
             <div className="empty-state" style={{ padding: 20 }}>
@@ -675,10 +651,10 @@ export default function SocialEmployeeReport() {
             <table className="timesheet-table" id="socialEmployeeReportTable">
               <thead>
                 <tr>
-                  <th style={{ width: "160px" }}>Worker&apos;s Fullname</th>
+                  <th style={{ width: "200px" }}>Worker&apos;s Fullname</th>
                   <th style={{ width: "120px" }}>Worker&apos;s Last Name</th>
                   <th style={{ width: "120px" }}>Worker&apos;s First Name</th>
-                  <th style={{ width: "120px" }}>Payroll Category</th>
+                  <th style={{ width: "160px" }}>Payroll Category</th>
                   <th style={{ width: "100px" }}>Date</th>
                   <th style={{ width: "120px" }}>
                     Participants&apos;s Last Name
@@ -699,17 +675,17 @@ export default function SocialEmployeeReport() {
                      to drive the name columns and payroll category
                   */
                   const effEmp = getEffectiveEmployee(group.employee);
-                  
+
                   let wFirst, wLast, socialLevel;
                   if (effEmp) {
-                     wFirst = effEmp.first_name || "";
-                     wLast = effEmp.last_name || "";
-                     socialLevel = effEmp.social_level || "";
+                    wFirst = effEmp.first_name || "";
+                    wLast = effEmp.last_name || "";
+                    socialLevel = effEmp.social_level || "";
                   } else {
-                     const split = splitName(group.employee);
-                     wFirst = split.firstName;
-                     wLast = split.lastName;
-                     socialLevel = "";
+                    const split = splitName(group.employee);
+                    wFirst = split.firstName;
+                    wLast = split.lastName;
+                    socialLevel = "";
                   }
 
                   return group.activities.map((a, idx) => {
@@ -729,19 +705,27 @@ export default function SocialEmployeeReport() {
                         {idx === 0 && (
                           <>
                             <td rowSpan={group.activities.length}>
-                               <select 
-                                 className="table-select"
-                                 value={effEmp?.employee_id || ""}
-                                 onChange={(e) => handleEmployeeChange(group.employee, e.target.value)}
-                                 style={{ width: "100%" }}
-                               >
-                                 <option value="">-- Match Employee --</option>
-                                 {employees.map(emp => (
-                                   <option key={emp.employee_id} value={emp.employee_id}>
-                                     {emp.first_name} {emp.last_name}
-                                   </option>
-                                 ))}
-                               </select>
+                              <select
+                                className="table-select"
+                                value={effEmp?.employee_id || ""}
+                                onChange={(e) =>
+                                  handleEmployeeChange(
+                                    group.employee,
+                                    e.target.value,
+                                  )
+                                }
+                                style={{ width: "100%" }}
+                              >
+                                <option value="">-- Match Employee --</option>
+                                {employees.map((emp) => (
+                                  <option
+                                    key={emp.employee_id}
+                                    value={emp.employee_id}
+                                  >
+                                    {emp.first_name} {emp.last_name}
+                                  </option>
+                                ))}
+                              </select>
                             </td>
                             <td rowSpan={group.activities.length}>{wLast}</td>
                             <td rowSpan={group.activities.length}>{wFirst}</td>
