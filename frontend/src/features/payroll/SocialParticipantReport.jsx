@@ -154,11 +154,8 @@ export default function SocialParticipantReport() {
         exportData.push({
           Participant: group.participant,
           Date: activity.date,
-          "# Participants": activity.number_of_participants,
-          "Shift Starts": activity.shift_starts,
-          "Shift Ends": activity.shift_ends,
-          Session: getSessionFromTime(activity.shift_starts),
           "Actual Hours": activity.actual_hours,
+          "Payment Hours": calculatePayableHours(activity.actual_hours),
           "Total Mileage": activity.total_mileage,
           "Details of activity": activity.details_of_activity,
         });
@@ -421,11 +418,8 @@ export default function SocialParticipantReport() {
                 <tr>
                   <th style={{ width: "220px" }}>Participant</th>
                   <th style={{ width: "140px" }}>Date</th>
-                  <th style={{ width: "160px" }}># Participants</th>
-                  <th style={{ width: "140px" }}>Shift Starts</th>
-                  <th style={{ width: "140px" }}>Shift Ends</th>
-                  <th style={{ width: "120px" }}>Session</th>
                   <th style={{ width: "120px" }}>Actual Hours</th>
+                  <th style={{ width: "120px" }}>Payment Hours</th>
                   <th style={{ width: "130px" }}>Total Mileage</th>
                   <th style={{ width: "260px" }}>Details of activity</th>
                 </tr>
@@ -440,10 +434,7 @@ export default function SocialParticipantReport() {
                         </td>
                       )}
                       <td>{a.date}</td>
-                      <td>{a.number_of_participants}</td>
-                      <td>{a.shift_starts}</td>
-                      <td>{a.shift_ends}</td>
-                      <td>{getSessionFromTime(a.shift_starts)}</td>
+                      <td>{calculatePayableHours(a.actual_hours)}</td>
                       <td>{a.actual_hours}</td>
                       <td>{a.total_mileage}</td>
                       <td>{a.details_of_activity}</td>
