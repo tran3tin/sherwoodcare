@@ -297,10 +297,19 @@ export default function SocialEmployeeReport() {
         wLast = split.lastName;
       }
 
+      const socialLevel = effEmp?.social_level || "";
+
       group.activities.forEach((activity) => {
         const { firstName: pFirst, lastName: pLast } = splitName(
           activity.participant,
         );
+
+        const category = getPayrollCategory(
+          socialLevel,
+          activity.date,
+          activity.shift_starts,
+        );
+        const displayDate = formatDateToDisplay(activity.date);
 
         let details = activity.details_of_activity || "";
         if (details.length > 50) {
@@ -308,15 +317,20 @@ export default function SocialEmployeeReport() {
         }
 
         exportData.push({
-          "Worker's Last Name": wLast,
-          "Worker's First Name": wFirst,
-          Date: formatDateToDisplay(activity.date),
-          "Participants's Last Name": pLast,
-          "Participants's First Name": pFirst,
-          "Shift Starts": activity.shift_starts,
-          "Shift Ends": activity.shift_ends,
-          "Actual Hours": activity.actual_hours,
-          "Details of activity": details,
+          "Employee Co./Last Name": wLast,
+          "Employee First Name": wFirst,
+          "Payroll Category": category,
+          "Job": activity.participant,
+          "Customer Co./Last Name": pLast,
+          "Customer First Name": pFirst,
+          "Notes": details,
+          "Date": displayDate,
+          "Units": activity.actual_hours,
+          "Employee Card ID": "",
+          "Employee Record ID": "",
+          "Start/Stop Time": "",
+          "Customer Card ID": "",
+          "Customer Record ID": "",
         });
       });
     });
@@ -354,15 +368,20 @@ export default function SocialEmployeeReport() {
     }
 
     const headers = [
-      "Worker's Last Name",
-      "Worker's First Name",
+      "Employee Co./Last Name",
+      "Employee First Name",
+      "Payroll Category",
+      "Job",
+      "Customer Co./Last Name",
+      "Customer First Name",
+      "Notes",
       "Date",
-      "Participants's Last Name",
-      "Participants's First Name",
-      "Shift Starts",
-      "Shift Ends",
-      "Actual Hours",
-      "Details of activity",
+      "Units",
+      "Employee Card ID",
+      "Employee Record ID",
+      "Start/Stop Time",
+      "Customer Card ID",
+      "Customer Record ID",
     ];
 
     const lines = [headers.join("\t")];
@@ -380,11 +399,18 @@ export default function SocialEmployeeReport() {
         wLast = split.lastName;
       }
 
+      const socialLevel = effEmp?.social_level || "";
+
       group.activities.forEach((activity) => {
         const { firstName: pFirst, lastName: pLast } = splitName(
           activity.participant,
         );
 
+        const category = getPayrollCategory(
+          socialLevel,
+          activity.date,
+          activity.shift_starts,
+        );
         const displayDate = formatDateToDisplay(activity.date);
 
         let details = activity.details_of_activity || "";
@@ -393,15 +419,20 @@ export default function SocialEmployeeReport() {
         }
 
         const row = [
-          wLast,
-          wFirst,
-          displayDate,
-          pLast,
-          pFirst,
-          activity.shift_starts,
-          activity.shift_ends,
-          activity.actual_hours,
-          details,
+          wLast, // Employee Co./Last Name
+          wFirst, // Employee First Name
+          category, // Payroll Category
+          activity.participant, // Job
+          pLast, // Customer Co./Last Name
+          pFirst, // Customer First Name
+          details, // Notes
+          displayDate, // Date
+          activity.actual_hours, // Units
+          "", // Employee Card ID
+          "", // Employee Record ID
+          "", // Start/Stop Time
+          "", // Customer Card ID
+          "", // Customer Record ID
         ];
         lines.push(row.join("\t"));
       });
