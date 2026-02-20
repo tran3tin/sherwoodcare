@@ -21,6 +21,7 @@ import ViewEmployee from "./features/employee/ViewEmployee";
 import EditEmployee from "./features/employee/EditEmployee";
 import EmployeeNotes from "./features/employee/EmployeeNotes";
 import CustomerList from "./features/customer/CustomerList";
+import CustomerLedger from "./features/customer/CustomerLedger";
 import CreateCustomer from "./features/customer/CreateCustomer";
 import ViewCustomer from "./features/customer/ViewCustomer";
 import EditCustomer from "./features/customer/EditCustomer";
@@ -88,6 +89,7 @@ export default function App() {
       <Route path="/employee/edit/:id" element={<EditEmployee />} />
       <Route path="/employee/:employeeId/notes" element={<EmployeeNotes />} />
       <Route path="/customer" element={<CustomerList />} />
+      <Route path="/customer/ledger" element={<CustomerLedger />} />
       <Route path="/customer/create" element={<CreateCustomer />} />
       <Route path="/customer/:id" element={<ViewCustomer />} />
       <Route path="/customer/edit/:id" element={<EditCustomer />} />

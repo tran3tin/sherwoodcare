@@ -34,6 +34,7 @@ const menuItems = [
     submenu: [
       { title: "Customer List", path: "/customer" },
       { title: "Invoices", path: "/customer-invoices" },
+      { title: "Customer Ledger", path: "/customer/ledger" },
     ],
   },
   {

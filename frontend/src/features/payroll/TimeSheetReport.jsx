@@ -433,10 +433,13 @@ const TimeSheetReport = () => {
       if (processed_data && processed_data.length > 0) {
         const resolved = processed_data.map((employee) => ({
           ...employee,
-          jobs: addCallOutAllowance(
-            resolveJobSessions(
-              Array.isArray(employee?.jobs) ? employee.jobs : [],
+          jobs: applyWeekendSessions(
+            addCallOutAllowance(
+              resolveJobSessions(
+                Array.isArray(employee?.jobs) ? employee.jobs : [],
+              ),
             ),
+            headers,
           ),
         }));
         setReportData(resolved);
@@ -542,7 +545,10 @@ const TimeSheetReport = () => {
 
       return {
         name: name,
-        jobs: addCallOutAllowance(resolveJobSessions(rawJobs)),
+        jobs: applyWeekendSessions(
+          addCallOutAllowance(resolveJobSessions(rawJobs)),
+          headers,
+        ),
       };
     });
 
@@ -678,6 +684,37 @@ const TimeSheetReport = () => {
     };
 
     return [...jobs, callOutJob];
+  };
+
+  // Override session to "Saturday" or "Sunday" when ALL non-empty days of a job
+  // fall on that weekday. Special sessions (Sleep/Call-Out Allowance) are preserved.
+  const applyWeekendSessions = (jobs, headers) => {
+    if (!Array.isArray(jobs) || !Array.isArray(headers)) return jobs;
+
+    return jobs.map((job) => {
+      const session = job.session || "";
+      // Never override these special sessions.
+      if (session === "Sleep Allowance" || session === "Call-Out Allowance")
+        return job;
+
+      const dayValues = Array.isArray(job.dayValues) ? job.dayValues : [];
+      const workedIndices = dayValues
+        .map((v, i) => (String(v).trim() !== "" ? i : -1))
+        .filter((i) => i >= 0);
+
+      if (workedIndices.length === 0) return job;
+
+      const allSaturday = workedIndices.every(
+        (i) => headers[i]?.dayName === "Saturday",
+      );
+      const allSunday = workedIndices.every(
+        (i) => headers[i]?.dayName === "Sunday",
+      );
+
+      if (allSunday) return { ...job, session: "Sunday" };
+      if (allSaturday) return { ...job, session: "Saturday" };
+      return job;
+    });
   };
 
   // Post-process an employee's job list to enforce night-shift chain continuity.
