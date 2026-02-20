@@ -11,40 +11,42 @@ export default function PayrollMyOBUpload() {
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState([]);
 
-  const getSessionFromPeriod = (period) => {
+  const parseTimeToMinutes = (timeStr) => {
+    if (!timeStr || typeof timeStr !== "string") return null;
+    const match = timeStr.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
+    if (!match) return null;
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2] || "0", 10);
+    const meridiem = match[3].toLowerCase();
+    if (meridiem === "pm" && hours !== 12) hours += 12;
+    else if (meridiem === "am" && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  };
+
+  const parsePeriodStartEnd = (period) => {
+    if (!period || typeof period !== "string") return null;
+    const match = period.match(
+      /^(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))$/i,
+    );
+    if (!match) return null;
+    const startMinutes = parseTimeToMinutes(match[1].trim());
+    const endMinutes = parseTimeToMinutes(match[2].trim());
+    if (startMinutes === null || endMinutes === null) return null;
+    return { startMinutes, endMinutes };
+  };
+
+  const getSessionFromPeriod = (period, note = "") => {
     if (!period || typeof period !== "string") return "";
-
-    // Extract start time from period (e.g., "7am-8am" -> "7am", "3:15pm-7:30pm" -> "3:15pm")
-    const startTime = period.split("-")[0]?.trim();
-    if (!startTime) return "";
-
-    // Parse time to 24-hour format
-    const timeMatch = startTime.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
-    if (!timeMatch) return "";
-
-    let hours = parseInt(timeMatch[1], 10);
-    const minutes = parseInt(timeMatch[2] || "0", 10);
-    const meridiem = timeMatch[3].toLowerCase();
-
-    // Convert to 24-hour format
-    if (meridiem === "pm" && hours !== 12) {
-      hours += 12;
-    } else if (meridiem === "am" && hours === 12) {
-      hours = 0;
-    }
-
-    // Calculate total minutes from midnight
-    const totalMinutes = hours * 60 + minutes;
-
-    // Morning: 7am (420 min) to 12:59pm (779 min)
-    if (totalMinutes >= 420 && totalMinutes < 780) {
-      return "Morning";
-    }
-    // Afternoon: 1:00pm (780 min) to 5:59pm (1079 min)
-    if (totalMinutes >= 780 && totalMinutes < 1080) {
-      return "Afternoon";
-    }
-    // Night: 6:00pm onwards or before 7am
+    if (note && ["s/o", "so"].includes(String(note).trim().toLowerCase()))
+      return "Sleep Allowance";
+    if (note && ["c/o", "co"].includes(String(note).trim().toLowerCase()))
+      return "Call-Out Allowance";
+    const parsed = parsePeriodStartEnd(period);
+    if (!parsed) return "";
+    const { startMinutes, endMinutes } = parsed;
+    if (endMinutes === 21 * 60) return "Night";
+    if (startMinutes >= 420 && startMinutes < 780) return "Morning";
+    if (startMinutes >= 780 && startMinutes < 1080) return "Afternoon";
     return "Night";
   };
 
@@ -91,7 +93,7 @@ export default function PayrollMyOBUpload() {
         // Base values for Payroll Category; final value is decided per-day (Sat/Sun rules)
         const level = String(job?.level ?? "").trim();
         const baseSession = String(
-          job?.session || getSessionFromPeriod(job?.period) || "",
+          job?.session || getSessionFromPeriod(job?.period, job?.note) || "",
         ).trim();
 
         // For each day that has a value, create a row
@@ -115,7 +117,13 @@ export default function PayrollMyOBUpload() {
             }
 
             let payrollCategory = "";
-            if (dayOfWeek === 6) {
+            // Sleep Allowance and Call-Out Allowance are always their own category.
+            if (
+              baseSession === "Sleep Allowance" ||
+              baseSession === "Call-Out Allowance"
+            ) {
+              payrollCategory = baseSession;
+            } else if (dayOfWeek === 6) {
               // Saturday
               payrollCategory = level ? `${level} - Afternoon` : "Afternoon";
             } else if (dayOfWeek === 0) {

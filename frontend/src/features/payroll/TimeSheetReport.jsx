@@ -48,7 +48,7 @@ const TimeSheetReport = () => {
     if (deleting) return;
 
     const confirmed = window.confirm(
-      "Delete this report/timesheet? This action cannot be undone."
+      "Delete this report/timesheet? This action cannot be undone.",
     );
     if (!confirmed) return;
 
@@ -95,7 +95,7 @@ const TimeSheetReport = () => {
             closeOnClick: true,
             pauseOnHover: true,
             draggable: true,
-          }
+          },
         );
       } finally {
         setDeleting(false);
@@ -168,7 +168,7 @@ const TimeSheetReport = () => {
     const { maxRowNumber } = buildEntriesFromReport(data, headers);
 
     const startYmd = normalizeYMD(
-      safeHeaders?.[0]?.ymd || safeHeaders?.[0]?.date
+      safeHeaders?.[0]?.ymd || safeHeaders?.[0]?.date,
     );
     const numDays = safeHeaders.length || 0;
     const numRows = Math.max(maxRowNumber || 0, 1);
@@ -177,7 +177,7 @@ const TimeSheetReport = () => {
 
     const endYmd = addDaysYMD(startYmd, numDays - 1);
     const name = `TimeSheet ${formatDMFromYMD(startYmd)} - ${formatDMFromYMD(
-      endYmd
+      endYmd,
     )}`;
 
     return { start_date: startYmd, num_days: numDays, num_rows: numRows, name };
@@ -264,7 +264,7 @@ const TimeSheetReport = () => {
           closeOnClick: true,
           pauseOnHover: true,
           draggable: true,
-        }
+        },
       );
     } finally {
       setSaving(false);
@@ -293,7 +293,7 @@ const TimeSheetReport = () => {
       "Period",
       "Hrs",
       ...dateHeaders.map(
-        (h) => h.display || formatDateDisplay(h.ymd || h.date)
+        (h) => h.display || formatDateDisplay(h.ymd || h.date),
       ),
       "TOTAL",
     ];
@@ -308,7 +308,9 @@ const TimeSheetReport = () => {
           String(employee?.name ?? ""),
           String(job?.full_name ?? ""),
           String(job?.level ?? ""),
-          String(job?.session || getSessionFromPeriod(job?.period) || ""),
+          String(
+            job?.session || getSessionFromPeriod(job?.period, job?.note) || "",
+          ),
           String(job?.note ?? ""),
           String(job?.period ?? ""),
           String(job?.hrsValue ?? ""),
@@ -323,7 +325,7 @@ const TimeSheetReport = () => {
     XLSX.utils.book_append_sheet(wb, sheet, "Timesheet Report");
 
     const startYmd = normalizeYMD(
-      dateHeaders?.[0]?.ymd || dateHeaders?.[0]?.date
+      dateHeaders?.[0]?.ymd || dateHeaders?.[0]?.date,
     );
     const safeStart = startYmd ? startYmd.replaceAll(":", "-") : "";
     const fileName = `TimesheetReport_${id || "draft"}${
@@ -426,9 +428,18 @@ const TimeSheetReport = () => {
       }
       setDateHeaders(headers);
 
-      // Use processed_data directly if available
+      // Use processed_data directly if available; re-apply chain resolution so
+      // the updated session logic is reflected even on previously saved reports.
       if (processed_data && processed_data.length > 0) {
-        setReportData(processed_data);
+        const resolved = processed_data.map((employee) => ({
+          ...employee,
+          jobs: addCallOutAllowance(
+            resolveJobSessions(
+              Array.isArray(employee?.jobs) ? employee.jobs : [],
+            ),
+          ),
+        }));
+        setReportData(resolved);
       } else {
         // Fallback: no processed data, show empty
         setReportData([]);
@@ -504,7 +515,7 @@ const TimeSheetReport = () => {
               num: num,
               full_name: "",
               level: "",
-              session: getSessionFromPeriod(period),
+              session: getSessionFromPeriod(period, note),
               note: note,
               period: period,
               hrsValue: hrs,
@@ -521,19 +532,17 @@ const TimeSheetReport = () => {
     const processed = sortedNames.map((name) => {
       const jobs = employeeMap[name];
       const jobKeys = Object.keys(jobs);
+      const rawJobs = jobKeys.map((key) => {
+        const job = jobs[key];
+        const dayValues = headers.map((_, dayIndex) =>
+          job.workedDays[dayIndex] ? String(job.hrsValue ?? "") : "",
+        );
+        return { ...job, dayValues };
+      });
+
       return {
         name: name,
-        jobs: jobKeys.map((key) => {
-          const job = jobs[key];
-          const dayValues = headers.map((_, dayIndex) =>
-            job.workedDays[dayIndex] ? String(job.hrsValue ?? "") : ""
-          );
-
-          return {
-            ...job,
-            dayValues,
-          };
-        }),
+        jobs: addCallOutAllowance(resolveJobSessions(rawJobs)),
       };
     });
 
@@ -561,50 +570,170 @@ const TimeSheetReport = () => {
     }, 0);
   };
 
-  const getSessionFromPeriod = (period) => {
+  // Parse a single time token like "7am", "9pm", "3:15pm", "7:30AM" into minutes from midnight.
+  const parseTimeToMinutes = (timeStr) => {
+    if (!timeStr || typeof timeStr !== "string") return null;
+    const match = timeStr.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
+    if (!match) return null;
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2] || "0", 10);
+    const meridiem = match[3].toLowerCase();
+    if (meridiem === "pm" && hours !== 12) hours += 12;
+    else if (meridiem === "am" && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  };
+
+  // Parse a period string (e.g. "6pm-9pm", "9pm-7am") into {startMinutes, endMinutes}.
+  const parsePeriodStartEnd = (period) => {
+    if (!period || typeof period !== "string") return null;
+    // Split only on the first hyphen that separates two time tokens
+    const match = period.match(
+      /^(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))$/i,
+    );
+    if (!match) return null;
+    const startMinutes = parseTimeToMinutes(match[1].trim());
+    const endMinutes = parseTimeToMinutes(match[2].trim());
+    if (startMinutes === null || endMinutes === null) return null;
+    return { startMinutes, endMinutes };
+  };
+
+  // Returns true when the Name Job indicates a Call-Out Allowance entry (c/o or co).
+  const isCallOutAllowanceNote = (note) => {
+    if (!note || typeof note !== "string") return false;
+    return ["c/o", "co"].includes(note.trim().toLowerCase());
+  };
+
+  // Returns true when the Name Job indicates a Sleep Allowance entry (s/o or so).
+  const isSleepAllowanceNote = (note) => {
+    if (!note || typeof note !== "string") return false;
+    return ["s/o", "so"].includes(note.trim().toLowerCase());
+  };
+
+  // Determine the basic session for a single job given its period string and Name Job.
+  // Does NOT account for night-chain continuity across rows – use resolveJobSessions for that.
+  const getSessionFromPeriod = (period, note = "") => {
     if (!period || typeof period !== "string") return "";
 
-    // Extract start time from period (e.g., "7am-8am" -> "7am", "3:15pm-7:30pm" -> "3:15pm")
-    const startTime = period.split("-")[0]?.trim();
-    if (!startTime) return "";
+    // Sleep Allowance: Name Job is "s/o" or "so"
+    if (isSleepAllowanceNote(note)) return "Sleep Allowance";
 
-    // Parse time to 24-hour format
-    const timeMatch = startTime.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
-    if (!timeMatch) return "";
+    const parsed = parsePeriodStartEnd(period);
+    if (!parsed) return "";
 
-    let hours = parseInt(timeMatch[1], 10);
-    const minutes = parseInt(timeMatch[2] || "0", 10);
-    const meridiem = timeMatch[3].toLowerCase();
+    const { startMinutes, endMinutes } = parsed;
 
-    // Convert to 24-hour format
-    if (meridiem === "pm" && hours !== 12) {
-      hours += 12;
-    } else if (meridiem === "am" && hours === 12) {
-      hours = 0;
+    // If the period ends at exactly 9pm (21:00 = 1260 min), classify as Night
+    // regardless of start time (e.g. 5pm-9pm, 6pm-9pm).
+    if (endMinutes === 21 * 60) return "Night";
+
+    // Morning: 7:00am (420) to 12:59pm (779)
+    if (startMinutes >= 420 && startMinutes < 780) return "Morning";
+
+    // Afternoon: 1:00pm (780) to 5:59pm (1079)
+    if (startMinutes >= 780 && startMinutes < 1080) return "Afternoon";
+
+    // Night: 6:00pm (1080+) or before 7am
+    return "Night";
+  };
+
+  // Auto-add a single Call-Out Allowance row (1 hr, note "c/o") to an employee's
+  // job list whenever at least one Sleep Allowance row is present and no Call-Out
+  // row already exists. The dayValues mirror the union of all Sleep Allowance days.
+  const addCallOutAllowance = (jobs) => {
+    if (!Array.isArray(jobs) || jobs.length === 0) return jobs;
+
+    const sleepJobs = jobs.filter((j) => j.session === "Sleep Allowance");
+    if (sleepJobs.length === 0) return jobs;
+
+    // Do not add if a call-out row already exists.
+    const hasCallOut = jobs.some((j) =>
+      isCallOutAllowanceNote(String(j?.note ?? "")),
+    );
+    if (hasCallOut) return jobs;
+
+    // Determine the column count from the widest dayValues array.
+    const numDays = Math.max(
+      ...jobs.map((j) => (Array.isArray(j.dayValues) ? j.dayValues.length : 0)),
+      0,
+    );
+
+    // Build merged dayValues: any day that has a sleep allowance entry gets "1".
+    const mergedDayValues = Array(numDays).fill("");
+    for (const sleepJob of sleepJobs) {
+      (sleepJob.dayValues || []).forEach((val, idx) => {
+        if (String(val).trim() !== "") mergedDayValues[idx] = "1";
+      });
     }
 
-    // Calculate total minutes from midnight
-    const totalMinutes = hours * 60 + minutes;
+    const template = sleepJobs[0];
+    const callOutJob = {
+      num: template.num,
+      full_name: template.full_name || "",
+      level: template.level || "",
+      session: "Call-Out Allowance",
+      note: "c/o",
+      period: template.period || "",
+      hrsValue: "1",
+      dayValues: mergedDayValues,
+    };
 
-    // Morning: 7am (420 min) to 12:59pm (779 min)
-    if (totalMinutes >= 420 && totalMinutes < 780) {
-      return "Morning";
-    }
-    // Afternoon: 1:00pm (780 min) to 5:59pm (1079 min)
-    else if (totalMinutes >= 780 && totalMinutes < 1080) {
-      return "Afternoon";
-    }
-    // Night: 6:00pm onwards or before 7am
-    else {
-      return "Night";
-    }
+    return [...jobs, callOutJob];
+  };
+
+  // Post-process an employee's job list to enforce night-shift chain continuity.
+  //
+  // Chain rule:
+  //   1. A chain STARTS when a job is classified as Night and its period ends at 9pm.
+  //   2. A Sleep Allowance job extends the chain's end time (e.g. 9pm-7am).
+  //   3. Any subsequent job whose start time matches the current chain-end time is
+  //      also classified as Night, and the chain extends to that job's end time.
+  //   4. The chain breaks when a job's start time does NOT match the chain-end time.
+  const resolveJobSessions = (jobs) => {
+    if (!Array.isArray(jobs) || jobs.length === 0) return jobs;
+
+    let chainEndMinutes = null; // null = not currently in a night chain
+
+    return jobs.map((job) => {
+      const note = String(job?.note ?? "");
+      const period = String(job?.period ?? "");
+      const basicSession = getSessionFromPeriod(period, note);
+      const parsed = parsePeriodStartEnd(period);
+
+      // --- Sleep Allowance ---
+      if (basicSession === "Sleep Allowance") {
+        if (chainEndMinutes !== null && parsed) {
+          // Extend the chain to where this sleep ends (overnight end, e.g. 7am = 420).
+          chainEndMinutes = parsed.endMinutes;
+        }
+        return { ...job, session: "Sleep Allowance" };
+      }
+
+      // --- Continuing an existing night chain ---
+      if (chainEndMinutes !== null && parsed) {
+        if (parsed.startMinutes === chainEndMinutes) {
+          // This job starts exactly where the chain left off → still Night.
+          chainEndMinutes = parsed.endMinutes;
+          return { ...job, session: "Night" };
+        }
+        // The chain is broken if start doesn't match.
+        chainEndMinutes = null;
+      }
+
+      // --- Apply basic session and potentially start a new chain ---
+      if (basicSession === "Night" && parsed && parsed.endMinutes === 21 * 60) {
+        // Night job ending at 9pm starts a new chain (chain-end = 9pm = 1260).
+        chainEndMinutes = parsed.endMinutes;
+      }
+
+      return { ...job, session: basicSession };
+    });
   };
 
   const updateEmployeeField = (empIndex, value) => {
     setReportData((prev) =>
       prev.map((employee, index) =>
-        index === empIndex ? { ...employee, name: value } : employee
-      )
+        index === empIndex ? { ...employee, name: value } : employee,
+      ),
     );
   };
 
@@ -622,7 +751,7 @@ const TimeSheetReport = () => {
               const prevHrs = String(job.hrsValue ?? "");
               const nextHrs = String(value);
               const nextDayValues = (job.dayValues || []).map((v) =>
-                String(v) === prevHrs ? nextHrs : v
+                String(v) === prevHrs ? nextHrs : v,
               );
 
               return {
@@ -636,8 +765,14 @@ const TimeSheetReport = () => {
             if (field === "period") {
               const previousPeriod = String(job.period ?? "");
               const previousSession = String(job.session ?? "");
-              const previousAutoSession = getSessionFromPeriod(previousPeriod);
-              const nextAutoSession = getSessionFromPeriod(String(value));
+              const previousAutoSession = getSessionFromPeriod(
+                previousPeriod,
+                job.note,
+              );
+              const nextAutoSession = getSessionFromPeriod(
+                String(value),
+                job.note,
+              );
 
               // Only auto-update session if it was blank or still on the auto-derived value.
               const shouldAutoUpdateSession =
@@ -655,7 +790,7 @@ const TimeSheetReport = () => {
             return { ...job, [field]: value };
           }),
         };
-      })
+      }),
     );
   };
 
@@ -666,7 +801,7 @@ const TimeSheetReport = () => {
 
         // Find selected employee to get level
         const selectedEmployee = employees.find(
-          (emp) => `${emp.first_name} ${emp.last_name}` === fullName
+          (emp) => `${emp.first_name} ${emp.last_name}` === fullName,
         );
 
         return {
@@ -677,7 +812,7 @@ const TimeSheetReport = () => {
             level: selectedEmployee?.level || job.level || "",
           })),
         };
-      })
+      }),
     );
   };
 
@@ -695,7 +830,7 @@ const TimeSheetReport = () => {
             return { ...job, dayValues: nextDayValues };
           }),
         };
-      })
+      }),
     );
   };
 
@@ -859,7 +994,7 @@ const TimeSheetReport = () => {
                                 onChange={(e) =>
                                   updateEmployeeFullName(
                                     empIndex,
-                                    e.target.value
+                                    e.target.value,
                                   )
                                 }
                                 style={{
@@ -874,8 +1009,8 @@ const TimeSheetReport = () => {
                                 {[...employees]
                                   .sort((a, b) =>
                                     (a.first_name || "").localeCompare(
-                                      b.first_name || ""
-                                    )
+                                      b.first_name || "",
+                                    ),
                                   )
                                   .map((emp) => (
                                     <option
@@ -898,7 +1033,7 @@ const TimeSheetReport = () => {
                                 empIndex,
                                 jobIndex,
                                 "level",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             style={{
@@ -913,14 +1048,15 @@ const TimeSheetReport = () => {
                           <input
                             type="text"
                             value={
-                              job.session || getSessionFromPeriod(job.period)
+                              job.session ||
+                              getSessionFromPeriod(job.period, job.note)
                             }
                             onChange={(e) =>
                               updateJobField(
                                 empIndex,
                                 jobIndex,
                                 "session",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             style={{
@@ -940,7 +1076,7 @@ const TimeSheetReport = () => {
                                 empIndex,
                                 jobIndex,
                                 "note",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             style={{
@@ -961,7 +1097,7 @@ const TimeSheetReport = () => {
                                 empIndex,
                                 jobIndex,
                                 "period",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             style={{
@@ -981,7 +1117,7 @@ const TimeSheetReport = () => {
                                 empIndex,
                                 jobIndex,
                                 "hrsValue",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             style={{
@@ -1008,7 +1144,7 @@ const TimeSheetReport = () => {
                                   empIndex,
                                   jobIndex,
                                   dayIndex,
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               style={{
