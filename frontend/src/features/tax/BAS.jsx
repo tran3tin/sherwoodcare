@@ -225,6 +225,17 @@ export default function BAS() {
     return `${formatDotDate(fromDate)} - ${formatDotDate(toDate)}`;
   }, [fromDate, toDate]);
 
+  const payrollCompareEndDate = useMemo(() => {
+    if (!fromDate) return "";
+    const secondMonth = addMonths(fromDate, 1);
+    return lastDayOfMonth(secondMonth);
+  }, [fromDate]);
+
+  const payrollCompareRangeLabel = useMemo(() => {
+    if (!fromDate || !payrollCompareEndDate) return "";
+    return `${formatDotDate(fromDate)} - ${formatDotDate(payrollCompareEndDate)}`;
+  }, [fromDate, payrollCompareEndDate]);
+
   const lastMonthRangeLabel = useMemo(() => {
     if (!toDate) return "";
     return `${formatDotDate(firstDayOfMonth(toDate))} - ${formatDotDate(toDate)}`;
@@ -285,7 +296,7 @@ export default function BAS() {
     firstDayOfMonth(ias2Month),
     lastDayOfMonth(ias2Month),
   );
-  const payrollRangeRef = buildPayrollRef(fromDate, toDate);
+  const payrollRangeRef = buildPayrollRef(fromDate, payrollCompareEndDate);
   const gstRangeRef = buildGstRef(fromDate, toDate);
   const payrollLastMonthRef = buildPayrollRef(firstDayOfMonth(toDate), toDate);
 
@@ -413,22 +424,16 @@ export default function BAS() {
     </button>
   );
 
-  const renderEditableCell = (row, setter, key) => (
-    <td style={{ border: "1px solid #d1d5db", padding: "4px 6px" }}>
-      <input
-        value={row[key] === 0 ? "" : String(row[key])}
-        onChange={(e) => setRowValue(setter, key, e.target.value)}
-        style={{
-          width: "100%",
-          height: "28px",
-          border: "1px solid #d1d5db",
-          borderRadius: "4px",
-          textAlign: "right",
-          fontSize: "12px",
-          padding: "0 6px",
-          boxSizing: "border-box",
-        }}
-      />
+  const renderEditableCell = (row, _setter, key) => (
+    <td
+      style={{
+        border: "1px solid #d1d5db",
+        padding: "8px 6px",
+        textAlign: "right",
+        fontWeight: 500,
+      }}
+    >
+      {row[key] === 0 ? "-" : formatValue(row[key])}
     </td>
   );
 
@@ -842,7 +847,7 @@ export default function BAS() {
                     Payroll Summary
                   </div>
                   <div style={{ fontSize: "14px", lineHeight: 1.35 }}>
-                    {payrollRangeLabel}
+                    {payrollCompareRangeLabel}
                   </div>
                 </td>
 
@@ -881,7 +886,7 @@ export default function BAS() {
 
                 <td style={{ border: "1px solid #d1d5db", padding: "8px 6px" }}>
                   {renderReferenceIcon(payrollRangeRef, "#0f766e", () =>
-                    openPayrollPopup(payrollRangeLabel, "payroll-range"),
+                    openPayrollPopup(payrollCompareRangeLabel, "payroll-range"),
                   )}
                 </td>
               </tr>
