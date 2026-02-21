@@ -8,8 +8,24 @@ const DEFAULT_DEV = "http://localhost:3000";
 const DEFAULT_PROD = "https://sherwoodcare-backend.up.railway.app";
 
 // Only use env vars if they are NOT localhost in production mode
-const envApiUrl =
+const rawEnvApiUrl =
   import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL;
+
+const normalizeApiBaseUrl = (url) => {
+  if (!url || typeof url !== "string") return "";
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+
+  // If protocol is missing (e.g. sherwoodcare-backend.up.railway.app),
+  // force https so browser won't treat it as a relative path.
+  const withProtocol = /^https?:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+
+  return withProtocol.replace(/\/$/, "");
+};
+
+const envApiUrl = normalizeApiBaseUrl(rawEnvApiUrl);
 const isEnvLocalhost =
   envApiUrl &&
   (envApiUrl.includes("localhost") || envApiUrl.includes("127.0.0.1"));
