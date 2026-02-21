@@ -19,8 +19,7 @@ const uploadFile = async (req, res) => {
     // File đã được lưu vào disk bởi Multer
     // Tạo URL public để truy cập file
     const backendUrl =
-      process.env.BACKEND_URL ||
-      `https://sherwoodcare-backend.up.railway.app`;
+      process.env.BACKEND_URL || `https://sherwoodcare-backend.up.railway.app`;
     const publicUrl = `${backendUrl}/uploads/${req.file.filename}`;
 
     // Lưu thông tin vào database
@@ -49,7 +48,9 @@ const uploadFile = async (req, res) => {
  */
 const getFiles = async (req, res) => {
   try {
-    const result = await dbQuery("SELECT * FROM documents ORDER BY created_at DESC");
+    const result = await dbQuery(
+      "SELECT * FROM documents ORDER BY created_at DESC",
+    );
 
     res.status(200).json({
       success: true,
@@ -72,7 +73,9 @@ const deleteFile = async (req, res) => {
     const { id } = req.params;
 
     // 1. Lấy thông tin file từ database
-    const fileResult = await dbQuery("SELECT * FROM documents WHERE id = $1", [id]);
+    const fileResult = await dbQuery("SELECT * FROM documents WHERE id = $1", [
+      id,
+    ]);
 
     if (fileResult.rows.length === 0) {
       return res.status(404).json({
@@ -86,7 +89,13 @@ const deleteFile = async (req, res) => {
     // 2. Xóa file khỏi disk
     try {
       const filename = path.basename(file.file_url);
-      const filePath = path.join(__dirname, "..", "public", "uploads", filename);
+      const filePath = path.join(
+        __dirname,
+        "..",
+        "public",
+        "uploads",
+        filename,
+      );
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
@@ -95,7 +104,10 @@ const deleteFile = async (req, res) => {
     }
 
     // 3. Xóa record khỏi database
-    const deleteResult = await dbQuery("DELETE FROM documents WHERE id = $1 RETURNING *", [id]);
+    const deleteResult = await dbQuery(
+      "DELETE FROM documents WHERE id = $1 RETURNING *",
+      [id],
+    );
 
     res.status(200).json({
       success: true,

@@ -231,11 +231,7 @@ export default function CustomerLedger() {
             onClick={() => setShowReconciliation(true)}
             style={{ background: "#2c3e7a", color: "#fff" }}
           >
-            <i
-              className="fas fa-balance-scale"
-              style={{ marginRight: "6px" }}
-            ></i>
-            Reconciliation
+            <i className="fas fa-balance-scale"></i>
           </button>
           <button
             type="button"
