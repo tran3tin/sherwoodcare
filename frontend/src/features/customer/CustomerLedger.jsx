@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from "react";
-import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
 import Layout from "../../components/Layout";
 import "../../assets/styles/list.css";
@@ -87,9 +86,16 @@ const focusCell = (r, c) => {
   }
 };
 
+const autoResize = (el) => {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
+};
+
 // ── component ────────────────────────────────────────────────────────────────
 export default function CustomerLedger() {
   const [rows, setRows] = useState(() => makeRows(DEFAULT_ROWS));
+  const [showReconciliation, setShowReconciliation] = useState(false);
 
   // ── helpers ────────────────────────────────────────────────────────────────
   const updateCell = useCallback((rowIdx, key, value) => {
@@ -135,7 +141,7 @@ export default function CustomerLedger() {
     const maxRow = rows.length - 1;
     const maxCol = COL_KEYS.length - 1;
 
-    if (e.key === "ArrowDown" || e.key === "Enter") {
+    if (e.key === "ArrowDown") {
       e.preventDefault();
       if (rowIdx < maxRow) focusCell(rowIdx + 1, colIdx);
       else {
@@ -175,30 +181,25 @@ export default function CustomerLedger() {
           maximumFractionDigits: 2,
         });
 
-  // ── export Excel ───────────────────────────────────────────────────────────
-  const handleExport = () => {
-    const filled = rows.filter((r) => COL_KEYS.some((k) => r[k].trim() !== ""));
-    if (!filled.length) {
-      toast.warning("No data to export.", {
-        position: "top-right",
-        autoClose: 3000,
-      });
-      return;
-    }
-    const header = COLUMNS.map((c) => c.label);
-    const aoa = [
-      header,
-      ...filled.map((r) => COL_KEYS.map((k) => r[k])),
-      ["", "", "", "TOTAL", fmt(totalDebit), fmt(totalCredit)],
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Customer Ledger");
-    XLSX.writeFile(
-      wb,
-      `CustomerLedger_${new Date().toISOString().slice(0, 10)}.xlsx`,
-    );
-  };
+  const fmtAUD = (n) =>
+    "$" +
+    Math.abs(n).toLocaleString("en-AU", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+  // ── reconciliation data ────────────────────────────────────────────────────
+  const sjRows = rows.filter((r) => r.src.trim().toUpperCase() === "SJ");
+  const crRows = rows.filter((r) => r.src.trim().toUpperCase() === "CR");
+  const totalSales = sjRows.reduce((acc, r) => {
+    const n = parseFloat(String(r.debit).replace(/,/g, ""));
+    return acc + (Number.isFinite(n) ? n : 0);
+  }, 0);
+  const totalPayment = crRows.reduce((acc, r) => {
+    const n = parseFloat(String(r.credit).replace(/,/g, ""));
+    return acc + (Number.isFinite(n) ? n : 0);
+  }, 0);
+  const reconDiff = totalSales - totalPayment; // positive = under payment, negative = over payment
 
   // ── render ─────────────────────────────────────────────────────────────────
   return (
@@ -225,11 +226,16 @@ export default function CustomerLedger() {
           </button>
           <button
             type="button"
-            className="btn-action btn-view"
-            title="Export Excel"
-            onClick={handleExport}
+            className="btn-action"
+            title="Reconciliation"
+            onClick={() => setShowReconciliation(true)}
+            style={{ background: "#2c3e7a", color: "#fff" }}
           >
-            <i className="fas fa-file-excel"></i>
+            <i
+              className="fas fa-balance-scale"
+              style={{ marginRight: "6px" }}
+            ></i>
+            Reconciliation
           </button>
           <button
             type="button"
@@ -328,13 +334,14 @@ export default function CustomerLedger() {
                             padding: "1px",
                           }}
                         >
-                          <input
+                          <textarea
                             id={cellId(rowIdx, colIdx)}
-                            type="text"
                             value={row[key]}
-                            onChange={(e) =>
-                              updateCell(rowIdx, key, e.target.value)
-                            }
+                            rows={1}
+                            onChange={(e) => {
+                              updateCell(rowIdx, key, e.target.value);
+                              autoResize(e.target);
+                            }}
                             onPaste={(e) => handlePaste(e, rowIdx, colIdx)}
                             onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
                             style={{
@@ -346,6 +353,12 @@ export default function CustomerLedger() {
                               padding: "3px 5px",
                               fontSize: "13px",
                               boxSizing: "border-box",
+                              resize: "none",
+                              overflow: "hidden",
+                              lineHeight: "1.5",
+                              minHeight: "26px",
+                              fontFamily: "inherit",
+                              display: "block",
                             }}
                           />
                         </td>
@@ -449,6 +462,368 @@ export default function CustomerLedger() {
           </button>
         </div>
       </div>
+      {/* ── Reconciliation Modal ─────────────────────────────────────────── */}
+      {showReconciliation && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "center",
+            overflowY: "auto",
+            padding: "32px 16px",
+          }}
+          onClick={(e) =>
+            e.target === e.currentTarget && setShowReconciliation(false)
+          }
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: "8px",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
+              padding: "28px 28px 24px",
+              minWidth: "720px",
+              maxWidth: "960px",
+              width: "100%",
+            }}
+          >
+            {/* Modal header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                marginBottom: "18px",
+                gap: "12px",
+              }}
+            >
+              <h3 style={{ margin: 0, flex: 1, color: "#2c3e7a" }}>
+                Customer Reconciliation
+              </h3>
+              <button
+                type="button"
+                className="btn-action"
+                title="Print"
+                onClick={() => window.print()}
+                style={{ background: "#555", color: "#fff" }}
+              >
+                <i className="fas fa-print"></i>
+              </button>
+              <button
+                type="button"
+                className="btn-action btn-delete"
+                title="Close"
+                onClick={() => setShowReconciliation(false)}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            {/* Reconciliation table */}
+            <div style={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  borderCollapse: "collapse",
+                  width: "100%",
+                  fontSize: "13px",
+                }}
+              >
+                {/* ── colgroup ── */}
+                <colgroup>
+                  <col style={{ width: "110px" }} />
+                  <col style={{ width: "260px" }} />
+                  <col style={{ width: "110px" }} />
+                  <col style={{ width: "20px" }} />
+                  <col style={{ width: "110px" }} />
+                  <col style={{ width: "110px" }} />
+                  <col style={{ width: "110px" }} />
+                </colgroup>
+
+                {/* ── section header ── */}
+                <thead>
+                  <tr>
+                    <th
+                      colSpan={3}
+                      style={{
+                        border: "1px solid #bbb",
+                        background: "#fde9d3",
+                        textAlign: "center",
+                        padding: "5px 8px",
+                        fontWeight: 700,
+                        fontSize: "13px",
+                      }}
+                    >
+                      Sales
+                    </th>
+                    <td style={{ border: "none", background: "transparent" }} />
+                    <th
+                      colSpan={2}
+                      style={{
+                        border: "1px solid #bbb",
+                        background: "#fde9d3",
+                        textAlign: "center",
+                        padding: "5px 8px",
+                        fontWeight: 700,
+                        fontSize: "13px",
+                      }}
+                    >
+                      Payment received
+                    </th>
+                    <td style={{ border: "none", background: "transparent" }} />
+                  </tr>
+                  <tr>
+                    {["Invoice No.", "Period", "Amount"].map((h) => (
+                      <th
+                        key={h}
+                        style={{
+                          border: "1px solid #bbb",
+                          background: "#fff2e6",
+                          padding: "4px 8px",
+                          textAlign: h === "Amount" ? "right" : "left",
+                          fontWeight: 600,
+                          fontSize: "12px",
+                        }}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                    <td style={{ border: "none", background: "transparent" }} />
+                    {["Date", "Amount"].map((h) => (
+                      <th
+                        key={h}
+                        style={{
+                          border: "1px solid #bbb",
+                          background: "#fff2e6",
+                          padding: "4px 8px",
+                          textAlign: h === "Amount" ? "right" : "left",
+                          fontWeight: 600,
+                          fontSize: "12px",
+                        }}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                    <td style={{ border: "none", background: "transparent" }} />
+                  </tr>
+                </thead>
+
+                {/* ── data rows ── */}
+                <tbody>
+                  {Array.from({
+                    length: Math.max(sjRows.length, crRows.length),
+                  }).map((_, i) => {
+                    const sj = sjRows[i];
+                    const cr = crRows[i];
+                    return (
+                      <tr key={i}>
+                        {/* Sales columns */}
+                        <td
+                          style={{
+                            border: "1px solid #ddd",
+                            padding: "4px 8px",
+                            whiteSpace: "pre-wrap",
+                          }}
+                        >
+                          {sj ? sj.idno : ""}
+                        </td>
+                        <td
+                          style={{
+                            border: "1px solid #ddd",
+                            padding: "4px 8px",
+                            whiteSpace: "pre-wrap",
+                          }}
+                        >
+                          {sj ? sj.memo : ""}
+                        </td>
+                        <td
+                          style={{
+                            border: "1px solid #ddd",
+                            padding: "4px 8px",
+                            textAlign: "right",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {sj && sj.debit.trim() !== ""
+                            ? fmtAUD(
+                                parseFloat(
+                                  String(sj.debit).replace(/,/g, ""),
+                                ) || 0,
+                              )
+                            : ""}
+                        </td>
+                        {/* spacer */}
+                        <td
+                          style={{ border: "none", background: "transparent" }}
+                        />
+                        {/* Payment columns */}
+                        <td
+                          style={{
+                            border: "1px solid #ddd",
+                            padding: "4px 8px",
+                            whiteSpace: "pre-wrap",
+                          }}
+                        >
+                          {cr ? cr.date : ""}
+                        </td>
+                        <td
+                          style={{
+                            border: "1px solid #ddd",
+                            padding: "4px 8px",
+                            textAlign: "right",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {cr && cr.credit.trim() !== ""
+                            ? fmtAUD(
+                                parseFloat(
+                                  String(cr.credit).replace(/,/g, ""),
+                                ) || 0,
+                              )
+                            : ""}
+                        </td>
+                        <td
+                          style={{ border: "none", background: "transparent" }}
+                        />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+
+                {/* ── totals & result ── */}
+                <tfoot>
+                  {/* Total row */}
+                  <tr>
+                    <td
+                      style={{
+                        border: "1px solid #ddd",
+                        padding: "4px 8px",
+                      }}
+                    />
+                    <td
+                      style={{
+                        border: "1px solid #ddd",
+                        padding: "4px 8px",
+                        fontWeight: 700,
+                        fontSize: "12px",
+                      }}
+                    >
+                      Total sales amount
+                    </td>
+                    <td
+                      style={{
+                        border: "1px solid #ddd",
+                        padding: "4px 8px",
+                        textAlign: "right",
+                        fontWeight: 700,
+                        fontSize: "12px",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {totalSales !== 0 ? fmtAUD(totalSales) : ""}
+                    </td>
+                    <td style={{ border: "none", background: "transparent" }} />
+                    <td
+                      style={{
+                        border: "1px solid #ddd",
+                        padding: "4px 8px",
+                        fontWeight: 700,
+                        fontSize: "12px",
+                      }}
+                    >
+                      Total payment amount
+                    </td>
+                    <td
+                      style={{
+                        border: "1px solid #ddd",
+                        padding: "4px 8px",
+                        textAlign: "right",
+                        fontWeight: 700,
+                        fontSize: "12px",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {totalPayment !== 0 ? fmtAUD(totalPayment) : ""}
+                    </td>
+                    <td style={{ border: "none", background: "transparent" }} />
+                  </tr>
+
+                  {/* Under / Over payment row */}
+                  {reconDiff !== 0 && (
+                    <tr>
+                      <td
+                        style={{
+                          border: "1px solid #ddd",
+                          padding: "4px 8px",
+                        }}
+                      />
+                      <td
+                        style={{
+                          border: "1px solid #ddd",
+                          padding: "4px 8px",
+                        }}
+                      />
+                      <td
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                        }}
+                      />
+                      <td
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                        }}
+                      />
+                      <td
+                        style={{
+                          border: "1px solid #ddd",
+                          padding: "4px 8px",
+                          fontWeight: 700,
+                          fontSize: "12px",
+                          background: reconDiff > 0 ? "#fff2e6" : "#e6f4ea",
+                        }}
+                      >
+                        {reconDiff > 0 ? "Under Payment" : "Over Payment"}
+                      </td>
+                      <td
+                        style={{
+                          border: "1px solid #ddd",
+                          padding: "4px 8px",
+                          textAlign: "right",
+                          fontWeight: 700,
+                          fontSize: "12px",
+                          color: reconDiff > 0 ? "#c0392b" : "#27ae60",
+                          whiteSpace: "nowrap",
+                          background: reconDiff > 0 ? "#fff2e6" : "#e6f4ea",
+                        }}
+                      >
+                        {reconDiff > 0
+                          ? "-" + fmtAUD(reconDiff)
+                          : "+" + fmtAUD(Math.abs(reconDiff))}
+                      </td>
+                      <td
+                        style={{
+                          border: "none",
+                          padding: "4px 8px",
+                          fontWeight: 700,
+                          fontSize: "12px",
+                          color: reconDiff > 0 ? "#c0392b" : "#27ae60",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {reconDiff > 0 ? "> Outstanding" : "> Refund"}
+                      </td>
+                    </tr>
+                  )}
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
