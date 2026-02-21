@@ -33,7 +33,6 @@ const menuItems = [
     icon: "flaticon-user",
     submenu: [
       { title: "Customer List", path: "/customer" },
-      { title: "Invoices", path: "/customer-invoices" },
       { title: "Customer Ledger", path: "/customer/ledger" },
     ],
   },

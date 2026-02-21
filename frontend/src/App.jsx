@@ -28,9 +28,6 @@ import CreateCustomer from "./features/customer/CreateCustomer";
 import ViewCustomer from "./features/customer/ViewCustomer";
 import EditCustomer from "./features/customer/EditCustomer";
 import CustomerNotes from "./features/customer/CustomerNotes";
-import CustomerInvoiceList from "./features/invoice/CustomerInvoiceList";
-import CreateCustomerInvoice from "./features/invoice/CreateCustomerInvoice";
-import EditCustomerInvoice from "./features/invoice/EditCustomerInvoice";
 import KanbanBoard from "./features/tasks/KanbanBoard";
 import FullNotes from "./features/dashboard/FullNotes";
 import IAS from "./features/tax/IAS";
@@ -149,15 +146,6 @@ export default function App() {
         <Route path="/customer/:id" element={<ViewCustomer />} />
         <Route path="/customer/edit/:id" element={<EditCustomer />} />
         <Route path="/customer/:customerId/notes" element={<CustomerNotes />} />
-        <Route path="/customer-invoices" element={<CustomerInvoiceList />} />
-        <Route
-          path="/customer-invoices/create"
-          element={<CreateCustomerInvoice />}
-        />
-        <Route
-          path="/customer-invoices/edit/:id"
-          element={<EditCustomerInvoice />}
-        />
         <Route path="/tax/ias" element={<IAS />} />
       </Route>
 

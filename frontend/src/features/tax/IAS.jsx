@@ -1,4 +1,6 @@
 import React, { useState, useCallback } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import Layout from "../../components/Layout";
 import "../../assets/styles/list.css";
 
@@ -134,6 +136,12 @@ export default function IAS() {
     setRows((prev) => [...prev, ...makeRows(n)]);
   };
 
+  const clearAll = () => {
+    if (!window.confirm("Clear all data?")) return;
+    setRows(makeRows(DEFAULT_ROWS));
+    setShowStatementSummary(false);
+  };
+
   const handlePaste = (e, startRow, startCol) => {
     e.preventDefault();
     const raw = e.clipboardData.getData("text");
@@ -207,11 +215,68 @@ export default function IAS() {
   const w1Value = totals.wages;
   const w2Value = totals.taxes;
 
+  const downloadPdf = () => {
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "pt",
+      format: "a4",
+    });
+
+    doc.setFontSize(18);
+    doc.text("Statement summary", 40, 42);
+
+    autoTable(doc, {
+      startY: 56,
+      head: [
+        ["Code", "Description", "Reported Value", "Owed to ATO", "Owed by ATO"],
+      ],
+      body: [
+        ["", "PAYG tax withheld", "", "", ""],
+        ["4", "Income tax withheld amount", "", formatCurrency(w2Value), ""],
+        [
+          "W1",
+          "Total salary, wages and other payments",
+          formatCurrency(w1Value),
+          "",
+          "",
+        ],
+        [
+          "W2",
+          "Amount withheld from total salary, wages and other payments",
+          formatCurrency(w2Value),
+          "",
+          "",
+        ],
+        ["W3", "Other amounts withheld", formatCurrency(0), "", ""],
+        [
+          "W4",
+          "Amount withheld where ABN not quoted",
+          formatCurrency(0),
+          "",
+          "",
+        ],
+      ],
+      styles: { fontSize: 10, cellPadding: 6 },
+      headStyles: { fillColor: [44, 62, 122] },
+      didParseCell: (data) => {
+        if (data.row.index === 0 && data.section === "body") {
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fillColor = [245, 245, 245];
+        }
+      },
+    });
+
+    const finalY = doc.lastAutoTable?.finalY || 260;
+    doc.setFontSize(14);
+    doc.text("Total amount to pay", 40, finalY + 28);
+    doc.setFontSize(16);
+    doc.text(`${formatCurrency(w2Value)} DR`, 40, finalY + 52);
+
+    doc.save("ias-statement-summary.pdf");
+  };
+
   return (
-    <Layout
-      title="Payroll Activity (Summary)"
-      breadcrumb={["Home", "Tax", "IAS"]}
-    >
+    <Layout title="IAS" breadcrumb={["Home", "Tax", "IAS"]}>
       <div style={{ padding: "0 4px" }}>
         <div
           style={{
@@ -229,6 +294,14 @@ export default function IAS() {
             onClick={() => addRows(10)}
           >
             <i className="fas fa-plus"></i>
+          </button>
+          <button
+            type="button"
+            className="btn-action btn-delete"
+            title="Clear all"
+            onClick={clearAll}
+          >
+            <i className="fas fa-trash"></i>
           </button>
           <button
             type="button"
@@ -436,293 +509,344 @@ export default function IAS() {
         {showStatementSummary && (
           <div
             style={{
-              marginTop: "18px",
-              background: "#f7f7f7",
-              border: "1px solid #d7d7d7",
-              padding: "14px 14px 18px",
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0, 0, 0, 0.45)",
+              zIndex: 1100,
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "center",
+              overflowY: "auto",
+              padding: "28px 14px",
             }}
+            onClick={(e) =>
+              e.target === e.currentTarget && setShowStatementSummary(false)
+            }
           >
-            <h3
-              style={{ margin: "0 0 10px", color: "#0f5c66", fontSize: "40px" }}
-            >
-              Statement summary
-            </h3>
-
-            <table
+            <div
               style={{
                 width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "34px",
+                maxWidth: "1200px",
+                background: "#f7f7f7",
+                border: "1px solid #d7d7d7",
+                padding: "14px 14px 18px",
+                borderRadius: "8px",
               }}
             >
-              <thead>
-                <tr>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      borderBottom: "2px solid #8f8f8f",
-                      padding: "8px 6px",
-                    }}
-                    colSpan={2}
-                  >
-                    Description
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "right",
-                      borderBottom: "2px solid #8f8f8f",
-                      padding: "8px 6px",
-                    }}
-                  >
-                    Reported Value
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "right",
-                      borderBottom: "2px solid #8f8f8f",
-                      padding: "8px 6px",
-                    }}
-                  >
-                    Owed to ATO
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "right",
-                      borderBottom: "2px solid #8f8f8f",
-                      padding: "8px 6px",
-                    }}
-                  >
-                    Owed by ATO
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td
-                    colSpan={5}
-                    style={{
-                      borderBottom: "2px solid #333",
-                      padding: "8px 6px",
-                      fontStyle: "italic",
-                      fontWeight: 700,
-                    }}
-                  >
-                    PAYG tax withheld
-                  </td>
-                </tr>
-                <tr>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                    }}
-                  >
-                    4
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                    }}
-                  >
-                    Income tax withheld amount
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                      textAlign: "right",
-                    }}
-                  />
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                      textAlign: "right",
-                    }}
-                  >
-                    {formatCurrency(w2Value)}
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                      textAlign: "right",
-                    }}
-                  />
-                </tr>
-                <tr>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                    }}
-                  >
-                    W1
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                    }}
-                  >
-                    Total salary, wages and other payments
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                      textAlign: "right",
-                    }}
-                  >
-                    {formatCurrency(w1Value)}
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                      textAlign: "right",
-                    }}
-                  />
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                      textAlign: "right",
-                    }}
-                  />
-                </tr>
-                <tr>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                    }}
-                  >
-                    W2
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                    }}
-                  >
-                    Amount withheld from total salary, wages and other payments
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                      textAlign: "right",
-                    }}
-                  >
-                    {formatCurrency(w2Value)}
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                      textAlign: "right",
-                    }}
-                  />
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                      textAlign: "right",
-                    }}
-                  />
-                </tr>
-                <tr>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                    }}
-                  >
-                    W3
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                    }}
-                  >
-                    Other amounts withheld
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                      textAlign: "right",
-                    }}
-                  >
-                    {formatCurrency(0)}
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                      textAlign: "right",
-                    }}
-                  />
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                      textAlign: "right",
-                    }}
-                  />
-                </tr>
-                <tr>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                    }}
-                  >
-                    W4
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                    }}
-                  >
-                    Amount withheld where ABN not quoted
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                      textAlign: "right",
-                    }}
-                  >
-                    {formatCurrency(0)}
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                      textAlign: "right",
-                    }}
-                  />
-                  <td
-                    style={{
-                      padding: "8px 6px",
-                      borderBottom: "1px solid #bcbcbc",
-                      textAlign: "right",
-                    }}
-                  />
-                </tr>
-              </tbody>
-            </table>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  marginBottom: "10px",
+                }}
+              >
+                <h3
+                  style={{
+                    margin: 0,
+                    color: "#0f5c66",
+                    fontSize: "40px",
+                    flex: 1,
+                  }}
+                >
+                  Statement summary
+                </h3>
+                <button
+                  type="button"
+                  className="btn-action"
+                  title="Download PDF"
+                  onClick={downloadPdf}
+                  style={{ background: "#b91c1c", color: "#fff" }}
+                >
+                  <i className="fas fa-file-pdf"></i>
+                </button>
+                <button
+                  type="button"
+                  className="btn-action btn-delete"
+                  title="Close"
+                  onClick={() => setShowStatementSummary(false)}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
 
-            <h4 style={{ margin: "22px 0 8px", fontSize: "48px" }}>
-              Total amount to pay
-            </h4>
-            <div style={{ fontSize: "42px", fontWeight: 500 }}>
-              {formatCurrency(w2Value)} DR
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: "34px",
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th
+                      style={{
+                        textAlign: "left",
+                        borderBottom: "2px solid #8f8f8f",
+                        padding: "8px 6px",
+                      }}
+                      colSpan={2}
+                    >
+                      Description
+                    </th>
+                    <th
+                      style={{
+                        textAlign: "right",
+                        borderBottom: "2px solid #8f8f8f",
+                        padding: "8px 6px",
+                      }}
+                    >
+                      Reported Value
+                    </th>
+                    <th
+                      style={{
+                        textAlign: "right",
+                        borderBottom: "2px solid #8f8f8f",
+                        padding: "8px 6px",
+                      }}
+                    >
+                      Owed to ATO
+                    </th>
+                    <th
+                      style={{
+                        textAlign: "right",
+                        borderBottom: "2px solid #8f8f8f",
+                        padding: "8px 6px",
+                      }}
+                    >
+                      Owed by ATO
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td
+                      colSpan={5}
+                      style={{
+                        borderBottom: "2px solid #333",
+                        padding: "8px 6px",
+                        fontStyle: "italic",
+                        fontWeight: 700,
+                      }}
+                    >
+                      PAYG tax withheld
+                    </td>
+                  </tr>
+                  <tr>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                      }}
+                    >
+                      4
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                      }}
+                    >
+                      Income tax withheld amount
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                        textAlign: "right",
+                      }}
+                    />
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                        textAlign: "right",
+                      }}
+                    >
+                      {formatCurrency(w2Value)}
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                        textAlign: "right",
+                      }}
+                    />
+                  </tr>
+                  <tr>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                      }}
+                    >
+                      W1
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                      }}
+                    >
+                      Total salary, wages and other payments
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                        textAlign: "right",
+                      }}
+                    >
+                      {formatCurrency(w1Value)}
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                        textAlign: "right",
+                      }}
+                    />
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                        textAlign: "right",
+                      }}
+                    />
+                  </tr>
+                  <tr>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                      }}
+                    >
+                      W2
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                      }}
+                    >
+                      Amount withheld from total salary, wages and other
+                      payments
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                        textAlign: "right",
+                      }}
+                    >
+                      {formatCurrency(w2Value)}
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                        textAlign: "right",
+                      }}
+                    />
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                        textAlign: "right",
+                      }}
+                    />
+                  </tr>
+                  <tr>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                      }}
+                    >
+                      W3
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                      }}
+                    >
+                      Other amounts withheld
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                        textAlign: "right",
+                      }}
+                    >
+                      {formatCurrency(0)}
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                        textAlign: "right",
+                      }}
+                    />
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                        textAlign: "right",
+                      }}
+                    />
+                  </tr>
+                  <tr>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                      }}
+                    >
+                      W4
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                      }}
+                    >
+                      Amount withheld where ABN not quoted
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                        textAlign: "right",
+                      }}
+                    >
+                      {formatCurrency(0)}
+                    </td>
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                        textAlign: "right",
+                      }}
+                    />
+                    <td
+                      style={{
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #bcbcbc",
+                        textAlign: "right",
+                      }}
+                    />
+                  </tr>
+                </tbody>
+              </table>
+
+              <h4 style={{ margin: "22px 0 8px", fontSize: "48px" }}>
+                Total amount to pay
+              </h4>
+              <div style={{ fontSize: "42px", fontWeight: 500 }}>
+                {formatCurrency(w2Value)} DR
+              </div>
             </div>
           </div>
         )}

@@ -55,7 +55,7 @@ export default function Login({ onLogin }) {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="tran3tin@gmail.com"
+          placeholder="Nhập email"
           required
           style={{
             width: "100%",
@@ -78,7 +78,7 @@ export default function Login({ onLogin }) {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="140293NgocDiem!"
+          placeholder="Nhập mật khẩu"
           required
           style={{
             width: "100%",
