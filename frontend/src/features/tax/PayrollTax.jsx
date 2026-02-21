@@ -304,6 +304,14 @@ export default function PayrollTax() {
           : sum;
       }, 0);
 
+    const byTitleKeyword = (titleKeyword) =>
+      rows.reduce((sum, row) => {
+        const title = String(row.title || "").toLowerCase();
+        return title.includes(titleKeyword.toLowerCase())
+          ? sum + parseAmount(row.amount)
+          : sum;
+      }, 0);
+
     const vehicleAllowance = byKeywords("vehicle allowance");
     const allowances = byAllowanceTitles([
       "Call-out Allowance",
@@ -311,11 +319,17 @@ export default function PayrollTax() {
       "OnCall Duty - Allowance",
     ]);
 
+    const superannuationFromTotal = byTitleAndCategory(
+      "superannuation guarantee",
+      "total",
+    );
+
     return {
       vehicleAllowance,
       allowances,
       bonus: byCategory("bonus"),
-      superannuation: byTitleAndCategory("superannuation expenses", "total"),
+      superannuation:
+        superannuationFromTotal || byTitleKeyword("superannuation guarantee"),
     };
   }, [payrollSummaryRows]);
 
