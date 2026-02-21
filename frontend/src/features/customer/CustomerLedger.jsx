@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { toast } from "react-toastify";
+import * as XLSX from "xlsx";
 import Layout from "../../components/Layout";
 import "../../assets/styles/list.css";
 
@@ -92,6 +93,19 @@ const autoResize = (el) => {
   el.style.height = el.scrollHeight + "px";
 };
 
+const parseAmount = (value) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return NaN;
+
+  const normalized = raw
+    .replace(/\((.*)\)/, "-$1")
+    .replace(/[^\d.-]/g, "")
+    .replace(/(?!^)-/g, "");
+
+  const num = Number(normalized);
+  return Number.isFinite(num) ? num : NaN;
+};
+
 // ── component ────────────────────────────────────────────────────────────────
 export default function CustomerLedger() {
   const [rows, setRows] = useState(() => makeRows(DEFAULT_ROWS));
@@ -165,7 +179,7 @@ export default function CustomerLedger() {
   // ── totals ─────────────────────────────────────────────────────────────────
   const sum = (key) =>
     rows.reduce((acc, r) => {
-      const n = parseFloat(String(r[key]).replace(/,/g, ""));
+      const n = parseAmount(r[key]);
       return acc + (Number.isFinite(n) ? n : 0);
     }, 0);
 
@@ -192,14 +206,52 @@ export default function CustomerLedger() {
   const sjRows = rows.filter((r) => r.src.trim().toUpperCase() === "SJ");
   const crRows = rows.filter((r) => r.src.trim().toUpperCase() === "CR");
   const totalSales = sjRows.reduce((acc, r) => {
-    const n = parseFloat(String(r.debit).replace(/,/g, ""));
+    const n = parseAmount(r.debit);
     return acc + (Number.isFinite(n) ? n : 0);
   }, 0);
   const totalPayment = crRows.reduce((acc, r) => {
-    const n = parseFloat(String(r.credit).replace(/,/g, ""));
+    const n = parseAmount(r.credit);
     return acc + (Number.isFinite(n) ? n : 0);
   }, 0);
   const reconDiff = totalSales - totalPayment; // positive = under payment, negative = over payment
+
+  const exportReconciliationExcel = () => {
+    const lineCount = Math.max(sjRows.length, crRows.length);
+    const data = Array.from({ length: lineCount }, (_, i) => {
+      const sj = sjRows[i];
+      const cr = crRows[i];
+      return {
+        "Invoice No.": sj?.idno || "",
+        Period: sj?.memo || "",
+        "Sales Amount": sj?.debit || "",
+        "Payment Date": cr?.date || "",
+        "Payment Amount": cr?.credit || "",
+      };
+    });
+
+    data.push({
+      "Invoice No.": "",
+      Period: "Total sales amount",
+      "Sales Amount": totalSales,
+      "Payment Date": "Total payment amount",
+      "Payment Amount": totalPayment,
+    });
+
+    if (reconDiff !== 0) {
+      data.push({
+        "Invoice No.": "",
+        Period: reconDiff > 0 ? "Under Payment" : "Over Payment",
+        "Sales Amount": "",
+        "Payment Date": reconDiff > 0 ? "Outstanding" : "Refund",
+        "Payment Amount": Math.abs(reconDiff),
+      });
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Reconciliation");
+    XLSX.writeFile(workbook, "customer-reconciliation.xlsx");
+  };
 
   // ── render ─────────────────────────────────────────────────────────────────
   return (
@@ -444,19 +496,6 @@ export default function CustomerLedger() {
             </tfoot>
           </table>
         </div>
-
-        {/* Footer add-row button */}
-        <div style={{ marginTop: "10px" }}>
-          <button
-            type="button"
-            className="btn-action btn-save"
-            onClick={() => addRows(10)}
-            style={{ fontSize: "12px" }}
-          >
-            <i className="fas fa-plus" style={{ marginRight: "6px" }}></i>
-            Add 10 rows
-          </button>
-        </div>
       </div>
       {/* ── Reconciliation Modal ─────────────────────────────────────────── */}
       {showReconciliation && (
@@ -502,11 +541,11 @@ export default function CustomerLedger() {
               <button
                 type="button"
                 className="btn-action"
-                title="Print"
-                onClick={() => window.print()}
-                style={{ background: "#555", color: "#fff" }}
+                title="Export Excel"
+                onClick={exportReconciliationExcel}
+                style={{ background: "#1f7a3f", color: "#fff" }}
               >
-                <i className="fas fa-print"></i>
+                <i className="fas fa-file-excel"></i>
               </button>
               <button
                 type="button"
@@ -642,13 +681,12 @@ export default function CustomerLedger() {
                             whiteSpace: "nowrap",
                           }}
                         >
-                          {sj && sj.debit.trim() !== ""
-                            ? fmtAUD(
-                                parseFloat(
-                                  String(sj.debit).replace(/,/g, ""),
-                                ) || 0,
-                              )
-                            : ""}
+                          {(() => {
+                            const amount = parseAmount(sj?.debit);
+                            return Number.isFinite(amount)
+                              ? fmtAUD(amount)
+                              : "";
+                          })()}
                         </td>
                         {/* spacer */}
                         <td
@@ -672,13 +710,12 @@ export default function CustomerLedger() {
                             whiteSpace: "nowrap",
                           }}
                         >
-                          {cr && cr.credit.trim() !== ""
-                            ? fmtAUD(
-                                parseFloat(
-                                  String(cr.credit).replace(/,/g, ""),
-                                ) || 0,
-                              )
-                            : ""}
+                          {(() => {
+                            const amount = parseAmount(cr?.credit);
+                            return Number.isFinite(amount)
+                              ? fmtAUD(amount)
+                              : "";
+                          })()}
                         </td>
                         <td
                           style={{ border: "none", background: "transparent" }}
