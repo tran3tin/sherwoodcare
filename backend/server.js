@@ -143,7 +143,7 @@ app.use("/api/customers", customerRoutes);
 const customerInvoiceRoutes = require("./routes/customerInvoices");
 app.use("/api/customer-invoices", customerInvoiceRoutes);
 
-// AI routes (OpenAI)
+// AI routes (Gemini)
 const aiRoutes = require("./routes/ai");
 app.use("/api/ai", aiRoutes);
 const generalNoteRoutes = require("./routes/generalNotes");

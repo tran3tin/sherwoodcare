@@ -39,7 +39,7 @@ async function getDbSchema() {
 async function runReadOnlyQuery(sql, { limit = 50 } = {}) {
   if (!isReadOnlySql(sql)) {
     const err = new Error(
-      "Only single-statement read-only SQL (SELECT/WITH) is allowed"
+      "Only single-statement read-only SQL (SELECT/WITH) is allowed",
     );
     err.statusCode = 400;
     throw err;
@@ -52,26 +52,59 @@ async function runReadOnlyQuery(sql, { limit = 50 } = {}) {
   return rows;
 }
 
-async function callOpenAI({ messages, model }) {
-  const apiKey = process.env.OPENAI_API_KEY;
+async function callGemini({ messages, model, temperature = 0.2 }) {
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    const err = new Error("Missing OPENAI_API_KEY");
+    const err = new Error("Missing GEMINI_API_KEY environment variable");
     err.statusCode = 500;
     throw err;
   }
 
-  // Lazy-load to avoid crashing if dependency missing.
-  // eslint-disable-next-line global-require
-  const OpenAI = require("openai");
-  const client = new OpenAI({ apiKey });
+  const { GoogleGenerativeAI } = require("@google/generative-ai");
+  const genAI = new GoogleGenerativeAI(apiKey);
 
-  const res = await client.chat.completions.create({
-    model: model || process.env.OPENAI_MODEL || "gpt-4o-mini",
-    messages,
-    temperature: 0.2,
+  let systemInstruction = "";
+  const contents = [];
+
+  let currentRole = null;
+  let currentParts = [];
+
+  for (const msg of messages) {
+    if (msg.role === "system") {
+      systemInstruction += msg.content + "\n";
+      continue;
+    }
+
+    const geminiRole = msg.role === "assistant" ? "model" : "user";
+
+    if (currentRole === geminiRole) {
+      currentParts.push({ text: "\n\n" + msg.content });
+    } else {
+      if (currentRole) {
+        contents.push({ role: currentRole, parts: currentParts });
+      }
+      currentRole = geminiRole;
+      currentParts = [{ text: msg.content }];
+    }
+  }
+
+  if (currentRole) {
+    contents.push({ role: currentRole, parts: currentParts });
+  }
+
+  const geminiModel = genAI.getGenerativeModel({
+    model: model || process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    systemInstruction: systemInstruction.trim() || undefined,
   });
 
-  return res?.choices?.[0]?.message?.content || "";
+  const result = await geminiModel.generateContent({
+    contents,
+    generationConfig: {
+      temperature,
+    },
+  });
+
+  return result.response.text();
 }
 
 exports.chat = async (req, res) => {
@@ -137,7 +170,7 @@ exports.chat = async (req, res) => {
         JSON.stringify(context, null, 2),
     });
 
-    const reply = await callOpenAI({ messages: finalMessages });
+    const reply = await callGemini({ messages: finalMessages });
 
     res.json({ ok: true, reply });
   } catch (err) {

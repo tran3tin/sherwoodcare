@@ -16,10 +16,10 @@ services:
         sync: false
       - key: DATABASE_URL_IPV4
         sync: false
-      - key: OPENAI_API_KEY
+      - key: GEMINI_API_KEY
         sync: false
-      - key: OPENAI_MODEL
-        value: gpt-4o-mini
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
     healthCheckPath: /api/health
 
   # Frontend static site
