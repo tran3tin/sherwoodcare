@@ -496,11 +496,13 @@ export default function PayrollTax() {
     y += 8;
 
     line("Victorian Wages", "", true);
+    line("Salaries and Wages", formatCurrency(payrollTaxData.grossWages));
     line(
-      "Salaries and Wages",
-      formatCurrency(payrollTaxData.totalWagesFromActivity),
+      "Allowances",
+      formatCurrency(
+        payrollTaxData.allowances + payrollTaxData.vehicleAllowanceTaxable,
+      ),
     );
-    line("Allowances", formatCurrency(payrollTaxData.allowances));
     line("Bonuses/Commissions", formatCurrency(payrollTaxData.bonus));
     line("Superannuation", formatCurrency(payrollTaxData.superannuation));
     line(
@@ -1280,7 +1282,7 @@ export default function PayrollTax() {
                         Salaries and Wages
                       </td>
                       <td style={{ padding: "4px 0", textAlign: "right" }}>
-                        {formatCurrency(payrollTaxData.totalWagesFromActivity)}
+                        {formatCurrency(payrollTaxData.grossWages)}
                       </td>
                     </tr>
                     <tr>
@@ -1288,7 +1290,10 @@ export default function PayrollTax() {
                         Allowances
                       </td>
                       <td style={{ padding: "4px 0", textAlign: "right" }}>
-                        {formatCurrency(payrollTaxData.allowances)}
+                        {formatCurrency(
+                          payrollTaxData.allowances +
+                            payrollTaxData.vehicleAllowanceTaxable,
+                        )}
                       </td>
                     </tr>
                     <tr>
