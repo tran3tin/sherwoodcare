@@ -1,22 +1,14 @@
-const { bucket, isConfigured } = require("../config/firebase");
-const pool = require("../config/db");
+const path = require("path");
+const fs = require("fs");
+const { query: dbQuery } = require("../config/db");
 
 /**
- * Upload file lên Firebase Storage và lưu URL vào Supabase
+ * Upload file lên Railway Volume (local disk) và lưu URL vào database
  * @param {Object} req - Express request với file từ multer
  * @param {Object} res - Express response
  */
 const uploadFile = async (req, res) => {
   try {
-    // Kiểm tra Firebase đã được cấu hình chưa
-    if (!isConfigured || !bucket) {
-      return res.status(503).json({
-        success: false,
-        error:
-          "Firebase Storage chưa được cấu hình. Vui lòng xem FIREBASE_SETUP.md",
-      });
-    }
-
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -24,55 +16,25 @@ const uploadFile = async (req, res) => {
       });
     }
 
-    // 1. Tạo tên file duy nhất (để tránh bị trùng)
-    const fileName = `uploads/${Date.now()}_${req.file.originalname}`;
-    const fileUpload = bucket.file(fileName);
+    // File đã được lưu vào disk bởi Multer
+    // Tạo URL public để truy cập file
+    const backendUrl =
+      process.env.BACKEND_URL ||
+      `https://sherwoodcare-backend.up.railway.app`;
+    const publicUrl = `${backendUrl}/uploads/${req.file.filename}`;
 
-    // 2. Upload lên Firebase Storage
-    const blobStream = fileUpload.createWriteStream({
-      metadata: {
-        contentType: req.file.mimetype,
-      },
+    // Lưu thông tin vào database
+    const sql =
+      "INSERT INTO documents (name, file_url, created_at) VALUES ($1, $2, NOW()) RETURNING *";
+    const values = [req.file.originalname, publicUrl];
+
+    const result = await dbQuery(sql, values);
+
+    res.status(200).json({
+      success: true,
+      message: "Upload thành công!",
+      data: result.rows[0],
     });
-
-    blobStream.on("error", (error) => {
-      console.error("Firebase upload error:", error);
-      res.status(500).json({
-        success: false,
-        error: error.message,
-      });
-    });
-
-    blobStream.on("finish", async () => {
-      try {
-        // 3. Làm cho file public và lấy URL
-        await fileUpload.makePublic();
-        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-
-        // 4. Lưu thông tin vào Supabase
-        // Giả sử bạn có bảng 'documents' với cột 'name' và 'file_url'
-        const query =
-          "INSERT INTO documents (name, file_url, created_at) VALUES ($1, $2, NOW()) RETURNING *";
-        const values = [req.file.originalname, publicUrl];
-
-        const result = await pool.query(query, values);
-
-        res.status(200).json({
-          success: true,
-          message: "Upload thành công!",
-          data: result.rows[0],
-        });
-      } catch (dbError) {
-        console.error("Database error:", dbError);
-        res.status(500).json({
-          success: false,
-          error: "Lỗi khi lưu vào database: " + dbError.message,
-        });
-      }
-    });
-
-    // Bắt đầu upload
-    blobStream.end(req.file.buffer);
   } catch (error) {
     console.error("Upload error:", error);
     res.status(500).json({
@@ -83,12 +45,11 @@ const uploadFile = async (req, res) => {
 };
 
 /**
- * Lấy danh sách file từ Supabase
+ * Lấy danh sách file từ database
  */
 const getFiles = async (req, res) => {
   try {
-    const query = "SELECT * FROM documents ORDER BY created_at DESC";
-    const result = await pool.query(query);
+    const result = await dbQuery("SELECT * FROM documents ORDER BY created_at DESC");
 
     res.status(200).json({
       success: true,
@@ -104,15 +65,14 @@ const getFiles = async (req, res) => {
 };
 
 /**
- * Xóa file khỏi Firebase Storage và Supabase
+ * Xóa file khỏi Railway Volume và database
  */
 const deleteFile = async (req, res) => {
   try {
     const { id } = req.params;
 
     // 1. Lấy thông tin file từ database
-    const fileQuery = "SELECT * FROM documents WHERE id = $1";
-    const fileResult = await pool.query(fileQuery, [id]);
+    const fileResult = await dbQuery("SELECT * FROM documents WHERE id = $1", [id]);
 
     if (fileResult.rows.length === 0) {
       return res.status(404).json({
@@ -123,22 +83,19 @@ const deleteFile = async (req, res) => {
 
     const file = fileResult.rows[0];
 
-    // 2. Extract file path from URL
-    // URL format: https://storage.googleapis.com/bucket-name/uploads/filename
-    const urlParts = file.file_url.split("/");
-    const filePath = urlParts.slice(4).join("/"); // Get path after bucket name
-
-    // 3. Xóa file khỏi Firebase Storage
+    // 2. Xóa file khỏi disk
     try {
-      await bucket.file(filePath).delete();
-    } catch (storageError) {
-      console.warn("Firebase delete warning:", storageError.message);
-      // Tiếp tục xóa trong database ngay cả khi file không tồn tại trên Firebase
+      const filename = path.basename(file.file_url);
+      const filePath = path.join(__dirname, "..", "public", "uploads", filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (fsError) {
+      console.warn("File delete warning:", fsError.message);
     }
 
-    // 4. Xóa record khỏi database
-    const deleteQuery = "DELETE FROM documents WHERE id = $1 RETURNING *";
-    const deleteResult = await pool.query(deleteQuery, [id]);
+    // 3. Xóa record khỏi database
+    const deleteResult = await dbQuery("DELETE FROM documents WHERE id = $1 RETURNING *", [id]);
 
     res.status(200).json({
       success: true,
