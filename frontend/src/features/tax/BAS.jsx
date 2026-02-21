@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import Layout from "../../components/Layout";
 import "../../assets/styles/list.css";
 
@@ -110,6 +111,17 @@ export default function BAS() {
     emptyValues(),
   );
 
+  const lastDayOfMonth = (value) => {
+    if (!value) return "";
+    const dt = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(dt.getTime())) return "";
+    dt.setMonth(dt.getMonth() + 1, 0);
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, "0");
+    const d = String(dt.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
   const periodLabel = useMemo(() => {
     if (!fromDate || !toDate) return "BAS";
 
@@ -177,6 +189,37 @@ export default function BAS() {
     setter((prev) => ({ ...prev, [key]: parseNumberInput(value) }));
   };
 
+  const buildPayrollRef = (start, end) =>
+    `Payroll Activity [Summary] ${formatDotDate(start)}-${formatDotDate(end)}.pdf`;
+
+  const buildGstRef = (start, end) =>
+    `GST [Summary - Cash] ${formatDotDate(start)}-${formatDotDate(end)}.pdf`;
+
+  const ias1Ref = buildPayrollRef(
+    firstDayOfMonth(fromDate),
+    lastDayOfMonth(fromDate),
+  );
+  const ias2Month = addMonths(fromDate, 1);
+  const ias2Ref = buildPayrollRef(
+    firstDayOfMonth(ias2Month),
+    lastDayOfMonth(ias2Month),
+  );
+  const payrollRangeRef = buildPayrollRef(fromDate, toDate);
+  const gstRangeRef = buildGstRef(fromDate, toDate);
+  const payrollLastMonthRef = buildPayrollRef(firstDayOfMonth(toDate), toDate);
+
+  const renderReferenceIcon = (title, color = "#0f766e") => (
+    <button
+      type="button"
+      className="btn-action"
+      style={{ background: color, color: "#fff", fontSize: "12px" }}
+      title={title}
+      aria-label={title}
+    >
+      <i className="fas fa-file-pdf"></i>
+    </button>
+  );
+
   const renderEditableCell = (row, setter, key) => (
     <td style={{ border: "1px solid #d1d5db", padding: "4px 6px" }}>
       <input
@@ -208,6 +251,137 @@ export default function BAS() {
       {value === 0 ? "-" : formatValue(value)}
     </td>
   );
+
+  const clearData = () => {
+    if (!window.confirm("Clear all BAS data?")) return;
+    setIasRow1(emptyValues());
+    setIasRow2(emptyValues());
+    setPayrollSummaryRange(emptyValues());
+    setGstSummaryCash(emptyValues());
+    setPayrollSummaryLastMonth(emptyValues());
+  };
+
+  const exportExcel = () => {
+    const rowsForExport = [
+      {
+        Type: "IAS",
+        Period: iasPeriod1,
+        G1: formatValue(iasRow1.g1),
+        "1A": formatValue(iasRow1.a1),
+        "1B": formatValue(iasRow1.b1),
+        "Net GST payable /(refundable)": formatValue(iasRow1.netGst),
+        W1: formatValue(iasRow1.w1),
+        W2: formatValue(iasRow1.w2),
+        "5A": formatValue(iasRow1.a5),
+        "Total payable /(refundable)": formatValue(iasRow1.totalPayable),
+        Reference: ias1Ref,
+      },
+      {
+        Type: "IAS",
+        Period: iasPeriod2,
+        G1: formatValue(iasRow2.g1),
+        "1A": formatValue(iasRow2.a1),
+        "1B": formatValue(iasRow2.b1),
+        "Net GST payable /(refundable)": formatValue(iasRow2.netGst),
+        W1: formatValue(iasRow2.w1),
+        W2: formatValue(iasRow2.w2),
+        "5A": formatValue(iasRow2.a5),
+        "Total payable /(refundable)": formatValue(iasRow2.totalPayable),
+        Reference: ias2Ref,
+      },
+      {
+        Type: "",
+        Period: "Total",
+        G1: formatValue(totalValues.g1),
+        "1A": formatValue(totalValues.a1),
+        "1B": formatValue(totalValues.b1),
+        "Net GST payable /(refundable)": formatValue(totalValues.netGst),
+        W1: formatValue(totalValues.w1),
+        W2: formatValue(totalValues.w2),
+        "5A": formatValue(totalValues.a5),
+        "Total payable /(refundable)": formatValue(totalValues.totalPayable),
+        Reference: "",
+      },
+      {
+        Type: "",
+        Period: `Payroll Summary ${payrollRangeLabel}`,
+        G1: formatValue(payrollSummaryRange.g1),
+        "1A": formatValue(payrollSummaryRange.a1),
+        "1B": formatValue(payrollSummaryRange.b1),
+        "Net GST payable /(refundable)": formatValue(
+          payrollSummaryRange.netGst,
+        ),
+        W1: formatValue(payrollSummaryRange.w1),
+        W2: formatValue(payrollSummaryRange.w2),
+        "5A": formatValue(payrollSummaryRange.a5),
+        "Total payable /(refundable)": formatValue(
+          payrollSummaryRange.totalPayable,
+        ),
+        Reference: payrollRangeRef,
+      },
+      {
+        Type: "",
+        Period: "Variance between lodged BASes & MYOB",
+        G1: formatValue(varianceValues.g1),
+        "1A": formatValue(varianceValues.a1),
+        "1B": formatValue(varianceValues.b1),
+        "Net GST payable /(refundable)": formatValue(varianceValues.netGst),
+        W1: formatValue(varianceValues.w1),
+        W2: formatValue(varianceValues.w2),
+        "5A": formatValue(varianceValues.a5),
+        "Total payable /(refundable)": formatValue(varianceValues.totalPayable),
+        Reference: "",
+      },
+      {
+        Type: "",
+        Period: `GST Summary (Cash) ${payrollRangeLabel}`,
+        G1: formatValue(gstSummaryCash.g1),
+        "1A": formatValue(gstSummaryCash.a1),
+        "1B": formatValue(gstSummaryCash.b1),
+        "Net GST payable /(refundable)": formatValue(gstSummaryCash.netGst),
+        W1: formatValue(gstSummaryCash.w1),
+        W2: formatValue(gstSummaryCash.w2),
+        "5A": formatValue(gstSummaryCash.a5),
+        "Total payable /(refundable)": formatValue(gstSummaryCash.totalPayable),
+        Reference: gstRangeRef,
+      },
+      {
+        Type: "",
+        Period: `Payroll Summary ${lastMonthRangeLabel}`,
+        G1: formatValue(payrollSummaryLastMonth.g1),
+        "1A": formatValue(payrollSummaryLastMonth.a1),
+        "1B": formatValue(payrollSummaryLastMonth.b1),
+        "Net GST payable /(refundable)": formatValue(
+          payrollSummaryLastMonth.netGst,
+        ),
+        W1: formatValue(payrollSummaryLastMonth.w1),
+        W2: formatValue(payrollSummaryLastMonth.w2),
+        "5A": formatValue(payrollSummaryLastMonth.a5),
+        "Total payable /(refundable)": formatValue(
+          payrollSummaryLastMonth.totalPayable,
+        ),
+        Reference: payrollLastMonthRef,
+      },
+      {
+        Type: "BAS",
+        Period: periodLabel,
+        G1: formatValue(basValues.g1),
+        "1A": formatValue(basValues.a1),
+        "1B": formatValue(basValues.b1),
+        "Net GST payable /(refundable)": formatValue(basValues.netGst),
+        W1: formatValue(basValues.w1),
+        W2: formatValue(basValues.w2),
+        "5A": formatValue(basValues.a5),
+        "Total payable /(refundable)": formatValue(basValues.totalPayable),
+        Reference: `${payrollRangeRef} | ${gstRangeRef}`,
+      },
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(rowsForExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "BAS");
+    XLSX.writeFile(wb, `BAS-${fromDate}-to-${toDate}.xlsx`);
+  };
 
   return (
     <Layout title="BAS" breadcrumb={["Home", "Tax", "BAS"]}>
@@ -254,6 +428,25 @@ export default function BAS() {
               }}
             />
           </div>
+
+          <button
+            type="button"
+            className="btn-action"
+            onClick={exportExcel}
+            title="Export Excel"
+            style={{ background: "#1f7a3f", color: "#fff" }}
+          >
+            <i className="fas fa-file-excel"></i>
+          </button>
+
+          <button
+            type="button"
+            className="btn-action btn-delete"
+            onClick={clearData}
+            title="Clear data"
+          >
+            <i className="fas fa-trash"></i>
+          </button>
         </div>
 
         <p style={{ fontSize: "12px", color: "#777", marginBottom: "10px" }}>
@@ -368,18 +561,7 @@ export default function BAS() {
                 {renderEditableCell(iasRow1, setIasRow1, "totalPayable")}
 
                 <td style={{ border: "1px solid #d1d5db", padding: "8px 6px" }}>
-                  <button
-                    type="button"
-                    className="btn-action"
-                    style={{
-                      background: "#0f766e",
-                      color: "#fff",
-                      fontSize: "12px",
-                    }}
-                    title="Sẽ thực hiện ở bước sau"
-                  >
-                    Reference
-                  </button>
+                  {renderReferenceIcon(ias1Ref, "#0f766e")}
                 </td>
               </tr>
 
@@ -413,18 +595,7 @@ export default function BAS() {
                 {renderEditableCell(iasRow2, setIasRow2, "totalPayable")}
 
                 <td style={{ border: "1px solid #d1d5db", padding: "8px 6px" }}>
-                  <button
-                    type="button"
-                    className="btn-action"
-                    style={{
-                      background: "#0f766e",
-                      color: "#fff",
-                      fontSize: "12px",
-                    }}
-                    title="Sẽ thực hiện ở bước sau"
-                  >
-                    Reference
-                  </button>
+                  {renderReferenceIcon(ias2Ref, "#0f766e")}
                 </td>
               </tr>
 
@@ -437,7 +608,7 @@ export default function BAS() {
                     border: "1px solid #d1d5db",
                     padding: "8px 6px",
                     fontWeight: 700,
-                    fontSize: "22px",
+                    fontSize: "14px",
                   }}
                 >
                   Total
@@ -462,10 +633,10 @@ export default function BAS() {
                   style={{ border: "1px solid #d1d5db", padding: "8px 6px" }}
                 />
                 <td style={{ border: "1px solid #d1d5db", padding: "8px 6px" }}>
-                  <div style={{ fontSize: "30px", lineHeight: 1.3 }}>
+                  <div style={{ fontSize: "14px", lineHeight: 1.35 }}>
                     Payroll Summary
                   </div>
-                  <div style={{ fontSize: "30px", lineHeight: 1.3 }}>
+                  <div style={{ fontSize: "14px", lineHeight: 1.35 }}>
                     {payrollRangeLabel}
                   </div>
                 </td>
@@ -512,18 +683,7 @@ export default function BAS() {
                 )}
 
                 <td style={{ border: "1px solid #d1d5db", padding: "8px 6px" }}>
-                  <button
-                    type="button"
-                    className="btn-action"
-                    style={{
-                      background: "#0f766e",
-                      color: "#fff",
-                      fontSize: "12px",
-                    }}
-                    title="Sẽ thực hiện ở bước sau"
-                  >
-                    Reference
-                  </button>
+                  {renderReferenceIcon(payrollRangeRef, "#0f766e")}
                 </td>
               </tr>
 
@@ -536,7 +696,7 @@ export default function BAS() {
                     border: "1px solid #d1d5db",
                     padding: "8px 6px",
                     fontWeight: 700,
-                    fontSize: "36px",
+                    fontSize: "14px",
                   }}
                 >
                   Variance between lodged BASes &amp; MYOB
@@ -561,10 +721,10 @@ export default function BAS() {
                   style={{ border: "1px solid #d1d5db", padding: "8px 6px" }}
                 />
                 <td style={{ border: "1px solid #d1d5db", padding: "8px 6px" }}>
-                  <div style={{ fontSize: "30px", lineHeight: 1.3 }}>
+                  <div style={{ fontSize: "14px", lineHeight: 1.35 }}>
                     GST Summary (Cash)
                   </div>
-                  <div style={{ fontSize: "30px", lineHeight: 1.3 }}>
+                  <div style={{ fontSize: "14px", lineHeight: 1.35 }}>
                     {payrollRangeLabel}
                   </div>
                 </td>
@@ -587,18 +747,7 @@ export default function BAS() {
                 )}
 
                 <td style={{ border: "1px solid #d1d5db", padding: "8px 6px" }}>
-                  <button
-                    type="button"
-                    className="btn-action"
-                    style={{
-                      background: "#2563eb",
-                      color: "#fff",
-                      fontSize: "12px",
-                    }}
-                    title="Sẽ thực hiện ở bước sau"
-                  >
-                    Reference
-                  </button>
+                  {renderReferenceIcon(gstRangeRef, "#0f766e")}
                 </td>
               </tr>
 
@@ -607,10 +756,10 @@ export default function BAS() {
                   style={{ border: "1px solid #d1d5db", padding: "8px 6px" }}
                 />
                 <td style={{ border: "1px solid #d1d5db", padding: "8px 6px" }}>
-                  <div style={{ fontSize: "30px", lineHeight: 1.3 }}>
+                  <div style={{ fontSize: "14px", lineHeight: 1.35 }}>
                     Payroll Summary
                   </div>
-                  <div style={{ fontSize: "30px", lineHeight: 1.3 }}>
+                  <div style={{ fontSize: "14px", lineHeight: 1.35 }}>
                     {lastMonthRangeLabel}
                   </div>
                 </td>
@@ -657,18 +806,7 @@ export default function BAS() {
                 )}
 
                 <td style={{ border: "1px solid #d1d5db", padding: "8px 6px" }}>
-                  <button
-                    type="button"
-                    className="btn-action"
-                    style={{
-                      background: "#0f766e",
-                      color: "#fff",
-                      fontSize: "12px",
-                    }}
-                    title="Sẽ thực hiện ở bước sau"
-                  >
-                    Reference
-                  </button>
+                  {renderReferenceIcon(payrollLastMonthRef, "#0f766e")}
                 </td>
               </tr>
 
@@ -679,7 +817,7 @@ export default function BAS() {
                     padding: "8px 6px",
                     color: "#1d4ed8",
                     fontWeight: 700,
-                    fontSize: "34px",
+                    fontSize: "14px",
                   }}
                 >
                   BAS
@@ -690,7 +828,7 @@ export default function BAS() {
                     padding: "8px 6px",
                     fontWeight: 700,
                     color: "#1d4ed8",
-                    fontSize: "34px",
+                    fontSize: "14px",
                   }}
                 >
                   {periodLabel}
@@ -709,30 +847,8 @@ export default function BAS() {
                   <div
                     style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
                   >
-                    <button
-                      type="button"
-                      className="btn-action"
-                      style={{
-                        background: "#0f766e",
-                        color: "#fff",
-                        fontSize: "12px",
-                      }}
-                      title="Tạm thời chỉ hiển thị giao diện"
-                    >
-                      Payroll Summary
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-action"
-                      style={{
-                        background: "#2563eb",
-                        color: "#fff",
-                        fontSize: "12px",
-                      }}
-                      title="Tạm thời chỉ hiển thị giao diện"
-                    >
-                      GST Summary
-                    </button>
+                    {renderReferenceIcon(payrollRangeRef, "#0f766e")}
+                    {renderReferenceIcon(gstRangeRef, "#2563eb")}
                   </div>
                 </td>
               </tr>
