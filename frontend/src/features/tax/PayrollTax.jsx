@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import Layout from "../../components/Layout";
 import "../../assets/styles/list.css";
 
@@ -275,11 +276,24 @@ export default function PayrollTax() {
         0,
       );
 
+    const byAllowanceTitles = (titles) =>
+      rows.reduce((sum, row) => {
+        const text = `${row.title} ${row.category}`.toLowerCase();
+        return titles.some((title) => text.includes(title.toLowerCase()))
+          ? sum + parseAmount(row.amount)
+          : sum;
+      }, 0);
+
     const vehicleAllowance = byKeywords("vehicle allowance");
+    const allowances = byAllowanceTitles([
+      "Call-out Allowance",
+      "Sleepover Allowance",
+      "OnCall Duty - Allowance",
+    ]);
 
     return {
       vehicleAllowance,
-      allowances: byKeywords("allowance"),
+      allowances,
       bonus: byCategory("bonus"),
       superannuation: byCategory("super") + byKeywords("superannuation"),
     };
@@ -329,6 +343,99 @@ export default function PayrollTax() {
     };
   }, [payrollActivityTotals, payrollSummaryMapped]);
 
+  const exportExcel = () => {
+    const summaryRows = [
+      {
+        Item: "Total Wages",
+        Amount: payrollTaxData.totalWagesFromActivity,
+      },
+      {
+        Item: "(-) Vehicle Allowance (Total km x $0.88)",
+        Amount: -payrollTaxData.vehicleAllowanceAt088,
+      },
+      {
+        Item: "Gross wages calculable for PTX",
+        Amount: payrollTaxData.grossWagesCalculableForPtx,
+      },
+      {
+        Item: "Vehicle Allowance Taxable (Total km x $0.12)",
+        Amount: payrollTaxData.vehicleAllowanceTaxable,
+      },
+      {
+        Item: "Allowances",
+        Amount: payrollTaxData.allowances,
+      },
+      {
+        Item: "Bonus",
+        Amount: payrollTaxData.bonus,
+      },
+      {
+        Item: "Gross Wages",
+        Amount: payrollTaxData.grossWages,
+      },
+      {
+        Item: "Total Wages",
+        Amount: payrollTaxData.totalWages,
+      },
+      {
+        Item: "Superannuation",
+        Amount: payrollTaxData.superannuation,
+      },
+      {
+        Item: "Total Taxable Wages",
+        Amount: payrollTaxData.totalTaxableWages,
+      },
+      {
+        Item: "Payroll Tax @ 1.2125%",
+        Amount: payrollTaxData.payrollTax,
+      },
+      {
+        Item: "Mental Health & Wellbeing Surcharge @ 0.50%",
+        Amount: payrollTaxData.mentalHealthSurcharge,
+      },
+      {
+        Item: "Covid-19 Debt Temporary Payroll Tax Surcharge",
+        Amount: payrollTaxData.covidDebtSurcharge,
+      },
+      {
+        Item: "Net Payroll Tax and Surcharges Payable",
+        Amount: payrollTaxData.netPayrollTaxAndSurchargesPayable,
+      },
+    ];
+
+    const payrollSummaryRowsForExport = payrollSummaryRows.map((row) => ({
+      Title: row.title,
+      Category: row.category,
+      Amount: parseAmount(row.amount),
+    }));
+
+    const payrollActivityRowsForExport = payrollActivityRows.map((row) => ({
+      Employee: row.employee,
+      Wages: parseAmount(row.wages),
+      Deductions: parseAmount(row.deductions),
+      Taxes: parseAmount(row.taxes),
+      "Net Pay": parseAmount(row.netPay),
+      Expenses: parseAmount(row.expenses),
+    }));
+
+    const wb = XLSX.utils.book_new();
+
+    const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+    XLSX.utils.book_append_sheet(wb, wsSummary, "Payroll Tax");
+
+    const wsPayrollSummary = XLSX.utils.json_to_sheet(
+      payrollSummaryRowsForExport,
+    );
+    XLSX.utils.book_append_sheet(wb, wsPayrollSummary, "Payroll Summary");
+
+    const wsPayrollActivity = XLSX.utils.json_to_sheet(
+      payrollActivityRowsForExport,
+    );
+    XLSX.utils.book_append_sheet(wb, wsPayrollActivity, "Payroll Activity");
+
+    XLSX.writeFile(wb, "Payroll-Tax.xlsx");
+  };
+
   return (
     <Layout title="Payroll Tax" breadcrumb={["Home", "Tax", "Payroll Tax"]}>
       <div style={{ padding: "0 4px" }}>
@@ -340,7 +447,7 @@ export default function PayrollTax() {
             marginBottom: "12px",
           }}
         >
-          <h2 style={{ margin: 0, flex: 1 }}>Payroll Tax</h2>
+          <h2 style={{ margin: 0, flex: 1 }}>PTX Calculation</h2>
           <button
             type="button"
             className="btn-action"
@@ -349,6 +456,15 @@ export default function PayrollTax() {
             style={{ background: "#0f766e", color: "#fff" }}
           >
             <i className="fas fa-file-invoice-dollar"></i>
+          </button>
+          <button
+            type="button"
+            className="btn-action"
+            title="Export Excel"
+            onClick={exportExcel}
+            style={{ background: "#1f7a3f", color: "#fff" }}
+          >
+            <i className="fas fa-file-excel"></i>
           </button>
           <button
             type="button"
