@@ -42,6 +42,7 @@ const menuItems = [
     submenu: [
       { title: "IAS", path: "/tax/ias" },
       { title: "BAS", path: "/tax/bas" },
+      { title: "Payroll Tax", path: "/tax/payroll-tax" },
       { title: "Superanuation", path: "/tax/superanuation" },
     ],
   },
