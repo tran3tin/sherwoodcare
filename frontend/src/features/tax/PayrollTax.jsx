@@ -269,11 +269,19 @@ export default function PayrollTax() {
   const payrollSummaryMapped = useMemo(() => {
     const rows = payrollSummaryRows;
 
+    const getRowAmount = (row) => {
+      const amountValue = parseAmount(row.amount);
+      const categoryValue = parseAmount(row.category);
+      if (amountValue !== 0) return amountValue;
+      if (categoryValue !== 0) return categoryValue;
+      return amountValue;
+    };
+
     const byKeywords = (...keywords) =>
       rows.reduce((sum, row) => {
         const text = `${row.title} ${row.category}`.toLowerCase();
         return keywords.some((k) => text.includes(k.toLowerCase()))
-          ? sum + parseAmount(row.amount)
+          ? sum + getRowAmount(row)
           : sum;
       }, 0);
 
@@ -281,7 +289,7 @@ export default function PayrollTax() {
       rows.reduce(
         (sum, row) =>
           includesText(row.category, categoryName)
-            ? sum + parseAmount(row.amount)
+            ? sum + getRowAmount(row)
             : sum,
         0,
       );
@@ -290,7 +298,7 @@ export default function PayrollTax() {
       rows.reduce((sum, row) => {
         const text = `${row.title} ${row.category}`.toLowerCase();
         return titles.some((title) => text.includes(title.toLowerCase()))
-          ? sum + parseAmount(row.amount)
+          ? sum + getRowAmount(row)
           : sum;
       }, 0);
 
@@ -300,7 +308,7 @@ export default function PayrollTax() {
         const category = String(row.category || "").toLowerCase();
         return title.includes(titleKeyword.toLowerCase()) &&
           category.includes(categoryKeyword.toLowerCase())
-          ? sum + parseAmount(row.amount)
+          ? sum + getRowAmount(row)
           : sum;
       }, 0);
 
@@ -308,7 +316,7 @@ export default function PayrollTax() {
       rows.reduce((sum, row) => {
         const title = String(row.title || "").toLowerCase();
         return title.includes(titleKeyword.toLowerCase())
-          ? sum + parseAmount(row.amount)
+          ? sum + getRowAmount(row)
           : sum;
       }, 0);
 
