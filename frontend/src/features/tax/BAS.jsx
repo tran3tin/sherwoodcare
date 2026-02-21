@@ -215,10 +215,21 @@ export default function BAS() {
   }, [fromDate, toDate]);
 
   const iasPeriod1 = useMemo(() => formatPeriodMonth(fromDate), [fromDate]);
+  const ias2Month = useMemo(() => addMonths(fromDate, 1), [fromDate]);
   const iasPeriod2 = useMemo(
-    () => formatPeriodMonth(addMonths(fromDate, 1)),
-    [fromDate],
+    () => formatPeriodMonth(ias2Month),
+    [ias2Month],
   );
+
+  const iasPeriod1RangeLabel = useMemo(() => {
+    if (!fromDate) return "";
+    return `${formatDotDate(firstDayOfMonth(fromDate))} - ${formatDotDate(lastDayOfMonth(fromDate))}`;
+  }, [fromDate]);
+
+  const iasPeriod2RangeLabel = useMemo(() => {
+    if (!ias2Month) return "";
+    return `${formatDotDate(firstDayOfMonth(ias2Month))} - ${formatDotDate(lastDayOfMonth(ias2Month))}`;
+  }, [ias2Month]);
 
   const payrollRangeLabel = useMemo(() => {
     if (!fromDate || !toDate) return "";
@@ -291,7 +302,6 @@ export default function BAS() {
     firstDayOfMonth(fromDate),
     lastDayOfMonth(fromDate),
   );
-  const ias2Month = addMonths(fromDate, 1);
   const ias2Ref = buildPayrollRef(
     firstDayOfMonth(ias2Month),
     lastDayOfMonth(ias2Month),
@@ -311,6 +321,10 @@ export default function BAS() {
     setPayrollPopupRows((prev) =>
       prev.map((row, idx) => (idx === rowIdx ? { ...row, [key]: value } : row)),
     );
+  };
+
+  const addPayrollPopupRow = () => {
+    setPayrollPopupRows((prev) => [...prev, emptyPayrollPopupRow()]);
   };
 
   const openGstPopup = (periodText) => {
@@ -768,7 +782,7 @@ export default function BAS() {
 
                 <td style={{ border: "1px solid #d1d5db", padding: "8px 6px" }}>
                   {renderReferenceIcon(ias1Ref, "#0f766e", () =>
-                    openPayrollPopup(iasPeriod1, "ias1"),
+                    openPayrollPopup(iasPeriod1RangeLabel, "ias1"),
                   )}
                 </td>
               </tr>
@@ -804,7 +818,7 @@ export default function BAS() {
 
                 <td style={{ border: "1px solid #d1d5db", padding: "8px 6px" }}>
                   {renderReferenceIcon(ias2Ref, "#0f766e", () =>
-                    openPayrollPopup(iasPeriod2, "ias2"),
+                    openPayrollPopup(iasPeriod2RangeLabel, "ias2"),
                   )}
                 </td>
               </tr>
@@ -1093,11 +1107,20 @@ export default function BAS() {
                 <button
                   type="button"
                   className="btn-action"
+                  title="Add row"
+                  onClick={addPayrollPopupRow}
+                  style={{ background: "#2563eb", color: "#fff" }}
+                >
+                  <i className="fas fa-plus"></i>
+                </button>
+                <button
+                  type="button"
+                  className="btn-action"
                   title="Fill W1/W2"
                   onClick={applyPopupTotalsToTarget}
                   style={{ background: "#0f766e", color: "#fff" }}
                 >
-                  Fill W1/W2
+                  <i className="fas fa-right-left"></i>
                 </button>
                 <button
                   type="button"
