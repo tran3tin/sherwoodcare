@@ -269,6 +269,7 @@ export default function BAS() {
   const [payrollSummaryLastMonth, setPayrollSummaryLastMonth] = useState(() =>
     emptyValues(),
   );
+  const [basManualA5, setBasManualA5] = useState(null);
 
   const lastDayOfMonth = (value) => {
     if (!value) return "";
@@ -369,6 +370,12 @@ export default function BAS() {
     return next;
   }, [varianceValues, gstSummaryCash, payrollSummaryLastMonth]);
 
+  const basA5Value = basManualA5 ?? basValues.a5;
+  const basTotalPayableValue = calculateTotalPayable({
+    ...basValues,
+    a5: basA5Value,
+  });
+
   const setRowValue = (setter, key, value) => {
     setter((prev) => ({ ...prev, [key]: parseNumberInput(value) }));
   };
@@ -405,7 +412,10 @@ export default function BAS() {
   };
 
   const addPayrollPopupRow = () => {
-    setPayrollPopupRows((prev) => [...prev, emptyPayrollPopupRow()]);
+    setPayrollPopupRows((prev) => [
+      ...prev,
+      ...Array.from({ length: 10 }, emptyPayrollPopupRow),
+    ]);
   };
 
   const focusPayrollPopupCell = (row, col) =>
@@ -479,7 +489,10 @@ export default function BAS() {
   };
 
   const addGstPopupRow = () => {
-    setGstPopupRows((prev) => [...prev, emptyGstPopupRow()]);
+    setGstPopupRows((prev) => [
+      ...prev,
+      ...Array.from({ length: 10 }, emptyGstPopupRow),
+    ]);
   };
 
   const focusGstPopupCell = (row, col) =>
@@ -670,6 +683,7 @@ export default function BAS() {
     setPayrollSummaryRange(emptyValues());
     setGstSummaryCash(emptyValues());
     setPayrollSummaryLastMonth(emptyValues());
+    setBasManualA5(null);
   };
 
   const exportExcel = () => {
@@ -790,8 +804,8 @@ export default function BAS() {
         "Net GST payable /(refundable)": formatValue(basValues.netGst),
         W1: formatValue(basValues.w1),
         W2: formatValue(basValues.w2),
-        "5A": formatValue(basValues.a5),
-        "Total payable /(refundable)": formatValue(basValues.totalPayable),
+        "5A": formatValue(basA5Value),
+        "Total payable /(refundable)": formatValue(basTotalPayableValue),
         Reference: `${payrollRangeRef} | ${gstRangeRef}`,
       },
     ];
@@ -1247,8 +1261,36 @@ export default function BAS() {
                 {renderComputedCell(basValues.netGst, true)}
                 {renderComputedCell(basValues.w1, true)}
                 {renderComputedCell(basValues.w2, true)}
-                {renderComputedCell(basValues.a5, true)}
-                {renderComputedCell(basValues.totalPayable, true)}
+                <td style={{ border: "1px solid #d1d5db", padding: "4px 6px" }}>
+                  <input
+                    value={basManualA5 === null ? "" : String(basManualA5)}
+                    onChange={(e) => {
+                      const raw = String(e.target.value ?? "").trim();
+                      if (!raw) {
+                        setBasManualA5(null);
+                        return;
+                      }
+                      setBasManualA5(parseNumberInput(raw));
+                    }}
+                    placeholder={
+                      basValues.a5 === 0
+                        ? ""
+                        : String(roundNoDecimal(basValues.a5))
+                    }
+                    style={{
+                      width: "100%",
+                      height: "28px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "4px",
+                      textAlign: "right",
+                      fontSize: "12px",
+                      padding: "0 6px",
+                      boxSizing: "border-box",
+                      fontWeight: 700,
+                    }}
+                  />
+                </td>
+                {renderComputedCell(basTotalPayableValue, true)}
 
                 <td style={{ border: "1px solid #d1d5db", padding: "8px 6px" }}>
                   <span style={{ color: "#475569", fontSize: "12px" }}>
@@ -1306,7 +1348,7 @@ export default function BAS() {
                 <button
                   type="button"
                   className="btn-action"
-                  title="Add row"
+                  title="Add 10 rows"
                   onClick={addPayrollPopupRow}
                   style={{ background: "#2563eb", color: "#fff" }}
                 >
@@ -1694,7 +1736,7 @@ export default function BAS() {
                 <button
                   type="button"
                   className="btn-action"
-                  title="Add row"
+                  title="Add 10 rows"
                   onClick={addGstPopupRow}
                   style={{ background: "#2563eb", color: "#fff" }}
                 >
