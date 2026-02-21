@@ -5,7 +5,7 @@
 // You can override with VITE_API_BASE_URL (preferred) or VITE_API_URL.
 
 const DEFAULT_DEV = "http://localhost:3000";
-const DEFAULT_PROD = "https://sherwoodcare.onrender.com";
+const DEFAULT_PROD = "https://sherwoodcare-backend.up.railway.app";
 
 // Only use env vars if they are NOT localhost in production mode
 const envApiUrl =
