@@ -29,6 +29,15 @@ const emptyPayrollPopupRow = () => ({
 const makePayrollPopupRows = () =>
   Array.from({ length: POPUP_ROW_COUNT }, emptyPayrollPopupRow);
 
+const PAYROLL_POPUP_COL_KEYS = [
+  "employee",
+  "wages",
+  "deduction",
+  "taxes",
+  "netPay",
+  "expenses",
+];
+
 const GST_POPUP_ROW_COUNT = 12;
 const gstDefaultRows = [
   {
@@ -78,6 +87,16 @@ const emptyGstPopupRow = () => ({
   taxCollected: "",
   taxPaid: "",
 });
+
+const GST_POPUP_COL_KEYS = [
+  "code",
+  "description",
+  "rate",
+  "saleValue",
+  "purchaseValue",
+  "taxCollected",
+  "taxPaid",
+];
 
 const makeGstPopupRows = () => {
   const rows = [...gstDefaultRows];
@@ -148,6 +167,60 @@ const formatDotDate = (value) => {
   return `${day}.${month}.${year}`;
 };
 
+const parseClipboard = (str) => {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuote = false;
+
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
+    const next = str[i + 1];
+
+    if (inQuote) {
+      if (c === '"') {
+        if (next === '"') {
+          cell += '"';
+          i++;
+        } else {
+          inQuote = false;
+        }
+      } else {
+        cell += c;
+      }
+    } else if (c === '"') {
+      inQuote = true;
+    } else if (c === "\t") {
+      row.push(cell);
+      cell = "";
+    } else if (c === "\n" || (c === "\r" && next === "\n")) {
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+      if (c === "\r") i++;
+    } else if (c === "\r") {
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += c;
+    }
+  }
+
+  if (cell.length > 0 || row.length > 0) {
+    row.push(cell);
+    rows.push(row);
+  }
+
+  if (rows.length && rows[rows.length - 1].every((v) => v === "")) {
+    rows.pop();
+  }
+
+  return rows;
+};
+
 const parseNumberInput = (value) => {
   const raw = String(value ?? "").trim();
   if (!raw) return 0;
@@ -163,6 +236,17 @@ const calculateTotalPayable = (row) =>
   roundNoDecimal(calculateNetGst(row) + (row?.w2 || 0) + (row?.a5 || 0));
 
 const formatValue = (value) => roundNoDecimal(value).toLocaleString("en-AU");
+
+const payrollPopupCellId = (row, col) => `bas-payroll-${row}-${col}`;
+const gstPopupCellId = (row, col) => `bas-gst-${row}-${col}`;
+
+const focusCellById = (id) => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.focus();
+    el.select?.();
+  }
+};
 
 export default function BAS() {
   const [fromDate, setFromDate] = useState("2025-10-01");
@@ -216,10 +300,7 @@ export default function BAS() {
 
   const iasPeriod1 = useMemo(() => formatPeriodMonth(fromDate), [fromDate]);
   const ias2Month = useMemo(() => addMonths(fromDate, 1), [fromDate]);
-  const iasPeriod2 = useMemo(
-    () => formatPeriodMonth(ias2Month),
-    [ias2Month],
-  );
+  const iasPeriod2 = useMemo(() => formatPeriodMonth(ias2Month), [ias2Month]);
 
   const iasPeriod1RangeLabel = useMemo(() => {
     if (!fromDate) return "";
@@ -327,6 +408,64 @@ export default function BAS() {
     setPayrollPopupRows((prev) => [...prev, emptyPayrollPopupRow()]);
   };
 
+  const focusPayrollPopupCell = (row, col) =>
+    focusCellById(payrollPopupCellId(row, col));
+
+  const handlePayrollPopupKeyDown = (e, rowIdx, colIdx) => {
+    const maxRow = payrollPopupRows.length - 1;
+    const maxCol = PAYROLL_POPUP_COL_KEYS.length - 1;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (rowIdx < maxRow) {
+        focusPayrollPopupCell(rowIdx + 1, colIdx);
+      } else {
+        setPayrollPopupRows((prev) => [...prev, emptyPayrollPopupRow()]);
+        setTimeout(() => focusPayrollPopupCell(rowIdx + 1, colIdx), 30);
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (rowIdx > 0) focusPayrollPopupCell(rowIdx - 1, colIdx);
+    } else if (e.key === "ArrowRight" || (e.key === "Tab" && !e.shiftKey)) {
+      e.preventDefault();
+      if (colIdx < maxCol) focusPayrollPopupCell(rowIdx, colIdx + 1);
+      else if (rowIdx < maxRow) focusPayrollPopupCell(rowIdx + 1, 0);
+      else {
+        setPayrollPopupRows((prev) => [...prev, emptyPayrollPopupRow()]);
+        setTimeout(() => focusPayrollPopupCell(rowIdx + 1, 0), 30);
+      }
+    } else if (e.key === "ArrowLeft" || (e.key === "Tab" && e.shiftKey)) {
+      e.preventDefault();
+      if (colIdx > 0) focusPayrollPopupCell(rowIdx, colIdx - 1);
+      else if (rowIdx > 0) focusPayrollPopupCell(rowIdx - 1, maxCol);
+    }
+  };
+
+  const handlePayrollPopupPaste = (e, startRow, startCol) => {
+    e.preventDefault();
+    const raw = e.clipboardData.getData("text");
+    const pastedRows = parseClipboard(raw);
+    if (!pastedRows.length) return;
+
+    setPayrollPopupRows((prev) => {
+      const next = prev.map((row) => ({ ...row }));
+      const need = startRow + pastedRows.length;
+      while (next.length < need) next.push(emptyPayrollPopupRow());
+
+      pastedRows.forEach((cells, ri) => {
+        cells.forEach((val, ci) => {
+          const colIdx = startCol + ci;
+          if (colIdx >= PAYROLL_POPUP_COL_KEYS.length) return;
+          next[startRow + ri][PAYROLL_POPUP_COL_KEYS[colIdx]] = (
+            val ?? ""
+          ).trim();
+        });
+      });
+
+      return next;
+    });
+  };
+
   const openGstPopup = (periodText) => {
     setGstPopupPeriod(periodText || "");
     setGstPopupRows(makeGstPopupRows());
@@ -337,6 +476,66 @@ export default function BAS() {
     setGstPopupRows((prev) =>
       prev.map((row, idx) => (idx === rowIdx ? { ...row, [key]: value } : row)),
     );
+  };
+
+  const addGstPopupRow = () => {
+    setGstPopupRows((prev) => [...prev, emptyGstPopupRow()]);
+  };
+
+  const focusGstPopupCell = (row, col) =>
+    focusCellById(gstPopupCellId(row, col));
+
+  const handleGstPopupKeyDown = (e, rowIdx, colIdx) => {
+    const maxRow = gstPopupRows.length - 1;
+    const maxCol = GST_POPUP_COL_KEYS.length - 1;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (rowIdx < maxRow) {
+        focusGstPopupCell(rowIdx + 1, colIdx);
+      } else {
+        setGstPopupRows((prev) => [...prev, emptyGstPopupRow()]);
+        setTimeout(() => focusGstPopupCell(rowIdx + 1, colIdx), 30);
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (rowIdx > 0) focusGstPopupCell(rowIdx - 1, colIdx);
+    } else if (e.key === "ArrowRight" || (e.key === "Tab" && !e.shiftKey)) {
+      e.preventDefault();
+      if (colIdx < maxCol) focusGstPopupCell(rowIdx, colIdx + 1);
+      else if (rowIdx < maxRow) focusGstPopupCell(rowIdx + 1, 0);
+      else {
+        setGstPopupRows((prev) => [...prev, emptyGstPopupRow()]);
+        setTimeout(() => focusGstPopupCell(rowIdx + 1, 0), 30);
+      }
+    } else if (e.key === "ArrowLeft" || (e.key === "Tab" && e.shiftKey)) {
+      e.preventDefault();
+      if (colIdx > 0) focusGstPopupCell(rowIdx, colIdx - 1);
+      else if (rowIdx > 0) focusGstPopupCell(rowIdx - 1, maxCol);
+    }
+  };
+
+  const handleGstPopupPaste = (e, startRow, startCol) => {
+    e.preventDefault();
+    const raw = e.clipboardData.getData("text");
+    const pastedRows = parseClipboard(raw);
+    if (!pastedRows.length) return;
+
+    setGstPopupRows((prev) => {
+      const next = prev.map((row) => ({ ...row }));
+      const need = startRow + pastedRows.length;
+      while (next.length < need) next.push(emptyGstPopupRow());
+
+      pastedRows.forEach((cells, ri) => {
+        cells.forEach((val, ci) => {
+          const colIdx = startCol + ci;
+          if (colIdx >= GST_POPUP_COL_KEYS.length) return;
+          next[startRow + ri][GST_POPUP_COL_KEYS[colIdx]] = (val ?? "").trim();
+        });
+      });
+
+      return next;
+    });
   };
 
   const gstPopupTotals = useMemo(
@@ -1133,6 +1332,16 @@ export default function BAS() {
               </div>
 
               <div style={{ overflowX: "auto" }}>
+                <p
+                  style={{
+                    fontSize: "12px",
+                    color: "#888",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Tip: Copy dữ liệu từ Excel và paste trực tiếp vào bất kỳ ô
+                  nào.
+                </p>
                 <table
                   style={{
                     borderCollapse: "collapse",
@@ -1209,6 +1418,7 @@ export default function BAS() {
                           style={{ border: "1px solid #ddd", padding: "4px" }}
                         >
                           <input
+                            id={payrollPopupCellId(idx, 0)}
                             value={row.employee}
                             onChange={(e) =>
                               updatePayrollPopupCell(
@@ -1217,6 +1427,10 @@ export default function BAS() {
                                 e.target.value,
                               )
                             }
+                            onPaste={(e) => handlePayrollPopupPaste(e, idx, 0)}
+                            onKeyDown={(e) =>
+                              handlePayrollPopupKeyDown(e, idx, 0)
+                            }
                             style={{
                               width: "100%",
                               border: "none",
@@ -1230,6 +1444,7 @@ export default function BAS() {
                           style={{ border: "1px solid #ddd", padding: "4px" }}
                         >
                           <input
+                            id={payrollPopupCellId(idx, 1)}
                             value={row.wages}
                             onChange={(e) =>
                               updatePayrollPopupCell(
@@ -1238,6 +1453,10 @@ export default function BAS() {
                                 e.target.value,
                               )
                             }
+                            onPaste={(e) => handlePayrollPopupPaste(e, idx, 1)}
+                            onKeyDown={(e) =>
+                              handlePayrollPopupKeyDown(e, idx, 1)
+                            }
                             style={{
                               width: "100%",
                               border: "none",
@@ -1252,6 +1471,7 @@ export default function BAS() {
                           style={{ border: "1px solid #ddd", padding: "4px" }}
                         >
                           <input
+                            id={payrollPopupCellId(idx, 2)}
                             value={row.deduction}
                             onChange={(e) =>
                               updatePayrollPopupCell(
@@ -1260,6 +1480,10 @@ export default function BAS() {
                                 e.target.value,
                               )
                             }
+                            onPaste={(e) => handlePayrollPopupPaste(e, idx, 2)}
+                            onKeyDown={(e) =>
+                              handlePayrollPopupKeyDown(e, idx, 2)
+                            }
                             style={{
                               width: "100%",
                               border: "none",
@@ -1274,6 +1498,7 @@ export default function BAS() {
                           style={{ border: "1px solid #ddd", padding: "4px" }}
                         >
                           <input
+                            id={payrollPopupCellId(idx, 3)}
                             value={row.taxes}
                             onChange={(e) =>
                               updatePayrollPopupCell(
@@ -1282,27 +1507,9 @@ export default function BAS() {
                                 e.target.value,
                               )
                             }
-                            style={{
-                              width: "100%",
-                              border: "none",
-                              outline: "none",
-                              background: "transparent",
-                              textAlign: "right",
-                              fontSize: "13px",
-                            }}
-                          />
-                        </td>
-                        <td
-                          style={{ border: "1px solid #ddd", padding: "4px" }}
-                        >
-                          <input
-                            value={row.netPay}
-                            onChange={(e) =>
-                              updatePayrollPopupCell(
-                                idx,
-                                "netPay",
-                                e.target.value,
-                              )
+                            onPaste={(e) => handlePayrollPopupPaste(e, idx, 3)}
+                            onKeyDown={(e) =>
+                              handlePayrollPopupKeyDown(e, idx, 3)
                             }
                             style={{
                               width: "100%",
@@ -1318,6 +1525,34 @@ export default function BAS() {
                           style={{ border: "1px solid #ddd", padding: "4px" }}
                         >
                           <input
+                            id={payrollPopupCellId(idx, 4)}
+                            value={row.netPay}
+                            onChange={(e) =>
+                              updatePayrollPopupCell(
+                                idx,
+                                "netPay",
+                                e.target.value,
+                              )
+                            }
+                            onPaste={(e) => handlePayrollPopupPaste(e, idx, 4)}
+                            onKeyDown={(e) =>
+                              handlePayrollPopupKeyDown(e, idx, 4)
+                            }
+                            style={{
+                              width: "100%",
+                              border: "none",
+                              outline: "none",
+                              background: "transparent",
+                              textAlign: "right",
+                              fontSize: "13px",
+                            }}
+                          />
+                        </td>
+                        <td
+                          style={{ border: "1px solid #ddd", padding: "4px" }}
+                        >
+                          <input
+                            id={payrollPopupCellId(idx, 5)}
                             value={row.expenses}
                             onChange={(e) =>
                               updatePayrollPopupCell(
@@ -1325,6 +1560,10 @@ export default function BAS() {
                                 "expenses",
                                 e.target.value,
                               )
+                            }
+                            onPaste={(e) => handlePayrollPopupPaste(e, idx, 5)}
+                            onKeyDown={(e) =>
+                              handlePayrollPopupKeyDown(e, idx, 5)
                             }
                             style={{
                               width: "100%",
@@ -1454,6 +1693,15 @@ export default function BAS() {
                 ) : null}
                 <button
                   type="button"
+                  className="btn-action"
+                  title="Add row"
+                  onClick={addGstPopupRow}
+                  style={{ background: "#2563eb", color: "#fff" }}
+                >
+                  <i className="fas fa-plus"></i>
+                </button>
+                <button
+                  type="button"
                   className="btn-action btn-delete"
                   title="Close"
                   onClick={() => setShowGstPopup(false)}
@@ -1463,6 +1711,16 @@ export default function BAS() {
               </div>
 
               <div style={{ overflowX: "auto" }}>
+                <p
+                  style={{
+                    fontSize: "12px",
+                    color: "#888",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Tip: Copy dữ liệu từ Excel và paste trực tiếp vào bất kỳ ô
+                  nào.
+                </p>
                 <table
                   style={{
                     borderCollapse: "collapse",
@@ -1546,10 +1804,13 @@ export default function BAS() {
                           style={{ border: "1px solid #ddd", padding: "4px" }}
                         >
                           <input
+                            id={gstPopupCellId(idx, 0)}
                             value={row.code}
                             onChange={(e) =>
                               updateGstPopupCell(idx, "code", e.target.value)
                             }
+                            onPaste={(e) => handleGstPopupPaste(e, idx, 0)}
+                            onKeyDown={(e) => handleGstPopupKeyDown(e, idx, 0)}
                             style={{
                               width: "100%",
                               border: "none",
@@ -1564,6 +1825,7 @@ export default function BAS() {
                           style={{ border: "1px solid #ddd", padding: "4px" }}
                         >
                           <input
+                            id={gstPopupCellId(idx, 1)}
                             value={row.description}
                             onChange={(e) =>
                               updateGstPopupCell(
@@ -1572,6 +1834,8 @@ export default function BAS() {
                                 e.target.value,
                               )
                             }
+                            onPaste={(e) => handleGstPopupPaste(e, idx, 1)}
+                            onKeyDown={(e) => handleGstPopupKeyDown(e, idx, 1)}
                             style={{
                               width: "100%",
                               border: "none",
@@ -1585,10 +1849,13 @@ export default function BAS() {
                           style={{ border: "1px solid #ddd", padding: "4px" }}
                         >
                           <input
+                            id={gstPopupCellId(idx, 2)}
                             value={row.rate}
                             onChange={(e) =>
                               updateGstPopupCell(idx, "rate", e.target.value)
                             }
+                            onPaste={(e) => handleGstPopupPaste(e, idx, 2)}
+                            onKeyDown={(e) => handleGstPopupKeyDown(e, idx, 2)}
                             style={{
                               width: "100%",
                               border: "none",
@@ -1603,6 +1870,7 @@ export default function BAS() {
                           style={{ border: "1px solid #ddd", padding: "4px" }}
                         >
                           <input
+                            id={gstPopupCellId(idx, 3)}
                             value={row.saleValue}
                             onChange={(e) =>
                               updateGstPopupCell(
@@ -1611,6 +1879,8 @@ export default function BAS() {
                                 e.target.value,
                               )
                             }
+                            onPaste={(e) => handleGstPopupPaste(e, idx, 3)}
+                            onKeyDown={(e) => handleGstPopupKeyDown(e, idx, 3)}
                             style={{
                               width: "100%",
                               border: "none",
@@ -1625,6 +1895,7 @@ export default function BAS() {
                           style={{ border: "1px solid #ddd", padding: "4px" }}
                         >
                           <input
+                            id={gstPopupCellId(idx, 4)}
                             value={row.purchaseValue}
                             onChange={(e) =>
                               updateGstPopupCell(
@@ -1633,6 +1904,8 @@ export default function BAS() {
                                 e.target.value,
                               )
                             }
+                            onPaste={(e) => handleGstPopupPaste(e, idx, 4)}
+                            onKeyDown={(e) => handleGstPopupKeyDown(e, idx, 4)}
                             style={{
                               width: "100%",
                               border: "none",
@@ -1647,6 +1920,7 @@ export default function BAS() {
                           style={{ border: "1px solid #ddd", padding: "4px" }}
                         >
                           <input
+                            id={gstPopupCellId(idx, 5)}
                             value={row.taxCollected}
                             onChange={(e) =>
                               updateGstPopupCell(
@@ -1655,6 +1929,8 @@ export default function BAS() {
                                 e.target.value,
                               )
                             }
+                            onPaste={(e) => handleGstPopupPaste(e, idx, 5)}
+                            onKeyDown={(e) => handleGstPopupKeyDown(e, idx, 5)}
                             style={{
                               width: "100%",
                               border: "none",
@@ -1669,10 +1945,13 @@ export default function BAS() {
                           style={{ border: "1px solid #ddd", padding: "4px" }}
                         >
                           <input
+                            id={gstPopupCellId(idx, 6)}
                             value={row.taxPaid}
                             onChange={(e) =>
                               updateGstPopupCell(idx, "taxPaid", e.target.value)
                             }
+                            onPaste={(e) => handleGstPopupPaste(e, idx, 6)}
+                            onKeyDown={(e) => handleGstPopupKeyDown(e, idx, 6)}
                             style={{
                               width: "100%",
                               border: "none",
