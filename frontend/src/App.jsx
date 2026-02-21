@@ -1,7 +1,8 @@
-import React, { useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { API_BASE_WITH_API_PREFIX } from "./config/api";
 import Home from "./pages/Home";
+import Login from "./pages/Login";
 import TimeSheetForm from "./features/payroll/TimeSheetForm";
 import TimeSheetList from "./features/payroll/TimeSheetList";
 import TimeSheetReport from "./features/payroll/TimeSheetReport";
@@ -32,11 +33,25 @@ import CreateCustomerInvoice from "./features/invoice/CreateCustomerInvoice";
 import EditCustomerInvoice from "./features/invoice/EditCustomerInvoice";
 import KanbanBoard from "./features/tasks/KanbanBoard";
 import FullNotes from "./features/dashboard/FullNotes";
+import IAS from "./features/tax/IAS";
 import "./assets/styles/home.css";
 
+function RequireAuth({ isAuthenticated }) {
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  return <Outlet />;
+}
+
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    () => localStorage.getItem("simple_auth") === "true",
+  );
+
   // ── Keep backend alive (ping every 4 minutes) ──────────────────────────
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const ping = () =>
       fetch(`${API_BASE_WITH_API_PREFIX}/health`, { method: "GET" }).catch(
         () => {},
@@ -44,78 +59,112 @@ export default function App() {
     ping(); // ping immediately on load
     const id = setInterval(ping, 4 * 60 * 1000); // every 4 minutes
     return () => clearInterval(id);
-  }, []);
+  }, [isAuthenticated]);
+
+  const handleLogin = (email, password) => {
+    const isValid =
+      email === "tran3tin@gmail.com" && password === "140293NgocDiem!";
+
+    if (isValid) {
+      localStorage.setItem("simple_auth", "true");
+      setIsAuthenticated(true);
+      return true;
+    }
+
+    return false;
+  };
 
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
       <Route
-        path="/dashboard"
-        element={<Navigate to="/dashboard/tasks" replace />}
+        path="/login"
+        element={
+          isAuthenticated ? (
+            <Navigate to="/dashboard/tasks" replace />
+          ) : (
+            <Login onLogin={handleLogin} />
+          )
+        }
       />
-      <Route path="/dashboard/tasks" element={<KanbanBoard />} />
-      <Route path="/dashboard/notes" element={<FullNotes />} />
-      <Route path="/payroll/timesheets" element={<TimeSheetList />} />
-      <Route path="/payroll/reports" element={<TimeSheetReportList />} />
-      <Route path="/payroll/time-sheet" element={<TimeSheetForm />} />
-      <Route path="/payroll/time-sheet/:id" element={<TimeSheetForm />} />
-      <Route path="/payroll/myob-upload" element={<PayrollMyOBUpload />} />
-      <Route path="/payroll/social-sheet" element={<SocialSheetForm />} />
-      <Route path="/payroll/social-sheet/:id" element={<ViewSocialSheet />} />
+
+      <Route element={<RequireAuth isAuthenticated={isAuthenticated} />}>
+        <Route path="/" element={<Home />} />
+        <Route
+          path="/dashboard"
+          element={<Navigate to="/dashboard/tasks" replace />}
+        />
+        <Route path="/dashboard/tasks" element={<KanbanBoard />} />
+        <Route path="/dashboard/notes" element={<FullNotes />} />
+        <Route path="/payroll/timesheets" element={<TimeSheetList />} />
+        <Route path="/payroll/reports" element={<TimeSheetReportList />} />
+        <Route path="/payroll/time-sheet" element={<TimeSheetForm />} />
+        <Route path="/payroll/time-sheet/:id" element={<TimeSheetForm />} />
+        <Route path="/payroll/myob-upload" element={<PayrollMyOBUpload />} />
+        <Route path="/payroll/social-sheet" element={<SocialSheetForm />} />
+        <Route path="/payroll/social-sheet/:id" element={<ViewSocialSheet />} />
+        <Route
+          path="/payroll/social-sheet/edit/:id"
+          element={<EditSocialSheet />}
+        />
+        <Route
+          path="/payroll/social-participants"
+          element={<SocialParticipantList />}
+        />
+        <Route path="/nexgenus/payroll" element={<PayrollNexgenuslist />} />
+        <Route path="/nexgenus/payroll/new" element={<PayrollNexgenusForm />} />
+        <Route
+          path="/nexgenus/payroll/:id"
+          element={<PayrollNexgenusReport />}
+        />
+        <Route
+          path="/nexgenus/payroll/edit/:id"
+          element={<PayrollNexgenusForm />}
+        />
+        <Route
+          path="/payroll/social-participant-report"
+          element={<SocialParticipantReport />}
+        />
+        <Route
+          path="/payroll/social-participant-report/:id"
+          element={<SocialParticipantReport />}
+        />
+        <Route
+          path="/payroll/social-employee-report"
+          element={<SocialEmployeeReport />}
+        />
+        <Route
+          path="/payroll/social-employee-report/:id"
+          element={<SocialEmployeeReport />}
+        />
+        <Route path="/payroll/report" element={<TimeSheetReport />} />
+        <Route path="/payroll/report/:id" element={<TimeSheetReport />} />
+        <Route path="/employee" element={<EmployeeList />} />
+        <Route path="/employee/create" element={<CreateEmployee />} />
+        <Route path="/employee/:id" element={<ViewEmployee />} />
+        <Route path="/employee/edit/:id" element={<EditEmployee />} />
+        <Route path="/employee/:employeeId/notes" element={<EmployeeNotes />} />
+        <Route path="/customer" element={<CustomerList />} />
+        <Route path="/customer/ledger" element={<CustomerLedger />} />
+        <Route path="/customer/create" element={<CreateCustomer />} />
+        <Route path="/customer/:id" element={<ViewCustomer />} />
+        <Route path="/customer/edit/:id" element={<EditCustomer />} />
+        <Route path="/customer/:customerId/notes" element={<CustomerNotes />} />
+        <Route path="/customer-invoices" element={<CustomerInvoiceList />} />
+        <Route
+          path="/customer-invoices/create"
+          element={<CreateCustomerInvoice />}
+        />
+        <Route
+          path="/customer-invoices/edit/:id"
+          element={<EditCustomerInvoice />}
+        />
+        <Route path="/tax/ias" element={<IAS />} />
+      </Route>
+
       <Route
-        path="/payroll/social-sheet/edit/:id"
-        element={<EditSocialSheet />}
+        path="*"
+        element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />}
       />
-      <Route
-        path="/payroll/social-participants"
-        element={<SocialParticipantList />}
-      />
-      <Route path="/nexgenus/payroll" element={<PayrollNexgenuslist />} />
-      <Route path="/nexgenus/payroll/new" element={<PayrollNexgenusForm />} />
-      <Route path="/nexgenus/payroll/:id" element={<PayrollNexgenusReport />} />
-      <Route
-        path="/nexgenus/payroll/edit/:id"
-        element={<PayrollNexgenusForm />}
-      />
-      <Route
-        path="/payroll/social-participant-report"
-        element={<SocialParticipantReport />}
-      />
-      <Route
-        path="/payroll/social-participant-report/:id"
-        element={<SocialParticipantReport />}
-      />
-      <Route
-        path="/payroll/social-employee-report"
-        element={<SocialEmployeeReport />}
-      />
-      <Route
-        path="/payroll/social-employee-report/:id"
-        element={<SocialEmployeeReport />}
-      />
-      <Route path="/payroll/report" element={<TimeSheetReport />} />
-      <Route path="/payroll/report/:id" element={<TimeSheetReport />} />
-      <Route path="/employee" element={<EmployeeList />} />
-      <Route path="/employee/create" element={<CreateEmployee />} />
-      <Route path="/employee/:id" element={<ViewEmployee />} />
-      <Route path="/employee/edit/:id" element={<EditEmployee />} />
-      <Route path="/employee/:employeeId/notes" element={<EmployeeNotes />} />
-      <Route path="/customer" element={<CustomerList />} />
-      <Route path="/customer/ledger" element={<CustomerLedger />} />
-      <Route path="/customer/create" element={<CreateCustomer />} />
-      <Route path="/customer/:id" element={<ViewCustomer />} />
-      <Route path="/customer/edit/:id" element={<EditCustomer />} />
-      <Route path="/customer/:customerId/notes" element={<CustomerNotes />} />
-      <Route path="/customer-invoices" element={<CustomerInvoiceList />} />
-      <Route
-        path="/customer-invoices/create"
-        element={<CreateCustomerInvoice />}
-      />
-      <Route
-        path="/customer-invoices/edit/:id"
-        element={<EditCustomerInvoice />}
-      />
-      <Route path="*" element={<Home />} />
     </Routes>
   );
 }

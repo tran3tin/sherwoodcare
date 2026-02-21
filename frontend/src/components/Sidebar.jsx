@@ -38,6 +38,15 @@ const menuItems = [
     ],
   },
   {
+    title: "Tax",
+    icon: "flaticon-list",
+    submenu: [
+      { title: "IAS", path: "/tax/ias" },
+      { title: "BAS", path: "/tax/bas" },
+      { title: "Superanuation", path: "/tax/superanuation" },
+    ],
+  },
+  {
     title: "NexGenus",
     icon: "flaticon-shopping-bag",
     submenu: [{ title: "Payroll NexGenus List", path: "/nexgenus/payroll" }],
