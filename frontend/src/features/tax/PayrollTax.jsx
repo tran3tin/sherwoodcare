@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
 import Layout from "../../components/Layout";
 import "../../assets/styles/list.css";
 
@@ -118,10 +119,19 @@ const includesText = (value, keyword) =>
     .toLowerCase()
     .includes(keyword.toLowerCase());
 
+const formatLodgeDate = (dateValue) =>
+  new Date(dateValue).toLocaleDateString("en-AU", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
 export default function PayrollTax() {
   const [showPayrollSummaryPopup, setShowPayrollSummaryPopup] = useState(false);
   const [showPayrollActivityPopup, setShowPayrollActivityPopup] =
     useState(false);
+  const [showLodgeModal, setShowLodgeModal] = useState(false);
+  const [lessPreviousPayments, setLessPreviousPayments] = useState("");
 
   const [payrollSummaryRows, setPayrollSummaryRows] = useState(() =>
     makeRows(POPUP_DEFAULT_ROWS, emptyPayrollSummaryRow),
@@ -284,6 +294,14 @@ export default function PayrollTax() {
           : sum;
       }, 0);
 
+    const byTitleKeywords = (...keywords) =>
+      rows.reduce((sum, row) => {
+        const title = String(row.title || "").toLowerCase();
+        return keywords.some((k) => title.includes(k.toLowerCase()))
+          ? sum + parseAmount(row.amount)
+          : sum;
+      }, 0);
+
     const vehicleAllowance = byKeywords("vehicle allowance");
     const allowances = byAllowanceTitles([
       "Call-out Allowance",
@@ -295,7 +313,7 @@ export default function PayrollTax() {
       vehicleAllowance,
       allowances,
       bonus: byCategory("bonus"),
-      superannuation: byCategory("super") + byKeywords("superannuation"),
+      superannuation: byTitleKeywords("superannuation expenses"),
     };
   }, [payrollSummaryRows]);
 
@@ -311,7 +329,11 @@ export default function PayrollTax() {
     const bonus = payrollSummaryMapped.bonus;
 
     const grossWages =
-      grossWagesCalculableForPtx + vehicleAllowanceTaxable + allowances + bonus;
+      totalWagesFromActivity -
+      vehicleAllowanceAt088 -
+      vehicleAllowanceTaxable -
+      allowances -
+      bonus;
     const totalWages = grossWages;
 
     const superannuation = payrollSummaryMapped.superannuation;
@@ -342,6 +364,19 @@ export default function PayrollTax() {
       netPayrollTaxAndSurchargesPayable,
     };
   }, [payrollActivityTotals, payrollSummaryMapped]);
+
+  const lodgePeriod = useMemo(() => {
+    const now = new Date();
+    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const dueDate = new Date(now.getFullYear(), now.getMonth() + 1, 9);
+    return { periodStart, periodEnd, dueDate };
+  }, []);
+
+  const lessPreviousPaymentsValue = parseAmount(lessPreviousPayments);
+  const netPayableAfterPrevious =
+    payrollTaxData.netPayrollTaxAndSurchargesPayable -
+    lessPreviousPaymentsValue;
 
   const exportExcel = () => {
     const summaryRows = [
@@ -436,6 +471,95 @@ export default function PayrollTax() {
     XLSX.writeFile(wb, "Payroll-Tax.xlsx");
   };
 
+  const exportLodgePdf = () => {
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    let y = 40;
+
+    const line = (label, value = "", strong = false) => {
+      doc.setFont("helvetica", strong ? "bold" : "normal");
+      doc.setFontSize(11);
+      doc.text(label, 40, y);
+      if (value) doc.text(value, 555, y, { align: "right" });
+      y += 18;
+    };
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("Lodge Monthly Return", 40, y);
+    y += 24;
+
+    line(
+      `Period: ${formatLodgeDate(lodgePeriod.periodStart)} - ${formatLodgeDate(lodgePeriod.periodEnd)}`,
+    );
+    line(`Due date: ${formatLodgeDate(lodgePeriod.dueDate)}`);
+    y += 8;
+
+    line("Victorian Wages", "", true);
+    line(
+      "Salaries and Wages",
+      formatCurrency(payrollTaxData.totalWagesFromActivity),
+    );
+    line("Allowances", formatCurrency(payrollTaxData.allowances));
+    line("Bonuses/Commissions", formatCurrency(payrollTaxData.bonus));
+    line("Superannuation", formatCurrency(payrollTaxData.superannuation));
+    line(
+      "Gross Taxable Victorian Wages",
+      formatCurrency(payrollTaxData.totalTaxableWages),
+      true,
+    );
+    y += 6;
+
+    line("Payroll Tax", "", true);
+    line("Less Deduction", "$ 0.00");
+    line(
+      "Net Taxable Victorian Wages",
+      formatCurrency(payrollTaxData.totalTaxableWages),
+    );
+    line(
+      "Regional Payroll Tax (@1.2125%)",
+      formatCurrency(payrollTaxData.payrollTax),
+    );
+    y += 6;
+
+    line("Mental Health & Wellbeing Surcharge", "", true);
+    line("Less First Threshold Deduction", "$ 0.00");
+    line(
+      "Net Taxable Victorian Wages",
+      formatCurrency(payrollTaxData.totalTaxableWages),
+    );
+    line(
+      "Surcharge (@0.5000%)",
+      formatCurrency(payrollTaxData.mentalHealthSurcharge),
+    );
+    y += 6;
+
+    line("COVID-19 Debt Temporary Payroll Tax Surcharge", "", true);
+    line("Less First Threshold Deduction", "$ 0.00");
+    line(
+      "Net Taxable Victorian Wages",
+      formatCurrency(payrollTaxData.totalTaxableWages),
+    );
+    line(
+      "Surcharge (@0.5000%)",
+      formatCurrency(payrollTaxData.covidDebtSurcharge),
+    );
+    y += 6;
+
+    line("Total", "", true);
+    line(
+      "Total Payroll Tax and Surcharges",
+      formatCurrency(payrollTaxData.netPayrollTaxAndSurchargesPayable),
+    );
+    line("Less Previous Payments", formatCurrency(lessPreviousPaymentsValue));
+    line(
+      "Net Payroll Tax and Surcharges Payable",
+      formatCurrency(netPayableAfterPrevious),
+      true,
+    );
+
+    doc.save("Payroll-Tax-Lodge.pdf");
+  };
+
   return (
     <Layout title="Payroll Tax" breadcrumb={["Home", "Tax", "Payroll Tax"]}>
       <div style={{ padding: "0 4px" }}>
@@ -465,6 +589,15 @@ export default function PayrollTax() {
             style={{ background: "#1f7a3f", color: "#fff" }}
           >
             <i className="fas fa-file-excel"></i>
+          </button>
+          <button
+            type="button"
+            className="btn-action"
+            title="Lodge"
+            onClick={() => setShowLodgeModal(true)}
+            style={{ background: "#0f766e", color: "#fff" }}
+          >
+            <i className="fas fa-file-signature"></i>
           </button>
           <button
             type="button"
@@ -1043,6 +1176,356 @@ export default function PayrollTax() {
                         ))}
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showLodgeModal && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0, 0, 0, 0.45)",
+              zIndex: 1250,
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "center",
+              overflowY: "auto",
+              padding: "28px 14px",
+            }}
+            onClick={(e) =>
+              e.target === e.currentTarget && setShowLodgeModal(false)
+            }
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: "980px",
+                background: "#fff",
+                borderRadius: "8px",
+                boxShadow: "0 8px 28px rgba(0,0,0,0.2)",
+                padding: "20px 24px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  marginBottom: "10px",
+                }}
+              >
+                <h3
+                  style={{
+                    margin: 0,
+                    flex: 1,
+                    color: "#0b4f78",
+                    fontSize: "26px",
+                  }}
+                >
+                  Lodge Monthly Return
+                </h3>
+                <button
+                  type="button"
+                  className="btn-action"
+                  title="Export PDF"
+                  onClick={exportLodgePdf}
+                  style={{ background: "#b91c1c", color: "#fff" }}
+                >
+                  <i className="fas fa-file-pdf"></i>
+                </button>
+                <button
+                  type="button"
+                  className="btn-action btn-delete"
+                  title="Close"
+                  onClick={() => setShowLodgeModal(false)}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+
+              <p style={{ margin: "0 0 8px", fontSize: "13px" }}>
+                Please enter your wages for the period{" "}
+                {formatLodgeDate(lodgePeriod.periodStart)} to{" "}
+                {formatLodgeDate(lodgePeriod.periodEnd)}.
+              </p>
+              <p style={{ margin: "0 0 16px", fontSize: "13px" }}>
+                The due date is {formatLodgeDate(lodgePeriod.dueDate)}.
+              </p>
+
+              <div style={{ marginBottom: "18px" }}>
+                <h4
+                  style={{
+                    margin: "0 0 8px",
+                    color: "#0b4f78",
+                    fontSize: "20px",
+                  }}
+                >
+                  Victorian Wages
+                </h4>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "14px",
+                  }}
+                >
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: "4px 0", fontWeight: 600 }}>
+                        Salaries and Wages
+                      </td>
+                      <td style={{ padding: "4px 0", textAlign: "right" }}>
+                        {formatCurrency(payrollTaxData.totalWagesFromActivity)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 0", fontWeight: 600 }}>
+                        Allowances
+                      </td>
+                      <td style={{ padding: "4px 0", textAlign: "right" }}>
+                        {formatCurrency(payrollTaxData.allowances)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 0", fontWeight: 600 }}>
+                        Bonuses/Commissions
+                      </td>
+                      <td style={{ padding: "4px 0", textAlign: "right" }}>
+                        {formatCurrency(payrollTaxData.bonus)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 0", fontWeight: 600 }}>
+                        Superannuation
+                      </td>
+                      <td style={{ padding: "4px 0", textAlign: "right" }}>
+                        {formatCurrency(payrollTaxData.superannuation)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "6px 0", fontWeight: 700 }}>
+                        Gross Taxable Victorian Wages
+                      </td>
+                      <td
+                        style={{
+                          padding: "6px 0",
+                          textAlign: "right",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {formatCurrency(payrollTaxData.totalTaxableWages)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ marginBottom: "16px" }}>
+                <h4
+                  style={{
+                    margin: "0 0 8px",
+                    color: "#0b4f78",
+                    fontSize: "20px",
+                  }}
+                >
+                  Payroll Tax
+                </h4>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "14px",
+                  }}
+                >
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: "4px 0" }}>Less Deduction</td>
+                      <td style={{ padding: "4px 0", textAlign: "right" }}>
+                        $ 0.00
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 0" }}>
+                        Net Taxable Victorian Wages
+                      </td>
+                      <td style={{ padding: "4px 0", textAlign: "right" }}>
+                        {formatCurrency(payrollTaxData.totalTaxableWages)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 0" }}>
+                        Regional Payroll Tax (@1.2125%)
+                      </td>
+                      <td style={{ padding: "4px 0", textAlign: "right" }}>
+                        {formatCurrency(payrollTaxData.payrollTax)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ marginBottom: "16px" }}>
+                <h4
+                  style={{
+                    margin: "0 0 8px",
+                    color: "#0b4f78",
+                    fontSize: "20px",
+                  }}
+                >
+                  Mental Health &amp; Wellbeing Surcharge
+                </h4>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "14px",
+                  }}
+                >
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: "4px 0" }}>
+                        Less First Threshold Deduction
+                      </td>
+                      <td style={{ padding: "4px 0", textAlign: "right" }}>
+                        $ 0.00
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 0" }}>
+                        Net Taxable Victorian Wages
+                      </td>
+                      <td style={{ padding: "4px 0", textAlign: "right" }}>
+                        {formatCurrency(payrollTaxData.totalTaxableWages)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 0" }}>Surcharge (@0.5000%)</td>
+                      <td style={{ padding: "4px 0", textAlign: "right" }}>
+                        {formatCurrency(payrollTaxData.mentalHealthSurcharge)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ marginBottom: "16px" }}>
+                <h4
+                  style={{
+                    margin: "0 0 8px",
+                    color: "#0b4f78",
+                    fontSize: "20px",
+                  }}
+                >
+                  COVID-19 Debt Temporary Payroll Tax Surcharge
+                </h4>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "14px",
+                  }}
+                >
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: "4px 0" }}>
+                        Less First Threshold Deduction
+                      </td>
+                      <td style={{ padding: "4px 0", textAlign: "right" }}>
+                        $ 0.00
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 0" }}>
+                        Net Taxable Victorian Wages
+                      </td>
+                      <td style={{ padding: "4px 0", textAlign: "right" }}>
+                        {formatCurrency(payrollTaxData.totalTaxableWages)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 0" }}>Surcharge (@0.5000%)</td>
+                      <td style={{ padding: "4px 0", textAlign: "right" }}>
+                        {formatCurrency(payrollTaxData.covidDebtSurcharge)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ marginBottom: "12px" }}>
+                <h4
+                  style={{
+                    margin: "0 0 8px",
+                    color: "#0b4f78",
+                    fontSize: "20px",
+                  }}
+                >
+                  Total
+                </h4>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "14px",
+                  }}
+                >
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: "4px 0", fontWeight: 600 }}>
+                        Total Payroll Tax and Surcharges
+                      </td>
+                      <td
+                        style={{
+                          padding: "4px 0",
+                          textAlign: "right",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {formatCurrency(
+                          payrollTaxData.netPayrollTaxAndSurchargesPayable,
+                        )}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "8px 0", fontWeight: 600 }}>
+                        Less Previous Payments
+                      </td>
+                      <td style={{ padding: "8px 0", textAlign: "right" }}>
+                        <input
+                          value={lessPreviousPayments}
+                          onChange={(e) =>
+                            setLessPreviousPayments(e.target.value)
+                          }
+                          style={{
+                            width: "240px",
+                            height: "32px",
+                            border: "1px solid #d1d5db",
+                            borderRadius: "6px",
+                            textAlign: "right",
+                            padding: "0 8px",
+                          }}
+                          placeholder="0.00"
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 0", fontWeight: 700 }}>
+                        Net Payroll Tax and Surcharges Payable
+                      </td>
+                      <td
+                        style={{
+                          padding: "4px 0",
+                          textAlign: "right",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {formatCurrency(netPayableAfterPrevious)}
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
