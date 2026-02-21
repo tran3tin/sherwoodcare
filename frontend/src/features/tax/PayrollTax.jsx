@@ -294,10 +294,12 @@ export default function PayrollTax() {
           : sum;
       }, 0);
 
-    const byTitleKeywords = (...keywords) =>
+    const byTitleAndCategory = (titleKeyword, categoryKeyword) =>
       rows.reduce((sum, row) => {
         const title = String(row.title || "").toLowerCase();
-        return keywords.some((k) => title.includes(k.toLowerCase()))
+        const category = String(row.category || "").toLowerCase();
+        return title.includes(titleKeyword.toLowerCase()) &&
+          category.includes(categoryKeyword.toLowerCase())
           ? sum + parseAmount(row.amount)
           : sum;
       }, 0);
@@ -313,7 +315,7 @@ export default function PayrollTax() {
       vehicleAllowance,
       allowances,
       bonus: byCategory("bonus"),
-      superannuation: byTitleKeywords("superannuation expenses"),
+      superannuation: byTitleAndCategory("superannuation expenses", "total"),
     };
   }, [payrollSummaryRows]);
 
@@ -334,7 +336,8 @@ export default function PayrollTax() {
       vehicleAllowanceTaxable -
       allowances -
       bonus;
-    const totalWages = grossWages;
+    const totalWages =
+      vehicleAllowanceTaxable + allowances + bonus + grossWages;
 
     const superannuation = payrollSummaryMapped.superannuation;
     const totalTaxableWages = totalWages + superannuation;
