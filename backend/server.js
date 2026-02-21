@@ -14,6 +14,7 @@ const allowedOrigins = [
   // Production frontend URLs
   "https://sherwoodcare-fontend.onrender.com",
   "https://sherwoodcare.onrender.com",
+  "https://sherwoodcare.up.railway.app",
   process.env.FRONTEND_URL, // Allow custom frontend URL from env
 ].filter(Boolean); // Remove undefined values
 
