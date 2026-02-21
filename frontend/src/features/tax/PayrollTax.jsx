@@ -279,7 +279,7 @@ export default function PayrollTax() {
 
     return {
       vehicleAllowance,
-      allowances: byCategory("allowance"),
+      allowances: byKeywords("allowance"),
       bonus: byCategory("bonus"),
       superannuation: byCategory("super") + byKeywords("superannuation"),
     };
@@ -288,9 +288,10 @@ export default function PayrollTax() {
   const payrollTaxData = useMemo(() => {
     const totalWagesFromActivity = payrollActivityTotals.wages;
     const vehicleAllowance = payrollSummaryMapped.vehicleAllowance;
+    const vehicleAllowanceAt088 = vehicleAllowance * 0.88;
+    const vehicleAllowanceTaxable = vehicleAllowance * 0.12;
     const grossWagesCalculableForPtx =
-      totalWagesFromActivity - vehicleAllowance;
-    const vehicleAllowanceTaxable = vehicleAllowance * (0.12 / 0.88);
+      totalWagesFromActivity - vehicleAllowanceAt088;
 
     const allowances = payrollSummaryMapped.allowances;
     const bonus = payrollSummaryMapped.bonus;
@@ -312,6 +313,7 @@ export default function PayrollTax() {
     return {
       totalWagesFromActivity,
       vehicleAllowance,
+      vehicleAllowanceAt088,
       grossWagesCalculableForPtx,
       vehicleAllowanceTaxable,
       allowances,
@@ -372,7 +374,7 @@ export default function PayrollTax() {
             style={{
               width: "100%",
               borderCollapse: "collapse",
-              fontSize: "30px",
+              fontSize: "13px",
             }}
           >
             <tbody>
@@ -395,7 +397,7 @@ export default function PayrollTax() {
                   (-) Vehicle Allowance (Total km x $0.88)
                 </td>
                 <td style={{ padding: "3px 4px", textAlign: "right" }}>
-                  {formatCurrency(-payrollTaxData.vehicleAllowance)}
+                  {formatCurrency(-payrollTaxData.vehicleAllowanceAt088)}
                 </td>
               </tr>
               <tr>
