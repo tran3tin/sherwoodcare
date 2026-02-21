@@ -31,6 +31,7 @@ import CustomerNotes from "./features/customer/CustomerNotes";
 import KanbanBoard from "./features/tasks/KanbanBoard";
 import FullNotes from "./features/dashboard/FullNotes";
 import IAS from "./features/tax/IAS";
+import BAS from "./features/tax/BAS";
 import "./assets/styles/home.css";
 
 function RequireAuth({ isAuthenticated }) {
@@ -147,6 +148,7 @@ export default function App() {
         <Route path="/customer/edit/:id" element={<EditCustomer />} />
         <Route path="/customer/:customerId/notes" element={<CustomerNotes />} />
         <Route path="/tax/ias" element={<IAS />} />
+        <Route path="/tax/bas" element={<BAS />} />
       </Route>
 
       <Route

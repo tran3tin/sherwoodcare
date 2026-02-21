@@ -526,10 +526,10 @@ export default function IAS() {
             <div
               style={{
                 width: "100%",
-                maxWidth: "1200px",
+                maxWidth: "980px",
                 background: "#f7f7f7",
                 border: "1px solid #d7d7d7",
-                padding: "14px 14px 18px",
+                padding: "14px",
                 borderRadius: "8px",
               }}
             >
@@ -545,7 +545,7 @@ export default function IAS() {
                   style={{
                     margin: 0,
                     color: "#0f5c66",
-                    fontSize: "40px",
+                    fontSize: "26px",
                     flex: 1,
                   }}
                 >
@@ -574,7 +574,7 @@ export default function IAS() {
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  fontSize: "34px",
+                  fontSize: "16px",
                 }}
               >
                 <thead>
@@ -583,7 +583,7 @@ export default function IAS() {
                       style={{
                         textAlign: "left",
                         borderBottom: "2px solid #8f8f8f",
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                       }}
                       colSpan={2}
                     >
@@ -593,7 +593,7 @@ export default function IAS() {
                       style={{
                         textAlign: "right",
                         borderBottom: "2px solid #8f8f8f",
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                       }}
                     >
                       Reported Value
@@ -602,7 +602,7 @@ export default function IAS() {
                       style={{
                         textAlign: "right",
                         borderBottom: "2px solid #8f8f8f",
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                       }}
                     >
                       Owed to ATO
@@ -611,7 +611,7 @@ export default function IAS() {
                       style={{
                         textAlign: "right",
                         borderBottom: "2px solid #8f8f8f",
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                       }}
                     >
                       Owed by ATO
@@ -624,7 +624,7 @@ export default function IAS() {
                       colSpan={5}
                       style={{
                         borderBottom: "2px solid #333",
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         fontStyle: "italic",
                         fontWeight: 700,
                       }}
@@ -635,7 +635,7 @@ export default function IAS() {
                   <tr>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                       }}
                     >
@@ -643,7 +643,7 @@ export default function IAS() {
                     </td>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                       }}
                     >
@@ -651,14 +651,14 @@ export default function IAS() {
                     </td>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                         textAlign: "right",
                       }}
                     />
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                         textAlign: "right",
                       }}
@@ -667,7 +667,7 @@ export default function IAS() {
                     </td>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                         textAlign: "right",
                       }}
@@ -676,7 +676,7 @@ export default function IAS() {
                   <tr>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                       }}
                     >
@@ -684,7 +684,7 @@ export default function IAS() {
                     </td>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                       }}
                     >
@@ -692,7 +692,7 @@ export default function IAS() {
                     </td>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                         textAlign: "right",
                       }}
@@ -701,14 +701,14 @@ export default function IAS() {
                     </td>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                         textAlign: "right",
                       }}
                     />
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                         textAlign: "right",
                       }}
@@ -717,7 +717,7 @@ export default function IAS() {
                   <tr>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                       }}
                     >
@@ -725,7 +725,7 @@ export default function IAS() {
                     </td>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                       }}
                     >
@@ -734,7 +734,7 @@ export default function IAS() {
                     </td>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                         textAlign: "right",
                       }}
@@ -743,14 +743,14 @@ export default function IAS() {
                     </td>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                         textAlign: "right",
                       }}
                     />
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                         textAlign: "right",
                       }}
@@ -759,7 +759,7 @@ export default function IAS() {
                   <tr>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                       }}
                     >
@@ -767,7 +767,7 @@ export default function IAS() {
                     </td>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                       }}
                     >
@@ -775,7 +775,7 @@ export default function IAS() {
                     </td>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                         textAlign: "right",
                       }}
@@ -784,14 +784,14 @@ export default function IAS() {
                     </td>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                         textAlign: "right",
                       }}
                     />
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                         textAlign: "right",
                       }}
@@ -800,7 +800,7 @@ export default function IAS() {
                   <tr>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                       }}
                     >
@@ -808,7 +808,7 @@ export default function IAS() {
                     </td>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                       }}
                     >
@@ -816,7 +816,7 @@ export default function IAS() {
                     </td>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                         textAlign: "right",
                       }}
@@ -825,14 +825,14 @@ export default function IAS() {
                     </td>
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                         textAlign: "right",
                       }}
                     />
                     <td
                       style={{
-                        padding: "8px 6px",
+                        padding: "7px 6px",
                         borderBottom: "1px solid #bcbcbc",
                         textAlign: "right",
                       }}
@@ -841,10 +841,10 @@ export default function IAS() {
                 </tbody>
               </table>
 
-              <h4 style={{ margin: "22px 0 8px", fontSize: "48px" }}>
+              <h4 style={{ margin: "18px 0 6px", fontSize: "28px" }}>
                 Total amount to pay
               </h4>
-              <div style={{ fontSize: "42px", fontWeight: 500 }}>
+              <div style={{ fontSize: "22px", fontWeight: 600 }}>
                 {formatCurrency(w2Value)} DR
               </div>
             </div>
