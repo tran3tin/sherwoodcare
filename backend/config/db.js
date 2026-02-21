@@ -32,7 +32,9 @@ const databaseUrl = process.env.DATABASE_URL_IPV4 || primaryDatabaseUrl;
 
 // Detect if using Supabase (cloud) or local PostgreSQL
 const isSupabase =
-  primaryDatabaseUrl.includes("supabase.co") || process.env.USE_SSL === "true";
+  databaseUrl.includes("supabase.co") ||
+  databaseUrl.includes("supabase.com") ||
+  process.env.USE_SSL === "true";
 
 const ssl = isSupabase ? { rejectUnauthorized: false } : false;
 
