@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { API_BASE_WITH_API_PREFIX } from "./config/api";
 import Home from "./pages/Home";
 import TimeSheetForm from "./features/payroll/TimeSheetForm";
 import TimeSheetList from "./features/payroll/TimeSheetList";
@@ -34,6 +35,17 @@ import FullNotes from "./features/dashboard/FullNotes";
 import "./assets/styles/home.css";
 
 export default function App() {
+  // ── Keep backend alive (ping every 4 minutes) ──────────────────────────
+  useEffect(() => {
+    const ping = () =>
+      fetch(`${API_BASE_WITH_API_PREFIX}/health`, { method: "GET" }).catch(
+        () => {},
+      );
+    ping(); // ping immediately on load
+    const id = setInterval(ping, 4 * 60 * 1000); // every 4 minutes
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <Routes>
       <Route path="/" element={<Home />} />
