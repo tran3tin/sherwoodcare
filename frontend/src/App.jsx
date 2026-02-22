@@ -34,6 +34,8 @@ import IAS from "./features/tax/IAS";
 import BAS from "./features/tax/BAS";
 import PayrollTax from "./features/tax/PayrollTax";
 import Training from "./features/training/Training";
+import TrainingCreate from "./features/training/TrainingCreate";
+import TrainingDetail from "./features/training/TrainingDetail";
 import "./assets/styles/home.css";
 
 function RequireAuth({ isAuthenticated }) {
@@ -153,6 +155,8 @@ export default function App() {
         <Route path="/tax/bas" element={<BAS />} />
         <Route path="/tax/payroll-tax" element={<PayrollTax />} />
         <Route path="/training" element={<Training />} />
+        <Route path="/training/new" element={<TrainingCreate />} />
+        <Route path="/training/:articleId" element={<TrainingDetail />} />
       </Route>
 
       <Route

@@ -12,6 +12,29 @@ const getAllArticles = async (req, res) => {
   }
 };
 
+const getArticleById = async (req, res) => {
+  try {
+    const articleId = Number(req.params.articleId);
+    if (!Number.isFinite(articleId)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Invalid article id" });
+    }
+
+    const data = await TrainingArticleModel.getById(articleId);
+    if (!data) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Article not found" });
+    }
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Error fetching training article:", error);
+    res.status(500).json({ success: false, error: "Failed to fetch article" });
+  }
+};
+
 const createArticle = async (req, res) => {
   try {
     const { title, content } = req.body;
@@ -160,6 +183,7 @@ const deleteArticle = async (req, res) => {
 
 module.exports = {
   getAllArticles,
+  getArticleById,
   createArticle,
   updateArticle,
   deleteArticle,

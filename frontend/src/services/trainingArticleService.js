@@ -9,6 +9,11 @@ export const trainingArticleService = {
     return response.data;
   },
 
+  getById: async (articleId) => {
+    const response = await axios.get(`${API_URL}/${articleId}`);
+    return response.data;
+  },
+
   create: async ({ title, content, attachment }) => {
     const formData = new FormData();
     formData.append("title", title);

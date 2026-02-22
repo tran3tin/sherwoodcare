@@ -30,6 +30,7 @@ const upload = multer({
 });
 
 router.get("/", trainingArticleController.getAllArticles);
+router.get("/:articleId", trainingArticleController.getArticleById);
 router.post(
   "/",
   upload.single("attachment"),
