@@ -33,6 +33,7 @@ import FullNotes from "./features/dashboard/FullNotes";
 import IAS from "./features/tax/IAS";
 import BAS from "./features/tax/BAS";
 import PayrollTax from "./features/tax/PayrollTax";
+import Training from "./features/training/Training";
 import "./assets/styles/home.css";
 
 function RequireAuth({ isAuthenticated }) {
@@ -151,6 +152,7 @@ export default function App() {
         <Route path="/tax/ias" element={<IAS />} />
         <Route path="/tax/bas" element={<BAS />} />
         <Route path="/tax/payroll-tax" element={<PayrollTax />} />
+        <Route path="/training" element={<Training />} />
       </Route>
 
       <Route

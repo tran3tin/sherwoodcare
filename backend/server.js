@@ -186,6 +186,10 @@ app.use("/api/chatbot", chatbotRoutes);
 const uploadRoutes = require("./routes/upload");
 app.use("/api/upload", uploadRoutes);
 
+// Training article routes
+const trainingArticleRoutes = require("./routes/trainingArticles");
+app.use("/api/training-articles", trainingArticleRoutes);
+
 // Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "public", "uploads")));
 

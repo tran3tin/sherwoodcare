@@ -71,6 +71,10 @@ async function runAutoMigrations() {
     "07_alter_employees_social_level.sql",
     "07_alter_employees_social_level.sql",
   );
+  await runFile(
+    "08_create_training_articles.sql",
+    "08_create_training_articles.sql",
+  );
 
   console.log("✅ Database migrations finished.\n");
 }

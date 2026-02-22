@@ -47,6 +47,11 @@ const menuItems = [
     ],
   },
   {
+    title: "Training",
+    icon: "flaticon-open-book",
+    submenu: [{ title: "Training", path: "/training" }],
+  },
+  {
     title: "NexGenus",
     icon: "flaticon-shopping-bag",
     submenu: [{ title: "Payroll NexGenus List", path: "/nexgenus/payroll" }],
