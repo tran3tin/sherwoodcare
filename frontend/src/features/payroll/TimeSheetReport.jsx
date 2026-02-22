@@ -603,13 +603,13 @@ const TimeSheetReport = () => {
     return { startMinutes, endMinutes };
   };
 
-  // Returns true when the Name Job indicates a Call-Out Allowance entry (c/o or co).
-  const isCallOutAllowanceNote = (note) => {
+  // Returns true when the Name Job indicates a Call-out Allowance entry (c/o or co).
+  const isCalloutAllowanceNote = (note) => {
     if (!note || typeof note !== "string") return false;
     return ["c/o", "co"].includes(note.trim().toLowerCase());
   };
 
-  // Returns true when the Name Job indicates a Sleep Allowance entry (s/o or so).
+  // Returns true when the Name Job indicates a Sleepover Allowance entry (s/o or so).
   const isSleepAllowanceNote = (note) => {
     if (!note || typeof note !== "string") return false;
     return ["s/o", "so"].includes(note.trim().toLowerCase());
@@ -620,8 +620,8 @@ const TimeSheetReport = () => {
   const getSessionFromPeriod = (period, note = "") => {
     if (!period || typeof period !== "string") return "";
 
-    // Sleep Allowance: Name Job is "s/o" or "so"
-    if (isSleepAllowanceNote(note)) return "Sleep Allowance";
+    // Sleepover Allowance: Name Job is "s/o" or "so"
+    if (isSleepAllowanceNote(note)) return "Sleepover Allowance";
 
     const parsed = parsePeriodStartEnd(period);
     if (!parsed) return "";
@@ -642,18 +642,18 @@ const TimeSheetReport = () => {
     return "Night";
   };
 
-  // Auto-add a single Call-Out Allowance row (1 hr, note "c/o") to an employee's
-  // job list whenever at least one Sleep Allowance row is present and no Call-Out
-  // row already exists. The dayValues mirror the union of all Sleep Allowance days.
+  // Auto-add a single Call-out Allowance row (1 hr, note "c/o") to an employee's
+  // job list whenever at least one Sleepover Allowance row is present and no Call-out
+  // row already exists. The dayValues mirror the union of all Sleepover Allowance days.
   const addCallOutAllowance = (jobs) => {
     if (!Array.isArray(jobs) || jobs.length === 0) return jobs;
 
-    const sleepJobs = jobs.filter((j) => j.session === "Sleep Allowance");
+    const sleepJobs = jobs.filter((j) => j.session === "Sleepover Allowance");
     if (sleepJobs.length === 0) return jobs;
 
     // Do not add if a call-out row already exists.
     const hasCallOut = jobs.some((j) =>
-      isCallOutAllowanceNote(String(j?.note ?? "")),
+      isCalloutAllowanceNote(String(j?.note ?? "")),
     );
     if (hasCallOut) return jobs;
 
@@ -663,7 +663,7 @@ const TimeSheetReport = () => {
       0,
     );
 
-    // Build merged dayValues: any day that has a sleep allowance entry gets "1".
+    // Build merged dayValues: any day that has a Sleepover Allowance entry gets "1".
     const mergedDayValues = Array(numDays).fill("");
     for (const sleepJob of sleepJobs) {
       (sleepJob.dayValues || []).forEach((val, idx) => {
@@ -676,7 +676,7 @@ const TimeSheetReport = () => {
       num: template.num,
       full_name: template.full_name || "",
       level: template.level || "",
-      session: "Call-Out Allowance",
+      session: "Call-out Allowance",
       note: "c/o",
       period: template.period || "",
       hrsValue: "1",
@@ -687,14 +687,14 @@ const TimeSheetReport = () => {
   };
 
   // Override session to "Saturday" or "Sunday" when ALL non-empty days of a job
-  // fall on that weekday. Special sessions (Sleep/Call-Out Allowance) are preserved.
+  // fall on that weekday. Special sessions (Sleep/Call-out Allowance) are preserved.
   const applyWeekendSessions = (jobs, headers) => {
     if (!Array.isArray(jobs) || !Array.isArray(headers)) return jobs;
 
     return jobs.map((job) => {
       const session = job.session || "";
       // Never override these special sessions.
-      if (session === "Sleep Allowance" || session === "Call-Out Allowance")
+      if (session === "Sleepover Allowance" || session === "Call-out Allowance")
         return job;
 
       const dayValues = Array.isArray(job.dayValues) ? job.dayValues : [];
@@ -721,7 +721,7 @@ const TimeSheetReport = () => {
   //
   // Chain rule:
   //   1. A chain STARTS when a job is classified as Night and its period ends at 9pm.
-  //   2. A Sleep Allowance job extends the chain's end time (e.g. 9pm-7am).
+  //   2. A Sleepover Allowance job extends the chain's end time (e.g. 9pm-7am).
   //   3. Any subsequent job whose start time matches the current chain-end time is
   //      also classified as Night, and the chain extends to that job's end time.
   //   4. The chain breaks when a job's start time does NOT match the chain-end time.
@@ -736,13 +736,13 @@ const TimeSheetReport = () => {
       const basicSession = getSessionFromPeriod(period, note);
       const parsed = parsePeriodStartEnd(period);
 
-      // --- Sleep Allowance ---
-      if (basicSession === "Sleep Allowance") {
+      // --- Sleepover Allowance ---
+      if (basicSession === "Sleepover Allowance") {
         if (chainEndMinutes !== null && parsed) {
           // Extend the chain to where this sleep ends (overnight end, e.g. 7am = 420).
           chainEndMinutes = parsed.endMinutes;
         }
-        return { ...job, session: "Sleep Allowance" };
+        return { ...job, session: "Sleepover Allowance" };
       }
 
       // --- Continuing an existing night chain ---

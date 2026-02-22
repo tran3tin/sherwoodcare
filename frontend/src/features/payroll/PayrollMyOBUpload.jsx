@@ -38,9 +38,9 @@ export default function PayrollMyOBUpload() {
   const getSessionFromPeriod = (period, note = "") => {
     if (!period || typeof period !== "string") return "";
     if (note && ["s/o", "so"].includes(String(note).trim().toLowerCase()))
-      return "Sleep Allowance";
+      return "Sleepover Allowance";
     if (note && ["c/o", "co"].includes(String(note).trim().toLowerCase()))
-      return "Call-Out Allowance";
+      return "Call-out Allowance";
     const parsed = parsePeriodStartEnd(period);
     if (!parsed) return "";
     const { startMinutes, endMinutes } = parsed;
@@ -117,10 +117,10 @@ export default function PayrollMyOBUpload() {
             }
 
             let payrollCategory = "";
-            // Sleep Allowance and Call-Out Allowance are always their own category.
+            // Sleepover Allowance and Call-out Allowance are always their own category.
             if (
-              baseSession === "Sleep Allowance" ||
-              baseSession === "Call-Out Allowance"
+              baseSession === "Sleepover Allowance" ||
+              baseSession === "Call-out Allowance"
             ) {
               payrollCategory = baseSession;
             } else if (dayOfWeek === 6) {
