@@ -35,12 +35,14 @@ export default function PayrollMyOBUpload() {
     return { startMinutes, endMinutes };
   };
 
+  const isSleepAllowanceNote = (note) => {
+    if (!note || typeof note !== "string") return false;
+    return /(?:^|[^a-z0-9])s\/?o(?:[^a-z0-9]|$)/i.test(note);
+  };
+
   const getSessionFromPeriod = (period, note = "") => {
-    if (note && ["s/o", "so"].includes(String(note).trim().toLowerCase()))
-      return "Sleepover Allowance";
+    if (isSleepAllowanceNote(note)) return "Sleepover Allowance";
     if (!period || typeof period !== "string") return "";
-    if (note && ["s/o", "so"].includes(String(note).trim().toLowerCase()))
-      return "Sleepover Allowance";
     const parsed = parsePeriodStartEnd(period);
     if (!parsed) return "";
     const { startMinutes, endMinutes } = parsed;
@@ -92,11 +94,7 @@ export default function PayrollMyOBUpload() {
 
         // Base values for Payroll Category; final value is decided per-day (Sat/Sun rules)
         const level = String(job?.level ?? "").trim();
-        const baseSession = ["s/o", "so"].includes(
-          String(job?.note ?? "")
-            .trim()
-            .toLowerCase(),
-        )
+        const baseSession = isSleepAllowanceNote(String(job?.note ?? ""))
           ? "Sleepover Allowance"
           : String(
               job?.session ||

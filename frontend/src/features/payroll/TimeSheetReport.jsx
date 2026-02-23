@@ -598,10 +598,10 @@ const TimeSheetReport = () => {
     return { startMinutes, endMinutes };
   };
 
-  // Returns true when the Name Job indicates a Sleepover Allowance entry (s/o or so).
+  // Returns true when Name Job contains SO or S/O as a standalone token.
   const isSleepAllowanceNote = (note) => {
     if (!note || typeof note !== "string") return false;
-    return ["s/o", "so"].includes(note.trim().toLowerCase());
+    return /(?:^|[^a-z0-9])s\/?o(?:[^a-z0-9]|$)/i.test(note);
   };
 
   // Determine the basic session for a single job given its period string and Name Job.
