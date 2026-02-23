@@ -36,11 +36,11 @@ export default function PayrollMyOBUpload() {
   };
 
   const getSessionFromPeriod = (period, note = "") => {
+    if (note && ["s/o", "so"].includes(String(note).trim().toLowerCase()))
+      return "Sleepover Allowance";
     if (!period || typeof period !== "string") return "";
     if (note && ["s/o", "so"].includes(String(note).trim().toLowerCase()))
       return "Sleepover Allowance";
-    if (note && ["c/o", "co"].includes(String(note).trim().toLowerCase()))
-      return "Call-out Allowance";
     const parsed = parsePeriodStartEnd(period);
     if (!parsed) return "";
     const { startMinutes, endMinutes } = parsed;
@@ -92,9 +92,17 @@ export default function PayrollMyOBUpload() {
 
         // Base values for Payroll Category; final value is decided per-day (Sat/Sun rules)
         const level = String(job?.level ?? "").trim();
-        const baseSession = String(
-          job?.session || getSessionFromPeriod(job?.period, job?.note) || "",
-        ).trim();
+        const baseSession = ["s/o", "so"].includes(
+          String(job?.note ?? "")
+            .trim()
+            .toLowerCase(),
+        )
+          ? "Sleepover Allowance"
+          : String(
+              job?.session ||
+                getSessionFromPeriod(job?.period, job?.note) ||
+                "",
+            ).trim();
 
         // For each day that has a value, create a row
         dayValues.forEach((value, dayIndex) => {
@@ -102,7 +110,7 @@ export default function PayrollMyOBUpload() {
             const ymd = dateHeaders[dayIndex]?.ymd || "";
 
             // Decide Payroll Category based on weekday:
-            // - Saturday: Level - Afternoon (ignore session)
+            // - Saturday: Level - Saturday (ignore session)
             // - Sunday: Level - Sunday (ignore session)
             let dayOfWeek = null;
             if (ymd) {
@@ -117,15 +125,12 @@ export default function PayrollMyOBUpload() {
             }
 
             let payrollCategory = "";
-            // Sleepover Allowance and Call-out Allowance are always their own category.
-            if (
-              baseSession === "Sleepover Allowance" ||
-              baseSession === "Call-out Allowance"
-            ) {
+            // Sleepover Allowance is always its own category.
+            if (baseSession === "Sleepover Allowance") {
               payrollCategory = baseSession;
             } else if (dayOfWeek === 6) {
               // Saturday
-              payrollCategory = level ? `${level} - Afternoon` : "Afternoon";
+              payrollCategory = level ? `${level} - Saturday` : "Saturday";
             } else if (dayOfWeek === 0) {
               // Sunday
               payrollCategory = level ? `${level} - Sunday` : "Sunday";

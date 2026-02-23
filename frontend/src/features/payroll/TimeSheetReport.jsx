@@ -434,10 +434,8 @@ const TimeSheetReport = () => {
         const resolved = processed_data.map((employee) => ({
           ...employee,
           jobs: applyWeekendSessions(
-            addCallOutAllowance(
-              resolveJobSessions(
-                Array.isArray(employee?.jobs) ? employee.jobs : [],
-              ),
+            resolveJobSessions(
+              Array.isArray(employee?.jobs) ? employee.jobs : [],
             ),
             headers,
           ),
@@ -545,10 +543,7 @@ const TimeSheetReport = () => {
 
       return {
         name: name,
-        jobs: applyWeekendSessions(
-          addCallOutAllowance(resolveJobSessions(rawJobs)),
-          headers,
-        ),
+        jobs: applyWeekendSessions(resolveJobSessions(rawJobs), headers),
       };
     });
 
@@ -603,12 +598,6 @@ const TimeSheetReport = () => {
     return { startMinutes, endMinutes };
   };
 
-  // Returns true when the Name Job indicates a Call-out Allowance entry (c/o or co).
-  const isCalloutAllowanceNote = (note) => {
-    if (!note || typeof note !== "string") return false;
-    return ["c/o", "co"].includes(note.trim().toLowerCase());
-  };
-
   // Returns true when the Name Job indicates a Sleepover Allowance entry (s/o or so).
   const isSleepAllowanceNote = (note) => {
     if (!note || typeof note !== "string") return false;
@@ -642,60 +631,15 @@ const TimeSheetReport = () => {
     return "Night";
   };
 
-  // Auto-add a single Call-out Allowance row (1 hr, note "c/o") to an employee's
-  // job list whenever at least one Sleepover Allowance row is present and no Call-out
-  // row already exists. The dayValues mirror the union of all Sleepover Allowance days.
-  const addCallOutAllowance = (jobs) => {
-    if (!Array.isArray(jobs) || jobs.length === 0) return jobs;
-
-    const sleepJobs = jobs.filter((j) => j.session === "Sleepover Allowance");
-    if (sleepJobs.length === 0) return jobs;
-
-    // Do not add if a call-out row already exists.
-    const hasCallOut = jobs.some((j) =>
-      isCalloutAllowanceNote(String(j?.note ?? "")),
-    );
-    if (hasCallOut) return jobs;
-
-    // Determine the column count from the widest dayValues array.
-    const numDays = Math.max(
-      ...jobs.map((j) => (Array.isArray(j.dayValues) ? j.dayValues.length : 0)),
-      0,
-    );
-
-    // Build merged dayValues: any day that has a Sleepover Allowance entry gets "1".
-    const mergedDayValues = Array(numDays).fill("");
-    for (const sleepJob of sleepJobs) {
-      (sleepJob.dayValues || []).forEach((val, idx) => {
-        if (String(val).trim() !== "") mergedDayValues[idx] = "1";
-      });
-    }
-
-    const template = sleepJobs[0];
-    const callOutJob = {
-      num: template.num,
-      full_name: template.full_name || "",
-      level: template.level || "",
-      session: "Call-out Allowance",
-      note: "c/o",
-      period: template.period || "",
-      hrsValue: "1",
-      dayValues: mergedDayValues,
-    };
-
-    return [...jobs, callOutJob];
-  };
-
   // Override session to "Saturday" or "Sunday" when ALL non-empty days of a job
-  // fall on that weekday. Special sessions (Sleep/Call-out Allowance) are preserved.
+  // fall on that weekday. Sleepover Allowance session is preserved.
   const applyWeekendSessions = (jobs, headers) => {
     if (!Array.isArray(jobs) || !Array.isArray(headers)) return jobs;
 
     return jobs.map((job) => {
       const session = job.session || "";
-      // Never override these special sessions.
-      if (session === "Sleepover Allowance" || session === "Call-out Allowance")
-        return job;
+      // Never override this special session.
+      if (session === "Sleepover Allowance") return job;
 
       const dayValues = Array.isArray(job.dayValues) ? job.dayValues : [];
       const workedIndices = dayValues
