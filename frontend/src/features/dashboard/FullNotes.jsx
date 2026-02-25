@@ -21,9 +21,6 @@ export default function FullNotes() {
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [statusFilter, setStatusFilter] = useState("all"); // all, pending, completed
-  const [typeFilter, setTypeFilter] = useState("all"); // all, customer, employee, other
-
   const [showModal, setShowModal] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
 
@@ -34,6 +31,7 @@ export default function FullNotes() {
   const [removeAttachment, setRemoveAttachment] = useState(false);
 
   const [pinAvailable, setPinAvailable] = useState(true);
+  const [searchText, setSearchText] = useState("");
 
   const [formData, setFormData] = useState({
     note_type: "customer",
@@ -44,13 +42,10 @@ export default function FullNotes() {
     due_date: "",
   });
 
-  const loadNotes = async (opts = {}) => {
+  const loadNotes = async () => {
     try {
       setLoading(true);
-      const response = await fullNoteService.getAll({
-        status: opts.status ?? statusFilter,
-        type: opts.type ?? typeFilter,
-      });
+      const response = await fullNoteService.getAll();
       setNotes(response.data || []);
     } catch (error) {
       console.error("Error loading full notes:", error);
@@ -81,16 +76,22 @@ export default function FullNotes() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    loadNotes({ status: statusFilter, type: typeFilter });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, typeFilter]);
-
   const stats = useMemo(() => {
     const pending = notes.filter((n) => !n.is_completed).length;
     const completed = notes.filter((n) => n.is_completed).length;
     return { total: notes.length, pending, completed };
   }, [notes]);
+
+  const filteredNotes = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    if (!q) return notes;
+    return notes.filter(
+      (n) =>
+        (n.title || "").toLowerCase().includes(q) ||
+        (n.content || "").toLowerCase().includes(q) ||
+        (n.entity_name || "").toLowerCase().includes(q),
+    );
+  }, [notes, searchText]);
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -364,72 +365,34 @@ export default function FullNotes() {
           </div>
         </div>
 
-        <div className="full-notes-filters">
-          <div className="notes-filter">
+        <div className="full-notes-search">
+          <i className="fas fa-search full-notes-search-icon"></i>
+          <input
+            type="text"
+            className="full-notes-search-input"
+            placeholder="Search by title, content or name..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
+          {searchText && (
             <button
-              className={`filter-btn ${statusFilter === "all" ? "active" : ""}`}
-              onClick={() => setStatusFilter("all")}
+              className="full-notes-search-clear"
+              onClick={() => setSearchText("")}
+              title="Clear"
             >
-              All ({stats.total})
+              <i className="fas fa-times"></i>
             </button>
-            <button
-              className={`filter-btn ${
-                statusFilter === "pending" ? "active" : ""
-              }`}
-              onClick={() => setStatusFilter("pending")}
-            >
-              Pending ({stats.pending})
-            </button>
-            <button
-              className={`filter-btn ${
-                statusFilter === "completed" ? "active" : ""
-              }`}
-              onClick={() => setStatusFilter("completed")}
-            >
-              Completed ({stats.completed})
-            </button>
-          </div>
-
-          <div className="notes-filter type-filter">
-            <button
-              className={`filter-btn ${typeFilter === "all" ? "active" : ""}`}
-              onClick={() => setTypeFilter("all")}
-            >
-              All Types
-            </button>
-            <button
-              className={`filter-btn ${
-                typeFilter === "customer" ? "active" : ""
-              }`}
-              onClick={() => setTypeFilter("customer")}
-            >
-              Customer
-            </button>
-            <button
-              className={`filter-btn ${
-                typeFilter === "employee" ? "active" : ""
-              }`}
-              onClick={() => setTypeFilter("employee")}
-            >
-              Employee
-            </button>
-            <button
-              className={`filter-btn ${typeFilter === "other" ? "active" : ""}`}
-              onClick={() => setTypeFilter("other")}
-            >
-              Other
-            </button>
-          </div>
+          )}
         </div>
 
         <div className="notes-list">
-          {notes.length === 0 ? (
+          {filteredNotes.length === 0 ? (
             <div className="no-notes">
               <i className="fas fa-sticky-note"></i>
-              <p>No notes found. Click + to add a new note.</p>
+              <p>{searchText ? "No notes match your search." : "No notes found. Click + to add a new note."}</p>
             </div>
           ) : (
-            notes.map((note) => (
+            filteredNotes.map((note) => (
               <div
                 key={`${note.note_type}-${note.note_id}`}
                 className={`note-card ${note.is_completed ? "completed" : ""} ${
