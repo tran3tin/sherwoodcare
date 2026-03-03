@@ -1064,17 +1064,15 @@ export default function ServiceQuote() {
       if (sr.timeOfDay === "Overnight") return;
 
       const hours = parseFloat(sr.hoursPerDay) || 0;
-      const ratio = getRatio(st);
+      const ratioMultiplier = 1 / getRatio(st);
       if (!hours) return;
       const period = sr.timeOfDay === "Evening" ? "evening" : "day";
-
-      const priceHourRatio = (price) => parseFloat((price / ratio).toFixed(2));
 
       const dayData = DAYS.map((day) => {
         const pricePerHour = getPricePerHour(sr.timeOfDay, day);
 
-        const ratioPrice = priceHourRatio(pricePerHour);
-        const cost = ratioPrice * hours;
+        const ratioPrice = pricePerHour * ratioMultiplier;
+        const cost = pricePerHour * ratioMultiplier * hours;
 
         return {
           day,
