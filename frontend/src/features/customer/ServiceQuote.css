@@ -1,0 +1,480 @@
+/* ═══════════════════════════════════════════════════════════
+   Service Quote – Styles
+   ═══════════════════════════════════════════════════════════ */
+
+.sq-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ─── Client Info Bar ─────────────────────────────────────── */
+.sq-client-bar {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.sq-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+}
+
+.sq-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sq-field input {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.sq-field input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* ─── Tabs ────────────────────────────────────────────────── */
+.sq-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.sq-tab {
+  padding: 12px 24px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sq-tab:hover {
+  color: #334155;
+  background: #f1f5f9;
+}
+
+.sq-tab.active {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+}
+
+/* ─── Panel ───────────────────────────────────────────────── */
+.sq-panel {
+  padding: 24px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+}
+
+.sq-panel h3 {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+/* ─── Tables ──────────────────────────────────────────────── */
+.sq-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+
+.sq-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.sq-table th {
+  background: #f1f5f9;
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 700;
+  color: #475569;
+  border-bottom: 2px solid #cbd5e1;
+  white-space: nowrap;
+}
+
+.sq-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: middle;
+}
+
+.sq-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.sq-table input,
+.sq-table select {
+  padding: 5px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 13px;
+  background: #fff;
+}
+
+.sq-table input:focus,
+.sq-table select:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.sq-wide-input {
+  width: 100%;
+  min-width: 200px;
+}
+
+.sq-center {
+  text-align: center;
+}
+
+.sq-right {
+  text-align: right;
+}
+
+.sq-total-row td {
+  font-weight: 700;
+  background: #f1f5f9;
+  border-top: 2px solid #cbd5e1;
+}
+
+/* ─── Buttons ─────────────────────────────────────────────── */
+.sq-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sq-btn-add {
+  background: #eff6ff;
+  color: #3b82f6;
+  border: 1px dashed #93c5fd;
+}
+
+.sq-btn-add:hover {
+  background: #dbeafe;
+}
+
+.sq-btn-print {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.sq-btn-print:hover {
+  background: #2563eb;
+}
+
+.sq-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.sq-btn-danger {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.sq-btn-danger:hover {
+  background: #fee2e2;
+}
+
+/* ─── Summary box ─────────────────────────────────────────── */
+.sq-summary-box {
+  margin-top: 24px;
+  padding: 16px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+}
+
+.sq-summary-box h4 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+.sq-summary-table td:first-child {
+  font-weight: 600;
+  min-width: 260px;
+}
+
+/* ─── PH Grid ─────────────────────────────────────────────── */
+.sq-ph-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+}
+
+/* ═══ Quote Output ═══════════════════════════════════════════ */
+.sq-quote-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.sq-quote {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.sq-quote-header {
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #1e3a5f, #2563eb);
+  color: #fff;
+}
+
+.sq-quote-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.sq-quote-meta {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+/* ─── Quote Sections ──────────────────────────────────────── */
+.sq-quote-section {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.sq-quote-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  background: #f8fafc;
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.sq-section-regis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 24px;
+  background: #3b82f6;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sq-section-type {
+  margin-left: auto;
+  padding: 3px 12px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.sq-sleepover-header {
+  background: #fefce8;
+}
+
+.sq-sleepover-header .sq-section-regis {
+  background: #ca8a04;
+}
+
+.sq-ph-header {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.sq-summary-header {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+/* ─── Quote tables ────────────────────────────────────────── */
+.sq-quote-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.sq-quote-table th {
+  padding: 6px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #64748b;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.sq-quote-table td {
+  padding: 6px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.sq-quote-table tbody tr:hover {
+  background: #fafbfd;
+}
+
+.sq-day-cell {
+  font-weight: 600;
+  color: #334155;
+  min-width: 80px;
+}
+
+.sq-money {
+  text-align: right;
+  font-family: "SF Mono", "Fira Mono", monospace;
+  white-space: nowrap;
+}
+
+.sq-subtotal-row td {
+  font-weight: 700;
+  background: #f8fafc;
+  border-top: 2px solid #cbd5e1;
+}
+
+/* ─── Grand total ─────────────────────────────────────────── */
+.sq-quote-summary {
+  border-bottom: none;
+}
+
+.sq-summary-table-final td {
+  padding: 10px 24px;
+  font-size: 14px;
+}
+
+.sq-summary-table-final td:first-child {
+  font-weight: 600;
+  color: #334155;
+}
+
+.sq-summary-table-final td:last-child {
+  font-weight: 700;
+  min-width: 140px;
+}
+
+.sq-grand-total td {
+  font-size: 18px !important;
+  font-weight: 900 !important;
+  color: #059669;
+  border-top: 3px double #059669;
+  padding-top: 14px !important;
+}
+
+/* ═══ Print styles ═══════════════════════════════════════════ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #service-quote-print,
+  #service-quote-print * {
+    visibility: visible;
+  }
+
+  #service-quote-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: none;
+    box-shadow: none;
+  }
+
+  .sq-quote-actions,
+  .sq-tabs,
+  .sq-client-bar {
+    display: none !important;
+  }
+
+  .sq-quote-header {
+    background: #1e3a5f !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .sq-section-regis {
+    background: #3b82f6 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* ═══ Responsive ═════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .sq-client-bar {
+    flex-direction: column;
+  }
+
+  .sq-tabs {
+    overflow-x: auto;
+  }
+
+  .sq-tab {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .sq-panel {
+    padding: 16px;
+  }
+
+  .sq-quote-header {
+    padding: 16px;
+  }
+
+  .sq-quote-title {
+    font-size: 16px;
+  }
+}

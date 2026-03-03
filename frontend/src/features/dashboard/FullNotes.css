@@ -25,7 +25,7 @@
 
 .full-notes-search-input:focus {
   border-color: #4e73df;
-  box-shadow: 0 0 0 2px rgba(78,115,223,0.15);
+  box-shadow: 0 0 0 2px rgba(78, 115, 223, 0.15);
 }
 
 .full-notes-search-clear {

@@ -28,6 +28,7 @@ import CreateCustomer from "./features/customer/CreateCustomer";
 import ViewCustomer from "./features/customer/ViewCustomer";
 import EditCustomer from "./features/customer/EditCustomer";
 import CustomerNotes from "./features/customer/CustomerNotes";
+import ServiceQuote from "./features/customer/ServiceQuote";
 import KanbanBoard from "./features/tasks/KanbanBoard";
 import FullNotes from "./features/dashboard/FullNotes";
 import IAS from "./features/tax/IAS";
@@ -151,6 +152,7 @@ export default function App() {
         <Route path="/customer/:id" element={<ViewCustomer />} />
         <Route path="/customer/edit/:id" element={<EditCustomer />} />
         <Route path="/customer/:customerId/notes" element={<CustomerNotes />} />
+        <Route path="/customer/service-quote" element={<ServiceQuote />} />
         <Route path="/tax/ias" element={<IAS />} />
         <Route path="/tax/bas" element={<BAS />} />
         <Route path="/tax/payroll-tax" element={<PayrollTax />} />

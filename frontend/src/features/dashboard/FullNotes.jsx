@@ -182,7 +182,7 @@ export default function FullNotes() {
           editingNote.note_id,
           { ...formData, is_completed: editingNote.is_completed },
           selectedFile,
-          removeAttachment
+          removeAttachment,
         );
         toast.success("Note updated successfully");
       } else {
@@ -196,12 +196,12 @@ export default function FullNotes() {
         if (formData.note_type === "customer") {
           await service.create(
             { ...payload, customer_id: formData.entity_id },
-            selectedFile
+            selectedFile,
           );
         } else if (formData.note_type === "employee") {
           await service.create(
             { ...payload, employee_id: formData.entity_id },
-            selectedFile
+            selectedFile,
           );
         } else {
           await service.create(payload, selectedFile);
@@ -252,7 +252,7 @@ export default function FullNotes() {
         setPinAvailable(false);
         toast.warning(
           apiMessage ||
-            "Pinning is not available until the database is migrated."
+            "Pinning is not available until the database is migrated.",
         );
         return;
       }
@@ -389,7 +389,11 @@ export default function FullNotes() {
           {filteredNotes.length === 0 ? (
             <div className="no-notes">
               <i className="fas fa-sticky-note"></i>
-              <p>{searchText ? "No notes match your search." : "No notes found. Click + to add a new note."}</p>
+              <p>
+                {searchText
+                  ? "No notes match your search."
+                  : "No notes found. Click + to add a new note."}
+              </p>
             </div>
           ) : (
             filteredNotes.map((note) => (
@@ -432,8 +436,8 @@ export default function FullNotes() {
                       {note.note_type === "customer"
                         ? "Customer"
                         : note.note_type === "employee"
-                        ? "Employee"
-                        : "Other"}
+                          ? "Employee"
+                          : "Other"}
                     </span>
                     {note.note_type === "other" ? (
                       <span
@@ -450,7 +454,7 @@ export default function FullNotes() {
                           navigate(
                             note.note_type === "customer"
                               ? `/customer/${note.entity_id}/notes`
-                              : `/employee/${note.entity_id}/notes`
+                              : `/employee/${note.entity_id}/notes`,
                           )
                         }
                         title="Open notes"
@@ -507,8 +511,8 @@ export default function FullNotes() {
                       !pinAvailable
                         ? "Pinning requires database migration"
                         : note.is_pinned
-                        ? "Unpin"
-                        : "Pin"
+                          ? "Unpin"
+                          : "Pin"
                     }
                   >
                     <i className="fas fa-thumbtack"></i>
