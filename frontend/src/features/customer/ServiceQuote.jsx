@@ -1112,8 +1112,11 @@ export default function ServiceQuote() {
 
     // Grand totals
     let totalWeekly = 0;
+    let totalWeeklyHours = 0;
     Object.values(grouped).forEach((g) => {
       totalWeekly += (g.day?.totalCost || 0) + (g.evening?.totalCost || 0);
+      totalWeeklyHours +=
+        (g.day?.totalHrsWeek || 0) + (g.evening?.totalHrsWeek || 0);
     });
 
     const estimatedWeekly = totalWeekly;
@@ -1122,6 +1125,13 @@ export default function ServiceQuote() {
       (estimatedWeekly + estimatedSleepoverWeekly) * 2;
     const estimatedAnnual = (estimatedWeekly + estimatedSleepoverWeekly) * 52;
     const estimatedIrregularAnnual = phTotal + irrTotal;
+
+    const weeklyHrsNights = totalWeeklyHours;
+    const sleepoverHrsNights = sleepover.nightsPerWeek;
+    const fortnightlyHrsNights = (weeklyHrsNights + sleepoverHrsNights) * 2;
+    const annualHrsNights = (weeklyHrsNights + sleepoverHrsNights) * 52;
+    const irregularHrsNights = publicHolidayHours + irregularHours;
+    const totalHrsNights = annualHrsNights + irregularHrsNights;
 
     return {
       grouped,
@@ -1133,6 +1143,12 @@ export default function ServiceQuote() {
       estimatedFortnightly,
       estimatedAnnual,
       estimatedIrregularAnnual,
+      weeklyHrsNights,
+      sleepoverHrsNights,
+      fortnightlyHrsNights,
+      annualHrsNights,
+      irregularHrsNights,
+      totalHrsNights,
       grandTotal: estimatedAnnual + estimatedIrregularAnnual,
     };
   }, [
@@ -2255,12 +2271,23 @@ export default function ServiceQuote() {
                   </span>
                 </div>
                 <table className="sq-quote-table sq-summary-table-final">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th></th>
+                      <th className="sq-right">Hrs / nights</th>
+                      <th className="sq-right">Quote Amount</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     <tr>
                       <td>
                         Estimated weekly services amount (Day &amp; Evening)
                       </td>
                       <td>$ / week</td>
+                      <td className="sq-right">
+                        {fmt(quoteData.weeklyHrsNights)}
+                      </td>
                       <td className="sq-money">
                         ${fmt(quoteData.estimatedWeekly)}
                       </td>
@@ -2270,6 +2297,9 @@ export default function ServiceQuote() {
                         Estimated weekly inactive sleepover (No. of Nights)
                       </td>
                       <td>$ / week</td>
+                      <td className="sq-right">
+                        {fmt(quoteData.sleepoverHrsNights)}
+                      </td>
                       <td className="sq-money">
                         ${fmt(quoteData.estimatedSleepoverWeekly)}
                       </td>
@@ -2280,6 +2310,9 @@ export default function ServiceQuote() {
                         Overnight)
                       </td>
                       <td>$ / fortnight</td>
+                      <td className="sq-right">
+                        {fmt(quoteData.fortnightlyHrsNights)}
+                      </td>
                       <td className="sq-money">
                         ${fmt(quoteData.estimatedFortnightly)}
                       </td>
@@ -2287,6 +2320,9 @@ export default function ServiceQuote() {
                     <tr>
                       <td>Estimated annual amount</td>
                       <td>$ / year</td>
+                      <td className="sq-right">
+                        {fmt(quoteData.annualHrsNights)}
+                      </td>
                       <td className="sq-money">
                         ${fmt(quoteData.estimatedAnnual)}
                       </td>
@@ -2294,6 +2330,9 @@ export default function ServiceQuote() {
                     <tr>
                       <td>Estimated annual Irregular Supports amount</td>
                       <td>$ / year</td>
+                      <td className="sq-right">
+                        {fmt(quoteData.irregularHrsNights)}
+                      </td>
                       <td className="sq-money">
                         ${fmt(quoteData.estimatedIrregularAnnual)}
                       </td>
@@ -2301,6 +2340,7 @@ export default function ServiceQuote() {
                     <tr className="sq-grand-total">
                       <td></td>
                       <td></td>
+                      <td className="sq-right">{fmt(quoteData.totalHrsNights)}</td>
                       <td className="sq-money">${fmt(quoteData.grandTotal)}</td>
                     </tr>
                   </tbody>
