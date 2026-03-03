@@ -383,21 +383,34 @@ const parseClipboard = (str) => {
     const next = str[i + 1];
     if (inQuote) {
       if (c === '"') {
-        if (next === '"') { cell += '"'; i++; }
-        else inQuote = false;
+        if (next === '"') {
+          cell += '"';
+          i++;
+        } else inQuote = false;
       } else cell += c;
     } else {
       if (c === '"') inQuote = true;
-      else if (c === "\t") { row.push(cell); cell = ""; }
-      else if (c === "\n" || (c === "\r" && next === "\n")) {
-        row.push(cell); rows.push(row); row = []; cell = "";
+      else if (c === "\t") {
+        row.push(cell);
+        cell = "";
+      } else if (c === "\n" || (c === "\r" && next === "\n")) {
+        row.push(cell);
+        rows.push(row);
+        row = [];
+        cell = "";
         if (c === "\r") i++;
       } else if (c === "\r") {
-        row.push(cell); rows.push(row); row = []; cell = "";
+        row.push(cell);
+        rows.push(row);
+        row = [];
+        cell = "";
       } else cell += c;
     }
   }
-  if (cell.length > 0 || row.length > 0) { row.push(cell); rows.push(row); }
+  if (cell.length > 0 || row.length > 0) {
+    row.push(cell);
+    rows.push(row);
+  }
   if (rows.length && rows[rows.length - 1].every((v) => v === "")) rows.pop();
   return rows;
 };
@@ -410,35 +423,174 @@ const autoResize = (el) => {
 
 // Fixed paste-column keys for schedule and rate table
 const SCH_FIXED_KEYS = [
-  "regis", "description", "timeOfDay", "timeFrame",
-  "staff", "hoursPerDay", "shared", "serviceType",
+  "regis",
+  "description",
+  "timeOfDay",
+  "timeFrame",
+  "staff",
+  "hoursPerDay",
+  "shared",
+  "serviceType",
+];
+const BPH_FIXED_KEYS = [
+  "supportItemNumber",
+  "supportItemName",
+  "regGroupNumber",
+  "rate",
 ];
 const RT_FIXED_KEYS = [
-  "regGroupNo", "supportCategory", "supportItemName",
-  "dailyHours", "weekdayRate", "saturdayRate", "sundayRate", "phRate",
+  "regGroupNo",
+  "supportCategory",
+  "supportItemName",
+  "dailyHours",
+  "weekdayRate",
+  "saturdayRate",
+  "sundayRate",
+  "phRate",
 ];
 
 // ─── Column rendering definitions ────────────────────────────────────────
 const SCH_COL_DEFS = [
   { key: "regis", label: "Regis", type: "text", width: "80px", align: "left" },
-  { key: "description", label: "Item Description", type: "text", width: "250px", align: "left" },
-  { key: "timeOfDay", label: "Time of Day", type: "select", options: TIME_OF_DAY_OPTIONS, width: "100px" },
-  { key: "timeFrame", label: "Time Frame", type: "text", width: "140px", align: "left" },
-  { key: "staff", label: "Staff", type: "number", width: "55px", align: "right" },
-  { key: "hoursPerDay", label: "Hrs/Day", type: "number", width: "70px", align: "right" },
-  { key: "shared", label: "Shared", type: "checkbox", width: "55px", align: "center" },
-  { key: "serviceType", label: "Service Type", type: "select", options: SERVICE_TYPES, width: "120px" },
+  {
+    key: "description",
+    label: "Item Description",
+    type: "text",
+    width: "250px",
+    align: "left",
+  },
+  {
+    key: "timeOfDay",
+    label: "Time of Day",
+    type: "select",
+    options: TIME_OF_DAY_OPTIONS,
+    width: "100px",
+  },
+  {
+    key: "timeFrame",
+    label: "Time Frame",
+    type: "text",
+    width: "140px",
+    align: "left",
+  },
+  {
+    key: "staff",
+    label: "Staff",
+    type: "number",
+    width: "55px",
+    align: "right",
+  },
+  {
+    key: "hoursPerDay",
+    label: "Hrs/Day",
+    type: "number",
+    width: "70px",
+    align: "right",
+  },
+  {
+    key: "shared",
+    label: "Shared",
+    type: "checkbox",
+    width: "55px",
+    align: "center",
+  },
+  {
+    key: "serviceType",
+    label: "Service Type",
+    type: "select",
+    options: SERVICE_TYPES,
+    width: "120px",
+  },
+];
+
+const BPH_COL_DEFS = [
+  {
+    key: "supportItemNumber",
+    label: "Support Item Number",
+    type: "text",
+    width: "220px",
+    align: "left",
+  },
+  {
+    key: "supportItemName",
+    label: "Support Item Name",
+    type: "text",
+    width: "560px",
+    align: "left",
+  },
+  {
+    key: "regGroupNumber",
+    label: "Registration Group Number",
+    type: "text",
+    width: "360px",
+    align: "left",
+  },
+  {
+    key: "rate",
+    label: "Price per hours",
+    type: "number",
+    width: "220px",
+    align: "right",
+  },
 ];
 
 const RT_COL_DEFS = [
-  { key: "regGroupNo", label: "Reg Group", type: "text", width: "70px", align: "left" },
-  { key: "supportCategory", label: "Support Category", type: "text", width: "220px", align: "left" },
-  { key: "supportItemName", label: "Support Item Name", type: "text", width: "250px", align: "left" },
-  { key: "dailyHours", label: "Daily Hrs", type: "number", width: "70px", align: "right" },
-  { key: "weekdayRate", label: "Weekday ($)", type: "number", width: "90px", align: "right" },
-  { key: "saturdayRate", label: "Saturday ($)", type: "number", width: "90px", align: "right" },
-  { key: "sundayRate", label: "Sunday ($)", type: "number", width: "90px", align: "right" },
-  { key: "phRate", label: "PH ($)", type: "number", width: "90px", align: "right" },
+  {
+    key: "regGroupNo",
+    label: "Reg Group",
+    type: "text",
+    width: "70px",
+    align: "left",
+  },
+  {
+    key: "supportCategory",
+    label: "Support Category",
+    type: "text",
+    width: "220px",
+    align: "left",
+  },
+  {
+    key: "supportItemName",
+    label: "Support Item Name",
+    type: "text",
+    width: "250px",
+    align: "left",
+  },
+  {
+    key: "dailyHours",
+    label: "Daily Hrs",
+    type: "number",
+    width: "70px",
+    align: "right",
+  },
+  {
+    key: "weekdayRate",
+    label: "Weekday ($)",
+    type: "number",
+    width: "90px",
+    align: "right",
+  },
+  {
+    key: "saturdayRate",
+    label: "Saturday ($)",
+    type: "number",
+    width: "90px",
+    align: "right",
+  },
+  {
+    key: "sundayRate",
+    label: "Sunday ($)",
+    type: "number",
+    width: "90px",
+    align: "right",
+  },
+  {
+    key: "phRate",
+    label: "PH ($)",
+    type: "number",
+    width: "90px",
+    align: "right",
+  },
 ];
 
 const TH_STYLE = {
@@ -485,6 +637,11 @@ export default function ServiceQuote() {
     DEFAULT_SCHEDULE_ROWS.map((r) => ({ ...r, _extra: {} })),
   );
   const [scheduleExtraCols, setScheduleExtraCols] = useState([]);
+
+  // ── Base rate items (Price per hours) ───────────────────────────────────
+  const [baseRateItems, setBaseRateItems] = useState(() =>
+    DEFAULT_RATES.map((r) => ({ ...r })),
+  );
 
   // ── Rate Table ────────────────────────────────────────────────────────────
   const [rateTable, setRateTable] = useState(() =>
@@ -538,6 +695,17 @@ export default function ServiceQuote() {
     [],
   );
 
+  const emptyBaseRateItem = useCallback(
+    () => ({
+      id: Date.now() + Math.random(),
+      supportItemNumber: "",
+      supportItemName: "",
+      regGroupNumber: "0107",
+      rate: 0,
+    }),
+    [],
+  );
+
   // ── Schedule helpers ─────────────────────────────────────────────────────
   const updateScheduleCell = useCallback((rowIdx, key, value) => {
     setScheduleRows((prev) =>
@@ -569,6 +737,32 @@ export default function ServiceQuote() {
     if (!window.confirm("Clear all rows and reset to default data?")) return;
     setScheduleRows(DEFAULT_SCHEDULE_ROWS.map((r) => ({ ...r, _extra: {} })));
     setScheduleExtraCols([]);
+  }, []);
+
+  // ── Base rate item helpers ──────────────────────────────────────────────
+  const updateBaseRateCell = useCallback((rowIdx, key, value) => {
+    setBaseRateItems((prev) =>
+      prev.map((r, i) => (i === rowIdx ? { ...r, [key]: value } : r)),
+    );
+  }, []);
+
+  const addBaseRateRows = useCallback(
+    (n = 1) => {
+      setBaseRateItems((prev) => [
+        ...prev,
+        ...Array.from({ length: n }, emptyBaseRateItem),
+      ]);
+    },
+    [emptyBaseRateItem],
+  );
+
+  const removeBaseRateRow = useCallback((idx) => {
+    setBaseRateItems((prev) => prev.filter((_, i) => i !== idx));
+  }, []);
+
+  const clearBaseRate = useCallback(() => {
+    if (!window.confirm("Clear all rows and reset to default data?")) return;
+    setBaseRateItems(DEFAULT_RATES.map((r) => ({ ...r })));
   }, []);
 
   // ── Rate table helpers ───────────────────────────────────────────────────
@@ -647,7 +841,8 @@ export default function ServiceQuote() {
             const v = (val ?? "").trim();
             const row = next[startRow + ri];
             if (key === "staff") row.staff = parseInt(v) || 0;
-            else if (key === "hoursPerDay") row.hoursPerDay = parseFloat(v) || 0;
+            else if (key === "hoursPerDay")
+              row.hoursPerDay = parseFloat(v) || 0;
             else if (key === "shared")
               row.shared = ["true", "yes", "1", "x"].includes(v.toLowerCase());
             else if (key === "timeOfDay")
@@ -676,7 +871,8 @@ export default function ServiceQuote() {
       ];
       setRateTable((prev) => {
         const next = prev.map((r) => ({ ...r }));
-        while (next.length < startRow + parsed.length) next.push(emptyRateRow());
+        while (next.length < startRow + parsed.length)
+          next.push(emptyRateRow());
         parsed.forEach((cells, ri) => {
           cells.forEach((val, ci) => {
             const key = allKeys[startColIdx + ci];
@@ -702,6 +898,34 @@ export default function ServiceQuote() {
       });
     },
     [rateTableExtraCols, emptyRateRow],
+  );
+
+  const handleBaseRatePaste = useCallback(
+    (e, startRow, startColIdx) => {
+      e.preventDefault();
+      const parsed = parseClipboard(e.clipboardData.getData("text"));
+      if (!parsed.length) return;
+
+      setBaseRateItems((prev) => {
+        const next = prev.map((r) => ({ ...r }));
+        while (next.length < startRow + parsed.length) {
+          next.push(emptyBaseRateItem());
+        }
+
+        parsed.forEach((cells, ri) => {
+          cells.forEach((val, ci) => {
+            const key = BPH_FIXED_KEYS[startColIdx + ci];
+            if (!key) return;
+            const raw = (val ?? "").trim();
+            next[startRow + ri][key] =
+              key === "rate" ? parseFloat(raw) || 0 : raw;
+          });
+        });
+
+        return next;
+      });
+    },
+    [emptyBaseRateItem],
   );
 
   // ── Keyboard navigation ──────────────────────────────────────────────────
@@ -907,7 +1131,7 @@ export default function ServiceQuote() {
     irregularHours,
   ]);
 
-// ─── Computed: column arrays ───────────────────────────────────────
+  // ─── Computed: column arrays ───────────────────────────────────────
   const schAllCols = useMemo(
     () => [
       ...SCH_COL_DEFS,
@@ -988,6 +1212,12 @@ export default function ServiceQuote() {
             <i className="fas fa-calendar-alt"></i> Daily Service Schedule
           </button>
           <button
+            className={`sq-tab ${activeTab === "baseRates" ? "active" : ""}`}
+            onClick={() => setActiveTab("baseRates")}
+          >
+            <i className="fas fa-table"></i> Price per hours
+          </button>
+          <button
             className={`sq-tab ${activeTab === "rates" ? "active" : ""}`}
             onClick={() => setActiveTab("rates")}
           >
@@ -1001,7 +1231,7 @@ export default function ServiceQuote() {
           </button>
         </div>
 
-{/* ═══ TAB 1: Daily Service Schedule ═══ */}
+        {/* ═══ TAB 1: Daily Service Schedule ═══ */}
         {activeTab === "schedule" && (
           <div className="sq-panel">
             {/* Toolbar */}
@@ -1043,8 +1273,8 @@ export default function ServiceQuote() {
             </div>
 
             <p style={{ fontSize: "12px", color: "#888", marginBottom: "8px" }}>
-              Tip: Copy cells from Excel and paste directly into any cell.
-              Arrow keys and Tab navigate between cells.
+              Tip: Copy cells from Excel and paste directly into any cell. Arrow
+              keys and Tab navigate between cells.
             </p>
 
             {/* Schedule table */}
@@ -1107,7 +1337,7 @@ export default function ServiceQuote() {
                       </td>
                       {schAllCols.map((col, colIdx) => {
                         const val = col.key.startsWith("extra_")
-                          ? row._extra?.[col.key] ?? ""
+                          ? (row._extra?.[col.key] ?? "")
                           : row[col.key];
 
                         if (col.type === "select") {
@@ -1280,17 +1510,14 @@ export default function ServiceQuote() {
                         {fmt(
                           SERVICE_TYPES.reduce(
                             (s, st) =>
-                              s +
-                              (summaryHours.byType[st]?.[item.key] || 0),
+                              s + (summaryHours.byType[st]?.[item.key] || 0),
                             0,
                           ),
                         )}
                       </td>
                       {SERVICE_TYPES.map((st) => (
                         <td key={st} style={TD_STYLE}>
-                          {fmt(
-                            summaryHours.byType[st]?.[item.key] || 0,
-                          )}
+                          {fmt(summaryHours.byType[st]?.[item.key] || 0)}
                         </td>
                       ))}
                     </tr>
@@ -1304,9 +1531,7 @@ export default function ServiceQuote() {
                     <td style={{ ...TD_STYLE, fontWeight: 700 }}>
                       Estimated avg daily hours
                     </td>
-                    <td style={TD_STYLE}>
-                      {fmt(summaryHours.totalDay)}
-                    </td>
+                    <td style={TD_STYLE}>{fmt(summaryHours.totalDay)}</td>
                     {SERVICE_TYPES.map((st) => {
                       const t = summaryHours.byType[st];
                       return (
@@ -1329,15 +1554,11 @@ export default function ServiceQuote() {
                     <td style={{ ...TD_STYLE, fontWeight: 700 }}>
                       Estimated avg weekly hours
                     </td>
-                    <td style={TD_STYLE}>
-                      {fmt(summaryHours.totalDay * 7)}
-                    </td>
+                    <td style={TD_STYLE}>{fmt(summaryHours.totalDay * 7)}</td>
                     {SERVICE_TYPES.map((st) => {
                       const t = summaryHours.byType[st];
                       const daily =
-                        (t?.day || 0) +
-                        (t?.evening || 0) +
-                        (t?.overnight || 0);
+                        (t?.day || 0) + (t?.evening || 0) + (t?.overnight || 0);
                       return (
                         <td key={st} style={TD_STYLE}>
                           {fmt(daily * 7)}
@@ -1360,9 +1581,7 @@ export default function ServiceQuote() {
                     {SERVICE_TYPES.map((st) => {
                       const t = summaryHours.byType[st];
                       const daily =
-                        (t?.day || 0) +
-                        (t?.evening || 0) +
-                        (t?.overnight || 0);
+                        (t?.day || 0) + (t?.evening || 0) + (t?.overnight || 0);
                       return (
                         <td key={st} style={TD_STYLE}>
                           {fmt(daily * 7 * 52)}
@@ -1376,7 +1595,156 @@ export default function ServiceQuote() {
           </div>
         )}
 
-        {/* ═══ TAB 2: Price / Rates ═══ */}
+        {/* ═══ TAB 2: Price per hours ═══ */}
+        {activeTab === "baseRates" && (
+          <div className="sq-panel">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "12px",
+                flexWrap: "wrap",
+              }}
+            >
+              <h3 style={{ margin: 0, flex: 1 }}>Price per hours</h3>
+              <button
+                type="button"
+                className="btn-action btn-save"
+                title="Add 10 rows"
+                onClick={() => addBaseRateRows(10)}
+              >
+                <i className="fas fa-plus"></i>
+              </button>
+              <button
+                type="button"
+                className="btn-action btn-delete"
+                title="Clear all"
+                onClick={clearBaseRate}
+              >
+                <i className="fas fa-trash"></i>
+              </button>
+            </div>
+
+            <p style={{ fontSize: "12px", color: "#888", marginBottom: "8px" }}>
+              Tip: Copy cells from Excel and paste directly into any cell. Arrow
+              keys and Tab navigate between cells.
+            </p>
+
+            <div style={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  borderCollapse: "collapse",
+                  width: "100%",
+                  fontSize: "13px",
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th style={{ ...TH_STYLE, width: "36px" }}>#</th>
+                    {BPH_COL_DEFS.map((col) => (
+                      <th
+                        key={col.key}
+                        style={{ ...TH_STYLE, minWidth: col.width }}
+                      >
+                        {col.label}
+                      </th>
+                    ))}
+                    <th style={{ ...TH_STYLE, width: "36px" }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {baseRateItems.map((row, rowIdx) => (
+                    <tr
+                      key={row.id}
+                      style={{
+                        background: rowIdx % 2 === 0 ? "#fff" : "#f7f9ff",
+                      }}
+                    >
+                      <td
+                        style={{
+                          ...TD_STYLE,
+                          textAlign: "center",
+                          color: "#aaa",
+                          fontSize: "11px",
+                          padding: "1px 2px",
+                          userSelect: "none",
+                        }}
+                      >
+                        {rowIdx + 1}
+                      </td>
+
+                      {BPH_COL_DEFS.map((col, colIdx) => (
+                        <td key={col.key} style={TD_STYLE}>
+                          <textarea
+                            id={`bph-${rowIdx}-${colIdx}`}
+                            value={row[col.key] ?? ""}
+                            rows={1}
+                            onChange={(e) => {
+                              updateBaseRateCell(
+                                rowIdx,
+                                col.key,
+                                e.target.value,
+                              );
+                              autoResize(e.target);
+                            }}
+                            onBlur={(e) => {
+                              if (col.type === "number") {
+                                updateBaseRateCell(
+                                  rowIdx,
+                                  col.key,
+                                  parseFloat(e.target.value) || 0,
+                                );
+                              }
+                            }}
+                            onPaste={(e) =>
+                              handleBaseRatePaste(e, rowIdx, colIdx)
+                            }
+                            onKeyDown={(e) =>
+                              handleCellKeyDown(
+                                e,
+                                "bph",
+                                rowIdx,
+                                colIdx,
+                                BPH_COL_DEFS.length,
+                                baseRateItems.length,
+                                addBaseRateRows,
+                              )
+                            }
+                            style={{
+                              ...CELL_STYLE,
+                              textAlign: col.align || "left",
+                            }}
+                          />
+                        </td>
+                      ))}
+
+                      <td style={TD_STYLE}>
+                        <button
+                          type="button"
+                          onClick={() => removeBaseRateRow(rowIdx)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#e74c3c",
+                            cursor: "pointer",
+                            fontSize: "13px",
+                            padding: "2px 6px",
+                          }}
+                          title="Remove row"
+                        >
+                          <i className="fas fa-trash-alt"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ TAB 3: Price / Rates ═══ */}
         {activeTab === "rates" && (
           <div className="sq-panel">
             {/* Rate Table toolbar */}
@@ -1389,9 +1757,7 @@ export default function ServiceQuote() {
                 flexWrap: "wrap",
               }}
             >
-              <h3 style={{ margin: 0, flex: 1 }}>
-                Rate Table (by Day Type)
-              </h3>
+              <h3 style={{ margin: 0, flex: 1 }}>Rate Table (by Day Type)</h3>
               <button
                 type="button"
                 className="btn-action btn-save"
@@ -1420,8 +1786,8 @@ export default function ServiceQuote() {
             </div>
 
             <p style={{ fontSize: "12px", color: "#888", marginBottom: "8px" }}>
-              Tip: Copy cells from Excel and paste directly into any cell.
-              Arrow keys and Tab navigate between cells.
+              Tip: Copy cells from Excel and paste directly into any cell. Arrow
+              keys and Tab navigate between cells.
             </p>
 
             {/* Rate table */}
@@ -1483,7 +1849,7 @@ export default function ServiceQuote() {
                       </td>
                       {rtAllCols.map((col, colIdx) => {
                         const val = col.key.startsWith("extra_")
-                          ? row._extra?.[col.key] ?? ""
+                          ? (row._extra?.[col.key] ?? "")
                           : row[col.key];
 
                         return (
@@ -1493,11 +1859,7 @@ export default function ServiceQuote() {
                               value={val ?? ""}
                               rows={1}
                               onChange={(e) => {
-                                updateRateCell(
-                                  rowIdx,
-                                  col.key,
-                                  e.target.value,
-                                );
+                                updateRateCell(rowIdx, col.key, e.target.value);
                                 autoResize(e.target);
                               }}
                               onBlur={(e) => {
@@ -1607,7 +1969,7 @@ export default function ServiceQuote() {
           </div>
         )}
 
-                {/* ═══ TAB 3: Generated Quote ═══ */}
+        {/* ═══ TAB 3: Generated Quote ═══ */}
         {activeTab === "quote" && (
           <div className="sq-panel">
             <div className="sq-quote-actions">
@@ -1874,7 +2236,7 @@ export default function ServiceQuote() {
           </div>
         )}
 
-{/* ═══ Add Column Modal ═══ */}
+        {/* ═══ Add Column Modal ═══ */}
         {addColTarget && (
           <div
             style={{
