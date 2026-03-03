@@ -1028,18 +1028,30 @@ export default function ServiceQuote() {
 
   // ─── Computed: Service Quote data ────────────────────────────────
   const quoteData = useMemo(() => {
-    const findBaseRate = (keyword) => {
-      const row = baseRateItems.find((item) =>
-        (item.supportItemName || "").toLowerCase().includes(keyword),
+    const normalize = (value) =>
+      String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+
+    const findBaseRate = (code, fallbackKeywords = []) => {
+      const byCode = baseRateItems.find(
+        (item) => normalize(item.supportItemNumber) === normalize(code),
       );
-      return parseFloat(row?.rate) || 0;
+      if (byCode) return parseFloat(byCode.rate) || 0;
+
+      const byName = baseRateItems.find((item) => {
+        const name = normalize(item.supportItemName);
+        return fallbackKeywords.some((keyword) => name.includes(normalize(keyword)));
+      });
+
+      return parseFloat(byName?.rate) || 0;
     };
 
-    const weekdayDayRate = findBaseRate("weekday daytime");
-    const weekdayEveningRate = findBaseRate("weekday evening");
-    const saturdayRate = findBaseRate("saturday");
-    const sundayRate = findBaseRate("sunday");
-    const sleepoverRate = findBaseRate("night-time sleepover");
+    const weekdayDayRate = findBaseRate("01_011_0107_1_1", ["weekday daytime"]);
+    const weekdayEveningRate = findBaseRate("01_015_0107_1_1", ["weekday evening"]);
+    const saturdayRate = findBaseRate("01_013_0107_1_1", ["saturday"]);
+    const sundayRate = findBaseRate("01_014_0107_1_1", ["sunday"]);
+    const sleepoverRate = findBaseRate("01_010_0107_1_1", ["night time sleepover", "nighttime sleepover"]);
 
     const getPricePerHour = (timeOfDay, day) => {
       if (timeOfDay === "Overnight") return sleepoverRate;
