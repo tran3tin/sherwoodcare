@@ -1355,7 +1355,7 @@ export default function ServiceQuote() {
                       Estimated avg yearly hours
                     </td>
                     <td style={TD_STYLE}>
-                      {fmt(summaryHours.totalDay * 365)}
+                      {fmt(summaryHours.totalDay * 7 * 52)}
                     </td>
                     {SERVICE_TYPES.map((st) => {
                       const t = summaryHours.byType[st];
@@ -1365,7 +1365,7 @@ export default function ServiceQuote() {
                         (t?.overnight || 0);
                       return (
                         <td key={st} style={TD_STYLE}>
-                          {fmt(daily * 365)}
+                          {fmt(daily * 7 * 52)}
                         </td>
                       );
                     })}
