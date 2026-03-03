@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import Layout from "../../components/Layout";
 import "./ServiceQuote.css";
+import "../../assets/styles/list.css";
 
 // ─── Constants ───────────────────────────────────────────────────────────
 const DAYS = [
@@ -371,6 +372,107 @@ const fmt = (n) =>
 
 const fmtOr = (n) => (n === 0 ? "-" : fmt(n));
 
+// ─── Spreadsheet helpers ─────────────────────────────────────────────────
+const parseClipboard = (str) => {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuote = false;
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
+    const next = str[i + 1];
+    if (inQuote) {
+      if (c === '"') {
+        if (next === '"') { cell += '"'; i++; }
+        else inQuote = false;
+      } else cell += c;
+    } else {
+      if (c === '"') inQuote = true;
+      else if (c === "\t") { row.push(cell); cell = ""; }
+      else if (c === "\n" || (c === "\r" && next === "\n")) {
+        row.push(cell); rows.push(row); row = []; cell = "";
+        if (c === "\r") i++;
+      } else if (c === "\r") {
+        row.push(cell); rows.push(row); row = []; cell = "";
+      } else cell += c;
+    }
+  }
+  if (cell.length > 0 || row.length > 0) { row.push(cell); rows.push(row); }
+  if (rows.length && rows[rows.length - 1].every((v) => v === "")) rows.pop();
+  return rows;
+};
+
+const autoResize = (el) => {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
+};
+
+// Fixed paste-column keys for schedule and rate table
+const SCH_FIXED_KEYS = [
+  "regis", "description", "timeOfDay", "timeFrame",
+  "staff", "hoursPerDay", "shared", "serviceType",
+];
+const RT_FIXED_KEYS = [
+  "regGroupNo", "supportCategory", "supportItemName",
+  "dailyHours", "weekdayRate", "saturdayRate", "sundayRate", "phRate",
+];
+
+// ─── Column rendering definitions ────────────────────────────────────────
+const SCH_COL_DEFS = [
+  { key: "regis", label: "Regis", type: "text", width: "80px", align: "left" },
+  { key: "description", label: "Item Description", type: "text", width: "250px", align: "left" },
+  { key: "timeOfDay", label: "Time of Day", type: "select", options: TIME_OF_DAY_OPTIONS, width: "100px" },
+  { key: "timeFrame", label: "Time Frame", type: "text", width: "140px", align: "left" },
+  { key: "staff", label: "Staff", type: "number", width: "55px", align: "right" },
+  { key: "hoursPerDay", label: "Hrs/Day", type: "number", width: "70px", align: "right" },
+  { key: "shared", label: "Shared", type: "checkbox", width: "55px", align: "center" },
+  { key: "serviceType", label: "Service Type", type: "select", options: SERVICE_TYPES, width: "120px" },
+];
+
+const RT_COL_DEFS = [
+  { key: "regGroupNo", label: "Reg Group", type: "text", width: "70px", align: "left" },
+  { key: "supportCategory", label: "Support Category", type: "text", width: "220px", align: "left" },
+  { key: "supportItemName", label: "Support Item Name", type: "text", width: "250px", align: "left" },
+  { key: "dailyHours", label: "Daily Hrs", type: "number", width: "70px", align: "right" },
+  { key: "weekdayRate", label: "Weekday ($)", type: "number", width: "90px", align: "right" },
+  { key: "saturdayRate", label: "Saturday ($)", type: "number", width: "90px", align: "right" },
+  { key: "sundayRate", label: "Sunday ($)", type: "number", width: "90px", align: "right" },
+  { key: "phRate", label: "PH ($)", type: "number", width: "90px", align: "right" },
+];
+
+const TH_STYLE = {
+  border: "1px solid #ccc",
+  background: "#2c3e7a",
+  color: "#fff",
+  padding: "6px 4px",
+  textAlign: "center",
+  fontSize: "12px",
+  fontWeight: 600,
+  whiteSpace: "nowrap",
+};
+
+const TD_STYLE = {
+  border: "1px solid #ddd",
+  padding: "1px",
+};
+
+const CELL_STYLE = {
+  width: "100%",
+  border: "none",
+  outline: "none",
+  background: "transparent",
+  padding: "3px 5px",
+  fontSize: "13px",
+  boxSizing: "border-box",
+  resize: "none",
+  overflow: "hidden",
+  lineHeight: "1.5",
+  minHeight: "26px",
+  fontFamily: "inherit",
+  display: "block",
+};
+
 // ─── Component ───────────────────────────────────────────────────────────
 export default function ServiceQuote() {
   const [activeTab, setActiveTab] = useState("schedule");
@@ -378,16 +480,18 @@ export default function ServiceQuote() {
   const [planNumber, setPlanNumber] = useState("");
   const [planPeriod, setPlanPeriod] = useState("TBA");
 
-  // Schedule data
-  const [scheduleRows, setScheduleRows] = useState(DEFAULT_SCHEDULE_ROWS);
-  const [schedule115Rows, setSchedule115Rows] = useState(DEFAULT_SCHEDULE_115);
-  const [schedule107DomRows, setSchedule107DomRows] = useState(
-    DEFAULT_SCHEDULE_107_DOMESTIC,
+  // ── Schedule ──────────────────────────────────────────────────────────────
+  const [scheduleRows, setScheduleRows] = useState(() =>
+    DEFAULT_SCHEDULE_ROWS.map((r) => ({ ...r, _extra: {} })),
+  );
+  const [scheduleExtraCols, setScheduleExtraCols] = useState([]);
+
+  // ── Rate Table ────────────────────────────────────────────────────────────
+  const [rateTable, setRateTable] = useState(() =>
+    DEFAULT_RATE_TABLE.map((r) => ({ ...r, _extra: {} })),
   );
 
-  // Rates data
-  const [rateItems, setRateItems] = useState(DEFAULT_RATES);
-  const [rateTable, setRateTable] = useState(DEFAULT_RATE_TABLE);
+  const [rateTableExtraCols, setRateTableExtraCols] = useState([]);
 
   // Public holiday & irregular
   const [publicHolidayRate, setPublicHolidayRate] = useState(150.1);
@@ -395,180 +499,250 @@ export default function ServiceQuote() {
   const [irregularRate, setIrregularRate] = useState(150.1);
   const [irregularHours, setIrregularHours] = useState(5.0);
 
-  // Print ref
+  // Add Column modal: null | 'schedule' | 'rate'
+  const [addColTarget, setAddColTarget] = useState(null);
+  const [newColLabel, setNewColLabel] = useState("");
+
   const quoteRef = useRef(null);
 
-  // ─── Schedule row helpers ────────────────────────────────────────
-  const updateScheduleRow = useCallback((idx, field, value) => {
-    setScheduleRows((prev) => {
-      const next = [...prev];
-      next[idx] = { ...next[idx], [field]: value };
-      return next;
-    });
+  // ── Empty row factories ──────────────────────────────────────────────────
+  const emptyScheduleRow = useCallback(
+    () => ({
+      id: `row-${Date.now()}-${Math.random()}`,
+      regis: "107/115",
+      description: "",
+      timeOfDay: "Day",
+      timeFrame: "",
+      staff: 1,
+      hoursPerDay: 0,
+      shared: false,
+      serviceType: "1:1",
+      _extra: {},
+    }),
+    [],
+  );
+
+  const emptyRateRow = useCallback(
+    () => ({
+      id: Date.now() + Math.random(),
+      regGroupNo: "107",
+      supportCategory: "",
+      supportItemName: "",
+      dailyHours: 0,
+      weekdayRate: 0,
+      saturdayRate: 0,
+      sundayRate: 0,
+      phRate: 0,
+      _extra: {},
+    }),
+    [],
+  );
+
+  // ── Schedule helpers ─────────────────────────────────────────────────────
+  const updateScheduleCell = useCallback((rowIdx, key, value) => {
+    setScheduleRows((prev) =>
+      prev.map((r, i) => {
+        if (i !== rowIdx) return r;
+        if (key.startsWith("extra_")) {
+          return { ...r, _extra: { ...r._extra, [key]: value } };
+        }
+        return { ...r, [key]: value };
+      }),
+    );
   }, []);
 
-  const addScheduleRow = useCallback(() => {
-    setScheduleRows((prev) => [
-      ...prev,
-      {
-        id: `row-${Date.now()}`,
-        regis: "107/115",
-        description: "",
-        timeOfDay: "Day",
-        timeFrame: "",
-        staff: 1,
-        hoursPerDay: 0,
-        shared: false,
-        serviceType: "1:1",
-      },
-    ]);
-  }, []);
+  const addScheduleRows = useCallback(
+    (n = 1) => {
+      setScheduleRows((prev) => [
+        ...prev,
+        ...Array.from({ length: n }, emptyScheduleRow),
+      ]);
+    },
+    [emptyScheduleRow],
+  );
 
   const removeScheduleRow = useCallback((idx) => {
     setScheduleRows((prev) => prev.filter((_, i) => i !== idx));
   }, []);
 
-  // ─── Rate item helpers ───────────────────────────────────────────
-  const updateRateItem = useCallback((idx, field, value) => {
-    setRateItems((prev) => {
-      const next = [...prev];
-      next[idx] = { ...next[idx], [field]: value };
-      return next;
-    });
+  const clearSchedule = useCallback(() => {
+    if (!window.confirm("Clear all rows and reset to default data?")) return;
+    setScheduleRows(DEFAULT_SCHEDULE_ROWS.map((r) => ({ ...r, _extra: {} })));
+    setScheduleExtraCols([]);
   }, []);
 
-  const addRateItem = useCallback(() => {
-    setRateItems((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        supportItemNumber: "",
-        supportItemName: "",
-        regGroupNumber: "0107",
-        rate: 0,
-      },
-    ]);
+  // ── Rate table helpers ───────────────────────────────────────────────────
+  const updateRateCell = useCallback((rowIdx, key, value) => {
+    setRateTable((prev) =>
+      prev.map((r, i) => {
+        if (i !== rowIdx) return r;
+        if (key.startsWith("extra_")) {
+          return { ...r, _extra: { ...r._extra, [key]: value } };
+        }
+        return { ...r, [key]: value };
+      }),
+    );
   }, []);
 
-  const removeRateItem = useCallback((idx) => {
-    setRateItems((prev) => prev.filter((_, i) => i !== idx));
-  }, []);
+  const addRateRows = useCallback(
+    (n = 1) => {
+      setRateTable((prev) => [
+        ...prev,
+        ...Array.from({ length: n }, emptyRateRow),
+      ]);
+    },
+    [emptyRateRow],
+  );
 
-  // ─── Rate table helpers ──────────────────────────────────────────
-  const updateRateTable = useCallback((idx, field, value) => {
-    setRateTable((prev) => {
-      const next = [...prev];
-      next[idx] = { ...next[idx], [field]: value };
-      return next;
-    });
-  }, []);
-
-  const addRateTableRow = useCallback(() => {
-    setRateTable((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        regGroupNo: "107",
-        supportCategory: "",
-        supportItemName: "",
-        dailyHours: 0,
-        weekdayRate: 0,
-        saturdayRate: 0,
-        sundayRate: 0,
-        phRate: 0,
-      },
-    ]);
-  }, []);
-
-  const removeRateTableRow = useCallback((idx) => {
+  const removeRateRow = useCallback((idx) => {
     setRateTable((prev) => prev.filter((_, i) => i !== idx));
   }, []);
 
-  // ─── Excel paste helpers ─────────────────────────────────────────
-  // Parse TSV text from Excel clipboard
-  const parseTsv = (text) => {
-    return text
-      .split(/\r?\n/)
-      .map((line) => line.split("\t"))
-      .filter((cols) => cols.some((c) => c.trim() !== ""));
-  };
+  const clearRateTable = useCallback(() => {
+    if (!window.confirm("Clear all rows and reset to default data?")) return;
+    setRateTable(DEFAULT_RATE_TABLE.map((r) => ({ ...r, _extra: {} })));
+    setRateTableExtraCols([]);
+  }, []);
 
-  // Paste handler for Daily Service Schedule
-  // Expected Excel columns (matching the schedule table):
-  // [0]=Regis [1]=Description [2]=TimeOfDay [3]=TimeFrame [4]=Staff [5]=Hrs/Day [6]=Shared [7]=ServiceType
-  const [showSchedulePaste, setShowSchedulePaste] = useState(false);
-  const [schedulePasteText, setSchedulePasteText] = useState("");
+  // ── Add / remove dynamic column ──────────────────────────────────────────
+  const confirmAddCol = useCallback(() => {
+    const label = newColLabel.trim();
+    if (!label) return;
+    const key = `extra_${Date.now()}`;
+    if (addColTarget === "schedule") {
+      setScheduleExtraCols((prev) => [...prev, { key, label }]);
+    } else if (addColTarget === "rate") {
+      setRateTableExtraCols((prev) => [...prev, { key, label }]);
+    }
+    setNewColLabel("");
+    setAddColTarget(null);
+  }, [newColLabel, addColTarget]);
 
-  const applySchedulePaste = useCallback(() => {
-    const rows = parseTsv(schedulePasteText);
-    if (!rows.length) return;
-    const newRows = rows.map((cols, i) => ({
-      id: `paste-${Date.now()}-${i}`,
-      regis: (cols[0] || "107/115").trim(),
-      description: (cols[1] || "").trim(),
-      timeOfDay: TIME_OF_DAY_OPTIONS.includes((cols[2] || "").trim())
-        ? cols[2].trim()
-        : "Day",
-      timeFrame: (cols[3] || "").trim(),
-      staff: parseInt(cols[4]) || 1,
-      hoursPerDay: parseFloat(cols[5]) || 0,
-      shared: ["true", "yes", "1", "x"].includes(
-        (cols[6] || "").trim().toLowerCase(),
-      ),
-      serviceType: SERVICE_TYPES.includes((cols[7] || "").trim())
-        ? cols[7].trim()
-        : "1:1",
-    }));
-    setScheduleRows((prev) => [...prev, ...newRows]);
-    setSchedulePasteText("");
-    setShowSchedulePaste(false);
-  }, [schedulePasteText]);
+  const removeScheduleCol = useCallback((key) => {
+    setScheduleExtraCols((prev) => prev.filter((c) => c.key !== key));
+  }, []);
 
-  // Paste handler for Rate Table
-  // Expected Excel columns:
-  // [0]=RegGroup [1]=SupportCategory [2]=SupportItemName [3]=DailyHrs [4]=Weekday [5]=Saturday [6]=Sunday [7]=PH
-  const [showRatePaste, setShowRatePaste] = useState(false);
-  const [ratePasteText, setRatePasteText] = useState("");
+  const removeRateCol = useCallback((key) => {
+    setRateTableExtraCols((prev) => prev.filter((c) => c.key !== key));
+  }, []);
 
-  const applyRatePaste = useCallback(() => {
-    const rows = parseTsv(ratePasteText);
-    if (!rows.length) return;
-    const newRows = rows.map((cols, i) => ({
-      id: Date.now() + i,
-      regGroupNo: (cols[0] || "107").trim(),
-      supportCategory: (cols[1] || "").trim(),
-      supportItemName: (cols[2] || "").trim(),
-      dailyHours: parseFloat(cols[3]) || 0,
-      weekdayRate: parseFloat(cols[4]) || 0,
-      saturdayRate: parseFloat(cols[5]) || 0,
-      sundayRate: parseFloat(cols[6]) || 0,
-      phRate: parseFloat(cols[7]) || 0,
-    }));
-    setRateTable((prev) => [...prev, ...newRows]);
-    setRatePasteText("");
-    setShowRatePaste(false);
-  }, [ratePasteText]);
+  // ── Direct-cell paste ────────────────────────────────────────────────────
+  const handleSchedulePaste = useCallback(
+    (e, startRow, startColIdx) => {
+      e.preventDefault();
+      const parsed = parseClipboard(e.clipboardData.getData("text"));
+      if (!parsed.length) return;
+      const allKeys = [
+        ...SCH_FIXED_KEYS,
+        ...scheduleExtraCols.map((c) => c.key),
+      ];
+      setScheduleRows((prev) => {
+        const next = prev.map((r) => ({ ...r }));
+        while (next.length < startRow + parsed.length)
+          next.push(emptyScheduleRow());
+        parsed.forEach((cells, ri) => {
+          cells.forEach((val, ci) => {
+            const key = allKeys[startColIdx + ci];
+            if (!key) return;
+            const v = (val ?? "").trim();
+            const row = next[startRow + ri];
+            if (key === "staff") row.staff = parseInt(v) || 0;
+            else if (key === "hoursPerDay") row.hoursPerDay = parseFloat(v) || 0;
+            else if (key === "shared")
+              row.shared = ["true", "yes", "1", "x"].includes(v.toLowerCase());
+            else if (key === "timeOfDay")
+              row.timeOfDay = TIME_OF_DAY_OPTIONS.includes(v) ? v : "Day";
+            else if (key === "serviceType")
+              row.serviceType = SERVICE_TYPES.includes(v) ? v : "1:1";
+            else if (key.startsWith("extra_"))
+              row._extra = { ...row._extra, [key]: v };
+            else row[key] = v;
+          });
+        });
+        return next;
+      });
+    },
+    [scheduleExtraCols, emptyScheduleRow],
+  );
 
-  // Paste handler for Support Item Rates
-  // Expected Excel columns:
-  // [0]=SupportItemNumber [1]=SupportItemName [2]=RegGroupNumber [3]=Rate
-  const [showRateItemPaste, setShowRateItemPaste] = useState(false);
-  const [rateItemPasteText, setRateItemPasteText] = useState("");
+  const handleRatePaste = useCallback(
+    (e, startRow, startColIdx) => {
+      e.preventDefault();
+      const parsed = parseClipboard(e.clipboardData.getData("text"));
+      if (!parsed.length) return;
+      const allKeys = [
+        ...RT_FIXED_KEYS,
+        ...rateTableExtraCols.map((c) => c.key),
+      ];
+      setRateTable((prev) => {
+        const next = prev.map((r) => ({ ...r }));
+        while (next.length < startRow + parsed.length) next.push(emptyRateRow());
+        parsed.forEach((cells, ri) => {
+          cells.forEach((val, ci) => {
+            const key = allKeys[startColIdx + ci];
+            if (!key) return;
+            const v = (val ?? "").trim();
+            const row = next[startRow + ri];
+            if (
+              [
+                "dailyHours",
+                "weekdayRate",
+                "saturdayRate",
+                "sundayRate",
+                "phRate",
+              ].includes(key)
+            )
+              row[key] = parseFloat(v) || 0;
+            else if (key.startsWith("extra_"))
+              row._extra = { ...row._extra, [key]: v };
+            else row[key] = v;
+          });
+        });
+        return next;
+      });
+    },
+    [rateTableExtraCols, emptyRateRow],
+  );
 
-  const applyRateItemPaste = useCallback(() => {
-    const rows = parseTsv(rateItemPasteText);
-    if (!rows.length) return;
-    const newRows = rows.map((cols, i) => ({
-      id: Date.now() + i,
-      supportItemNumber: (cols[0] || "").trim(),
-      supportItemName: (cols[1] || "").trim(),
-      regGroupNumber: (cols[2] || "0107").trim(),
-      rate: parseFloat(cols[3]) || 0,
-    }));
-    setRateItems((prev) => [...prev, ...newRows]);
-    setRateItemPasteText("");
-    setShowRateItemPaste(false);
-  }, [rateItemPasteText]);
+  // ── Keyboard navigation ──────────────────────────────────────────────────
+  const handleCellKeyDown = useCallback(
+    (e, prefix, rowIdx, colIdx, totalCols, totalRows, addMore) => {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (rowIdx < totalRows - 1)
+          document.getElementById(`${prefix}-${rowIdx + 1}-${colIdx}`)?.focus();
+        else {
+          addMore(10);
+          setTimeout(
+            () =>
+              document
+                .getElementById(`${prefix}-${rowIdx + 1}-${colIdx}`)
+                ?.focus(),
+            30,
+          );
+        }
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (rowIdx > 0)
+          document.getElementById(`${prefix}-${rowIdx - 1}-${colIdx}`)?.focus();
+      } else if (e.key === "Tab" && !e.shiftKey) {
+        e.preventDefault();
+        if (colIdx < totalCols - 1)
+          document.getElementById(`${prefix}-${rowIdx}-${colIdx + 1}`)?.focus();
+        else if (rowIdx < totalRows - 1)
+          document.getElementById(`${prefix}-${rowIdx + 1}-0`)?.focus();
+      } else if (e.key === "Tab" && e.shiftKey) {
+        e.preventDefault();
+        if (colIdx > 0)
+          document.getElementById(`${prefix}-${rowIdx}-${colIdx - 1}`)?.focus();
+        else if (rowIdx > 0)
+          document
+            .getElementById(`${prefix}-${rowIdx - 1}-${totalCols - 1}`)
+            ?.focus();
+      }
+    },
+    [],
+  );
 
   // ─── Computed: summary hours ─────────────────────────────────────
   const summaryHours = useMemo(() => {
@@ -733,6 +907,35 @@ export default function ServiceQuote() {
     irregularHours,
   ]);
 
+// ─── Computed: column arrays ───────────────────────────────────────
+  const schAllCols = useMemo(
+    () => [
+      ...SCH_COL_DEFS,
+      ...scheduleExtraCols.map((c) => ({
+        key: c.key,
+        label: c.label,
+        type: "text",
+        width: "120px",
+        align: "left",
+      })),
+    ],
+    [scheduleExtraCols],
+  );
+
+  const rtAllCols = useMemo(
+    () => [
+      ...RT_COL_DEFS,
+      ...rateTableExtraCols.map((c) => ({
+        key: c.key,
+        label: c.label,
+        type: "text",
+        width: "120px",
+        align: "left",
+      })),
+    ],
+    [rateTableExtraCols],
+  );
+
   // ─── Print ───────────────────────────────────────────────────────
   const handlePrint = useCallback(() => {
     window.print();
@@ -798,145 +1001,225 @@ export default function ServiceQuote() {
           </button>
         </div>
 
-        {/* ═══ TAB 1: Daily Service Schedule ═══ */}
+{/* ═══ TAB 1: Daily Service Schedule ═══ */}
         {activeTab === "schedule" && (
           <div className="sq-panel">
-            <h3>Daily Service Schedule</h3>
+            {/* Toolbar */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "12px",
+                flexWrap: "wrap",
+              }}
+            >
+              <h3 style={{ margin: 0, flex: 1 }}>Daily Service Schedule</h3>
+              <button
+                type="button"
+                className="btn-action btn-save"
+                title="Add 10 rows"
+                onClick={() => addScheduleRows(10)}
+              >
+                <i className="fas fa-plus"></i>
+              </button>
+              <button
+                type="button"
+                className="btn-action"
+                title="Add column"
+                onClick={() => setAddColTarget("schedule")}
+                style={{ background: "#2c3e7a", color: "#fff" }}
+              >
+                <i className="fas fa-columns"></i>
+              </button>
+              <button
+                type="button"
+                className="btn-action btn-delete"
+                title="Clear all"
+                onClick={clearSchedule}
+              >
+                <i className="fas fa-trash"></i>
+              </button>
+            </div>
 
-            <div className="sq-table-wrap">
-              <table className="sq-table">
+            <p style={{ fontSize: "12px", color: "#888", marginBottom: "8px" }}>
+              Tip: Copy cells from Excel and paste directly into any cell.
+              Arrow keys and Tab navigate between cells.
+            </p>
+
+            {/* Schedule table */}
+            <div style={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  borderCollapse: "collapse",
+                  width: "100%",
+                  fontSize: "13px",
+                }}
+              >
                 <thead>
                   <tr>
-                    <th style={{ width: 30 }}>#</th>
-                    <th>Regis</th>
-                    <th>Item Description</th>
-                    <th>Time of Day</th>
-                    <th>Time Frame</th>
-                    <th style={{ width: 55 }}>Staff</th>
-                    <th style={{ width: 70 }}>Hrs/Day</th>
-                    <th style={{ width: 55 }}>Shared</th>
-                    <th>Service Type</th>
-                    <th style={{ width: 40 }}></th>
+                    <th style={{ ...TH_STYLE, width: "36px" }}>#</th>
+                    {schAllCols.map((col) => (
+                      <th
+                        key={col.key}
+                        style={{ ...TH_STYLE, minWidth: col.width }}
+                      >
+                        {col.label}
+                        {col.key.startsWith("extra_") && (
+                          <span
+                            onClick={() => removeScheduleCol(col.key)}
+                            style={{
+                              cursor: "pointer",
+                              marginLeft: 6,
+                              opacity: 0.7,
+                              fontWeight: 400,
+                            }}
+                            title="Remove column"
+                          >
+                            {" \u00d7"}
+                          </span>
+                        )}
+                      </th>
+                    ))}
+                    <th style={{ ...TH_STYLE, width: "36px" }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {scheduleRows.map((row, idx) => (
-                    <tr key={row.id}>
-                      <td className="sq-center">
-                        {String.fromCharCode(97 + idx)}.
+                  {scheduleRows.map((row, rowIdx) => (
+                    <tr
+                      key={row.id}
+                      style={{
+                        background: rowIdx % 2 === 0 ? "#fff" : "#f7f9ff",
+                      }}
+                    >
+                      <td
+                        style={{
+                          ...TD_STYLE,
+                          textAlign: "center",
+                          color: "#aaa",
+                          fontSize: "11px",
+                          padding: "1px 2px",
+                          userSelect: "none",
+                        }}
+                      >
+                        {String.fromCharCode(97 + (rowIdx % 26))}
+                        {rowIdx >= 26 ? Math.floor(rowIdx / 26) : ""}.
                       </td>
-                      <td>
-                        <input
-                          type="text"
-                          value={row.regis}
-                          onChange={(e) =>
-                            updateScheduleRow(idx, "regis", e.target.value)
-                          }
-                          style={{ width: 70 }}
-                        />
-                      </td>
-                      <td>
-                        <textarea
-                          value={row.description}
-                          onChange={(e) =>
-                            updateScheduleRow(
-                              idx,
-                              "description",
-                              e.target.value,
-                            )
-                          }
-                          className="sq-wide-input sq-textarea"
-                          rows={2}
-                        />
-                      </td>
-                      <td>
-                        <select
-                          value={row.timeOfDay}
-                          onChange={(e) =>
-                            updateScheduleRow(idx, "timeOfDay", e.target.value)
-                          }
-                        >
-                          {TIME_OF_DAY_OPTIONS.map((t) => (
-                            <option key={t} value={t}>
-                              {t}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <textarea
-                          value={row.timeFrame}
-                          onChange={(e) =>
-                            updateScheduleRow(idx, "timeFrame", e.target.value)
-                          }
-                          className="sq-textarea"
-                          style={{ width: 130 }}
-                          rows={2}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          min="0"
-                          value={row.staff}
-                          onChange={(e) =>
-                            updateScheduleRow(
-                              idx,
-                              "staff",
-                              parseInt(e.target.value) || 0,
-                            )
-                          }
-                          style={{ width: 50 }}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          value={row.hoursPerDay}
-                          onChange={(e) =>
-                            updateScheduleRow(
-                              idx,
-                              "hoursPerDay",
-                              parseFloat(e.target.value) || 0,
-                            )
-                          }
-                          style={{ width: 60 }}
-                        />
-                      </td>
-                      <td className="sq-center">
-                        <input
-                          type="checkbox"
-                          checked={row.shared}
-                          onChange={(e) =>
-                            updateScheduleRow(idx, "shared", e.target.checked)
-                          }
-                        />
-                      </td>
-                      <td>
-                        <select
-                          value={row.serviceType}
-                          onChange={(e) =>
-                            updateScheduleRow(
-                              idx,
-                              "serviceType",
-                              e.target.value,
-                            )
-                          }
-                        >
-                          {SERVICE_TYPES.map((st) => (
-                            <option key={st} value={st}>
-                              {st}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
+                      {schAllCols.map((col, colIdx) => {
+                        const val = col.key.startsWith("extra_")
+                          ? row._extra?.[col.key] ?? ""
+                          : row[col.key];
+
+                        if (col.type === "select") {
+                          return (
+                            <td key={col.key} style={TD_STYLE}>
+                              <select
+                                value={val}
+                                onChange={(e) =>
+                                  updateScheduleCell(
+                                    rowIdx,
+                                    col.key,
+                                    e.target.value,
+                                  )
+                                }
+                                style={{
+                                  width: "100%",
+                                  border: "none",
+                                  outline: "none",
+                                  background: "transparent",
+                                  padding: "3px 4px",
+                                  fontSize: "13px",
+                                }}
+                              >
+                                {col.options.map((o) => (
+                                  <option key={o} value={o}>
+                                    {o}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                          );
+                        }
+
+                        if (col.type === "checkbox") {
+                          return (
+                            <td
+                              key={col.key}
+                              style={{ ...TD_STYLE, textAlign: "center" }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={!!val}
+                                onChange={(e) =>
+                                  updateScheduleCell(
+                                    rowIdx,
+                                    col.key,
+                                    e.target.checked,
+                                  )
+                                }
+                              />
+                            </td>
+                          );
+                        }
+
+                        return (
+                          <td key={col.key} style={TD_STYLE}>
+                            <textarea
+                              id={`sch-${rowIdx}-${colIdx}`}
+                              value={val ?? ""}
+                              rows={1}
+                              onChange={(e) => {
+                                updateScheduleCell(
+                                  rowIdx,
+                                  col.key,
+                                  e.target.value,
+                                );
+                                autoResize(e.target);
+                              }}
+                              onBlur={(e) => {
+                                if (col.type === "number") {
+                                  updateScheduleCell(
+                                    rowIdx,
+                                    col.key,
+                                    parseFloat(e.target.value) || 0,
+                                  );
+                                }
+                              }}
+                              onPaste={(e) =>
+                                handleSchedulePaste(e, rowIdx, colIdx)
+                              }
+                              onKeyDown={(e) =>
+                                handleCellKeyDown(
+                                  e,
+                                  "sch",
+                                  rowIdx,
+                                  colIdx,
+                                  schAllCols.length,
+                                  scheduleRows.length,
+                                  addScheduleRows,
+                                )
+                              }
+                              style={{
+                                ...CELL_STYLE,
+                                textAlign: col.align || "left",
+                              }}
+                            />
+                          </td>
+                        );
+                      })}
+                      <td style={TD_STYLE}>
                         <button
-                          className="sq-btn-icon sq-btn-danger"
-                          onClick={() => removeScheduleRow(idx)}
-                          title="Remove"
+                          type="button"
+                          onClick={() => removeScheduleRow(rowIdx)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#e74c3c",
+                            cursor: "pointer",
+                            fontSize: "13px",
+                            padding: "2px 6px",
+                          }}
+                          title="Remove row"
                         >
                           <i className="fas fa-trash-alt"></i>
                         </button>
@@ -946,133 +1229,88 @@ export default function ServiceQuote() {
                 </tbody>
               </table>
             </div>
-            <div className="sq-paste-bar">
-              <button className="sq-btn sq-btn-add" onClick={addScheduleRow}>
-                <i className="fas fa-plus"></i> Add Row
-              </button>
-              <button
-                className="sq-btn sq-btn-paste"
-                onClick={() => setShowSchedulePaste((v) => !v)}
-              >
-                <i className="fas fa-paste"></i>{" "}
-                {showSchedulePaste ? "Hide Paste Area" : "Paste from Excel"}
-              </button>
-            </div>
-
-            {showSchedulePaste && (
-              <div className="sq-paste-area">
-                <p className="sq-paste-hint">
-                  Copy rows from Excel and paste below. Column order:{" "}
-                  <strong>
-                    Regis | Description | Time of Day | Time Frame | Staff |
-                    Hrs/Day | Shared (yes/no) | Service Type
-                  </strong>
-                </p>
-                <textarea
-                  className="sq-paste-textarea"
-                  value={schedulePasteText}
-                  onChange={(e) => setSchedulePasteText(e.target.value)}
-                  onPaste={(e) => {
-                    // auto-apply after paste
-                    setTimeout(() => {
-                      const v = e.target.value + (e.clipboardData?.getData("text") || "");
-                      setSchedulePasteText(v);
-                    }, 0);
-                  }}
-                  placeholder="Paste Excel rows here (Ctrl+V)..."
-                  rows={6}
-                />
-                <div className="sq-paste-actions">
-                  <button
-                    className="sq-btn sq-btn-apply"
-                    onClick={applySchedulePaste}
-                    disabled={!schedulePasteText.trim()}
-                  >
-                    <i className="fas fa-check"></i> Apply
-                  </button>
-                  <button
-                    className="sq-btn sq-btn-cancel"
-                    onClick={() => {
-                      setSchedulePasteText("");
-                      setShowSchedulePaste(false);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Summary hours */}
             <div className="sq-summary-box">
               <h4>Summary Hours</h4>
-              <table className="sq-table sq-summary-table">
+              <table
+                style={{
+                  borderCollapse: "collapse",
+                  width: "100%",
+                  fontSize: "13px",
+                }}
+              >
                 <thead>
                   <tr>
-                    <th></th>
-                    <th>Total</th>
-                    <th>1:1</th>
-                    {SERVICE_TYPES.filter((st) => st !== "1:1").map((st) => (
-                      <th key={st}>{st}</th>
+                    <th style={TH_STYLE}></th>
+                    <th style={TH_STYLE}>Total</th>
+                    {SERVICE_TYPES.map((st) => (
+                      <th key={st} style={TH_STYLE}>
+                        {st}
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>Estimated avg daily hours (day)</td>
-                    <td>
-                      {fmt(
-                        SERVICE_TYPES.reduce(
-                          (s, st) => s + (summaryHours.byType[st]?.day || 0),
-                          0,
-                        ),
-                      )}
-                    </td>
-                    {SERVICE_TYPES.map((st) => (
-                      <td key={st}>{fmt(summaryHours.byType[st]?.day || 0)}</td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td>Estimated avg daily hours (evening)</td>
-                    <td>
-                      {fmt(
-                        SERVICE_TYPES.reduce(
-                          (s, st) =>
-                            s + (summaryHours.byType[st]?.evening || 0),
-                          0,
-                        ),
-                      )}
-                    </td>
-                    {SERVICE_TYPES.map((st) => (
-                      <td key={st}>
-                        {fmt(summaryHours.byType[st]?.evening || 0)}
+                  {[
+                    {
+                      label: "Estimated avg daily hours (day)",
+                      key: "day",
+                    },
+                    {
+                      label: "Estimated avg daily hours (evening)",
+                      key: "evening",
+                    },
+                    {
+                      label: "Estimated avg daily hours (overnight)",
+                      key: "overnight",
+                    },
+                  ].map((item) => (
+                    <tr key={item.key} style={{ background: "#fff" }}>
+                      <td
+                        style={{
+                          ...TD_STYLE,
+                          fontWeight: 600,
+                          minWidth: 260,
+                        }}
+                      >
+                        {item.label}
                       </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td>Estimated avg daily hours (overnight)</td>
-                    <td>
-                      {fmt(
-                        SERVICE_TYPES.reduce(
-                          (s, st) =>
-                            s + (summaryHours.byType[st]?.overnight || 0),
-                          0,
-                        ),
-                      )}
-                    </td>
-                    {SERVICE_TYPES.map((st) => (
-                      <td key={st}>
-                        {fmt(summaryHours.byType[st]?.overnight || 0)}
+                      <td style={TD_STYLE}>
+                        {fmt(
+                          SERVICE_TYPES.reduce(
+                            (s, st) =>
+                              s +
+                              (summaryHours.byType[st]?.[item.key] || 0),
+                            0,
+                          ),
+                        )}
                       </td>
-                    ))}
-                  </tr>
-                  <tr className="sq-total-row">
-                    <td>Estimated avg daily hours</td>
-                    <td>{fmt(summaryHours.totalDay)}</td>
+                      {SERVICE_TYPES.map((st) => (
+                        <td key={st} style={TD_STYLE}>
+                          {fmt(
+                            summaryHours.byType[st]?.[item.key] || 0,
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                  <tr
+                    style={{
+                      background: "#e8ecf7",
+                      fontWeight: 700,
+                    }}
+                  >
+                    <td style={{ ...TD_STYLE, fontWeight: 700 }}>
+                      Estimated avg daily hours
+                    </td>
+                    <td style={TD_STYLE}>
+                      {fmt(summaryHours.totalDay)}
+                    </td>
                     {SERVICE_TYPES.map((st) => {
                       const t = summaryHours.byType[st];
                       return (
-                        <td key={st}>
+                        <td key={st} style={TD_STYLE}>
                           {fmt(
                             (t?.day || 0) +
                               (t?.evening || 0) +
@@ -1082,24 +1320,54 @@ export default function ServiceQuote() {
                       );
                     })}
                   </tr>
-                  <tr className="sq-total-row">
-                    <td>Estimated avg weekly hours</td>
-                    <td>{fmt(summaryHours.totalDay * 7)}</td>
+                  <tr
+                    style={{
+                      background: "#e8ecf7",
+                      fontWeight: 700,
+                    }}
+                  >
+                    <td style={{ ...TD_STYLE, fontWeight: 700 }}>
+                      Estimated avg weekly hours
+                    </td>
+                    <td style={TD_STYLE}>
+                      {fmt(summaryHours.totalDay * 7)}
+                    </td>
                     {SERVICE_TYPES.map((st) => {
                       const t = summaryHours.byType[st];
                       const daily =
-                        (t?.day || 0) + (t?.evening || 0) + (t?.overnight || 0);
-                      return <td key={st}>{fmt(daily * 7)}</td>;
+                        (t?.day || 0) +
+                        (t?.evening || 0) +
+                        (t?.overnight || 0);
+                      return (
+                        <td key={st} style={TD_STYLE}>
+                          {fmt(daily * 7)}
+                        </td>
+                      );
                     })}
                   </tr>
-                  <tr className="sq-total-row">
-                    <td>Estimated avg yearly hours</td>
-                    <td>{fmt(summaryHours.totalDay * 365)}</td>
+                  <tr
+                    style={{
+                      background: "#e8ecf7",
+                      fontWeight: 700,
+                    }}
+                  >
+                    <td style={{ ...TD_STYLE, fontWeight: 700 }}>
+                      Estimated avg yearly hours
+                    </td>
+                    <td style={TD_STYLE}>
+                      {fmt(summaryHours.totalDay * 365)}
+                    </td>
                     {SERVICE_TYPES.map((st) => {
                       const t = summaryHours.byType[st];
                       const daily =
-                        (t?.day || 0) + (t?.evening || 0) + (t?.overnight || 0);
-                      return <td key={st}>{fmt(daily * 365)}</td>;
+                        (t?.day || 0) +
+                        (t?.evening || 0) +
+                        (t?.overnight || 0);
+                      return (
+                        <td key={st} style={TD_STYLE}>
+                          {fmt(daily * 365)}
+                        </td>
+                      );
                     })}
                   </tr>
                 </tbody>
@@ -1111,84 +1379,171 @@ export default function ServiceQuote() {
         {/* ═══ TAB 2: Price / Rates ═══ */}
         {activeTab === "rates" && (
           <div className="sq-panel">
-            <h3>Support Item Rates (VIC)</h3>
+            {/* Rate Table toolbar */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "12px",
+                flexWrap: "wrap",
+              }}
+            >
+              <h3 style={{ margin: 0, flex: 1 }}>
+                Rate Table (by Day Type)
+              </h3>
+              <button
+                type="button"
+                className="btn-action btn-save"
+                title="Add 10 rows"
+                onClick={() => addRateRows(10)}
+              >
+                <i className="fas fa-plus"></i>
+              </button>
+              <button
+                type="button"
+                className="btn-action"
+                title="Add column"
+                onClick={() => setAddColTarget("rate")}
+                style={{ background: "#2c3e7a", color: "#fff" }}
+              >
+                <i className="fas fa-columns"></i>
+              </button>
+              <button
+                type="button"
+                className="btn-action btn-delete"
+                title="Clear all"
+                onClick={clearRateTable}
+              >
+                <i className="fas fa-trash"></i>
+              </button>
+            </div>
 
-            <div className="sq-table-wrap">
-              <table className="sq-table">
+            <p style={{ fontSize: "12px", color: "#888", marginBottom: "8px" }}>
+              Tip: Copy cells from Excel and paste directly into any cell.
+              Arrow keys and Tab navigate between cells.
+            </p>
+
+            {/* Rate table */}
+            <div style={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  borderCollapse: "collapse",
+                  width: "100%",
+                  fontSize: "13px",
+                }}
+              >
                 <thead>
                   <tr>
-                    <th>Support Item Number</th>
-                    <th>Support Item Name</th>
-                    <th>Reg. Group</th>
-                    <th>VIC Rate ($)</th>
-                    <th style={{ width: 40 }}></th>
+                    <th style={{ ...TH_STYLE, width: "36px" }}>#</th>
+                    {rtAllCols.map((col) => (
+                      <th
+                        key={col.key}
+                        style={{ ...TH_STYLE, minWidth: col.width }}
+                      >
+                        {col.label}
+                        {col.key.startsWith("extra_") && (
+                          <span
+                            onClick={() => removeRateCol(col.key)}
+                            style={{
+                              cursor: "pointer",
+                              marginLeft: 6,
+                              opacity: 0.7,
+                              fontWeight: 400,
+                            }}
+                            title="Remove column"
+                          >
+                            {" \u00d7"}
+                          </span>
+                        )}
+                      </th>
+                    ))}
+                    <th style={{ ...TH_STYLE, width: "36px" }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rateItems.map((item, idx) => (
-                    <tr key={item.id}>
-                      <td>
-                        <input
-                          type="text"
-                          value={item.supportItemNumber}
-                          onChange={(e) =>
-                            updateRateItem(
-                              idx,
-                              "supportItemNumber",
-                              e.target.value,
-                            )
-                          }
-                          style={{ width: 160 }}
-                        />
+                  {rateTable.map((row, rowIdx) => (
+                    <tr
+                      key={row.id}
+                      style={{
+                        background: rowIdx % 2 === 0 ? "#fff" : "#f7f9ff",
+                      }}
+                    >
+                      <td
+                        style={{
+                          ...TD_STYLE,
+                          textAlign: "center",
+                          color: "#aaa",
+                          fontSize: "11px",
+                          padding: "1px 2px",
+                          userSelect: "none",
+                        }}
+                      >
+                        {rowIdx + 1}
                       </td>
-                      <td>
-                        <textarea
-                          value={item.supportItemName}
-                          onChange={(e) =>
-                            updateRateItem(
-                              idx,
-                              "supportItemName",
-                              e.target.value,
-                            )
-                          }
-                          className="sq-wide-input sq-textarea"
-                          rows={2}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="text"
-                          value={item.regGroupNumber}
-                          onChange={(e) =>
-                            updateRateItem(
-                              idx,
-                              "regGroupNumber",
-                              e.target.value,
-                            )
-                          }
-                          style={{ width: 70 }}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={item.rate}
-                          onChange={(e) =>
-                            updateRateItem(
-                              idx,
-                              "rate",
-                              parseFloat(e.target.value) || 0,
-                            )
-                          }
-                          style={{ width: 90 }}
-                        />
-                      </td>
-                      <td>
+                      {rtAllCols.map((col, colIdx) => {
+                        const val = col.key.startsWith("extra_")
+                          ? row._extra?.[col.key] ?? ""
+                          : row[col.key];
+
+                        return (
+                          <td key={col.key} style={TD_STYLE}>
+                            <textarea
+                              id={`rt-${rowIdx}-${colIdx}`}
+                              value={val ?? ""}
+                              rows={1}
+                              onChange={(e) => {
+                                updateRateCell(
+                                  rowIdx,
+                                  col.key,
+                                  e.target.value,
+                                );
+                                autoResize(e.target);
+                              }}
+                              onBlur={(e) => {
+                                if (col.type === "number") {
+                                  updateRateCell(
+                                    rowIdx,
+                                    col.key,
+                                    parseFloat(e.target.value) || 0,
+                                  );
+                                }
+                              }}
+                              onPaste={(e) =>
+                                handleRatePaste(e, rowIdx, colIdx)
+                              }
+                              onKeyDown={(e) =>
+                                handleCellKeyDown(
+                                  e,
+                                  "rt",
+                                  rowIdx,
+                                  colIdx,
+                                  rtAllCols.length,
+                                  rateTable.length,
+                                  addRateRows,
+                                )
+                              }
+                              style={{
+                                ...CELL_STYLE,
+                                textAlign: col.align || "left",
+                              }}
+                            />
+                          </td>
+                        );
+                      })}
+                      <td style={TD_STYLE}>
                         <button
-                          className="sq-btn-icon sq-btn-danger"
-                          onClick={() => removeRateItem(idx)}
-                          title="Remove"
+                          type="button"
+                          onClick={() => removeRateRow(rowIdx)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#e74c3c",
+                            cursor: "pointer",
+                            fontSize: "13px",
+                            padding: "2px 6px",
+                          }}
+                          title="Remove row"
                         >
                           <i className="fas fa-trash-alt"></i>
                         </button>
@@ -1198,251 +1553,8 @@ export default function ServiceQuote() {
                 </tbody>
               </table>
             </div>
-            <div className="sq-paste-bar">
-              <button className="sq-btn sq-btn-add" onClick={addRateItem}>
-                <i className="fas fa-plus"></i> Add Rate Item
-              </button>
-              <button
-                className="sq-btn sq-btn-paste"
-                onClick={() => setShowRateItemPaste((v) => !v)}
-              >
-                <i className="fas fa-paste"></i>{" "}
-                {showRateItemPaste ? "Hide Paste Area" : "Paste from Excel"}
-              </button>
-            </div>
 
-            {showRateItemPaste && (
-              <div className="sq-paste-area">
-                <p className="sq-paste-hint">
-                  Copy rows from Excel and paste below. Column order:{" "}
-                  <strong>
-                    Support Item Number | Support Item Name | Reg Group | Rate
-                  </strong>
-                </p>
-                <textarea
-                  className="sq-paste-textarea"
-                  value={rateItemPasteText}
-                  onChange={(e) => setRateItemPasteText(e.target.value)}
-                  placeholder="Paste Excel rows here (Ctrl+V)..."
-                  rows={6}
-                />
-                <div className="sq-paste-actions">
-                  <button
-                    className="sq-btn sq-btn-apply"
-                    onClick={applyRateItemPaste}
-                    disabled={!rateItemPasteText.trim()}
-                  >
-                    <i className="fas fa-check"></i> Apply
-                  </button>
-                  <button
-                    className="sq-btn sq-btn-cancel"
-                    onClick={() => {
-                      setRateItemPasteText("");
-                      setShowRateItemPaste(false);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <h3 style={{ marginTop: 24 }}>Rate Table (by Day Type)</h3>
-            <div className="sq-table-wrap">
-              <table className="sq-table">
-                <thead>
-                  <tr>
-                    <th>Reg Group</th>
-                    <th>Support Category</th>
-                    <th>Support Item Name</th>
-                    <th>Daily Hrs</th>
-                    <th>Weekday ($)</th>
-                    <th>Saturday ($)</th>
-                    <th>Sunday ($)</th>
-                    <th>PH ($)</th>
-                    <th style={{ width: 40 }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rateTable.map((row, idx) => (
-                    <tr key={row.id}>
-                      <td>
-                        <input
-                          type="text"
-                          value={row.regGroupNo}
-                          onChange={(e) =>
-                            updateRateTable(idx, "regGroupNo", e.target.value)
-                          }
-                          style={{ width: 50 }}
-                        />
-                      </td>
-                      <td>
-                        <textarea
-                          value={row.supportCategory}
-                          onChange={(e) =>
-                            updateRateTable(
-                              idx,
-                              "supportCategory",
-                              e.target.value,
-                            )
-                          }
-                          className="sq-wide-input sq-textarea"
-                          rows={2}
-                        />
-                      </td>
-                      <td>
-                        <textarea
-                          value={row.supportItemName}
-                          onChange={(e) =>
-                            updateRateTable(
-                              idx,
-                              "supportItemName",
-                              e.target.value,
-                            )
-                          }
-                          className="sq-wide-input sq-textarea"
-                          rows={2}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={row.dailyHours}
-                          onChange={(e) =>
-                            updateRateTable(
-                              idx,
-                              "dailyHours",
-                              parseFloat(e.target.value) || 0,
-                            )
-                          }
-                          style={{ width: 60 }}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={row.weekdayRate}
-                          onChange={(e) =>
-                            updateRateTable(
-                              idx,
-                              "weekdayRate",
-                              parseFloat(e.target.value) || 0,
-                            )
-                          }
-                          style={{ width: 80 }}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={row.saturdayRate}
-                          onChange={(e) =>
-                            updateRateTable(
-                              idx,
-                              "saturdayRate",
-                              parseFloat(e.target.value) || 0,
-                            )
-                          }
-                          style={{ width: 80 }}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={row.sundayRate}
-                          onChange={(e) =>
-                            updateRateTable(
-                              idx,
-                              "sundayRate",
-                              parseFloat(e.target.value) || 0,
-                            )
-                          }
-                          style={{ width: 80 }}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={row.phRate}
-                          onChange={(e) =>
-                            updateRateTable(
-                              idx,
-                              "phRate",
-                              parseFloat(e.target.value) || 0,
-                            )
-                          }
-                          style={{ width: 80 }}
-                        />
-                      </td>
-                      <td>
-                        <button
-                          className="sq-btn-icon sq-btn-danger"
-                          onClick={() => removeRateTableRow(idx)}
-                          title="Remove"
-                        >
-                          <i className="fas fa-trash-alt"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="sq-paste-bar">
-              <button className="sq-btn sq-btn-add" onClick={addRateTableRow}>
-                <i className="fas fa-plus"></i> Add Rate Row
-              </button>
-              <button
-                className="sq-btn sq-btn-paste"
-                onClick={() => setShowRatePaste((v) => !v)}
-              >
-                <i className="fas fa-paste"></i>{" "}
-                {showRatePaste ? "Hide Paste Area" : "Paste from Excel"}
-              </button>
-            </div>
-
-            {showRatePaste && (
-              <div className="sq-paste-area">
-                <p className="sq-paste-hint">
-                  Copy rows from Excel and paste below. Column order:{" "}
-                  <strong>
-                    Reg Group | Support Category | Support Item Name | Daily Hrs
-                    | Weekday ($) | Saturday ($) | Sunday ($) | PH ($)
-                  </strong>
-                </p>
-                <textarea
-                  className="sq-paste-textarea"
-                  value={ratePasteText}
-                  onChange={(e) => setRatePasteText(e.target.value)}
-                  placeholder="Paste Excel rows here (Ctrl+V)..."
-                  rows={6}
-                />
-                <div className="sq-paste-actions">
-                  <button
-                    className="sq-btn sq-btn-apply"
-                    onClick={applyRatePaste}
-                    disabled={!ratePasteText.trim()}
-                  >
-                    <i className="fas fa-check"></i> Apply
-                  </button>
-                  <button
-                    className="sq-btn sq-btn-cancel"
-                    onClick={() => {
-                      setRatePasteText("");
-                      setShowRatePaste(false);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-
+            {/* Public Holidays & Irregular */}
             <h3 style={{ marginTop: 24 }}>
               Public Holidays &amp; Irregular Supports
             </h3>
@@ -1495,7 +1607,7 @@ export default function ServiceQuote() {
           </div>
         )}
 
-        {/* ═══ TAB 3: Generated Quote ═══ */}
+                {/* ═══ TAB 3: Generated Quote ═══ */}
         {activeTab === "quote" && (
           <div className="sq-panel">
             <div className="sq-quote-actions">
@@ -1757,6 +1869,102 @@ export default function ServiceQuote() {
                     </tr>
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+{/* ═══ Add Column Modal ═══ */}
+        {addColTarget && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0,0,0,0.4)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+            onClick={() => {
+              setAddColTarget(null);
+              setNewColLabel("");
+            }}
+          >
+            <div
+              style={{
+                background: "#fff",
+                padding: "24px",
+                borderRadius: "10px",
+                minWidth: "320px",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ margin: "0 0 16px" }}>
+                Add Column (
+                {addColTarget === "schedule" ? "Schedule" : "Rate Table"})
+              </h3>
+              <input
+                type="text"
+                value={newColLabel}
+                onChange={(e) => setNewColLabel(e.target.value)}
+                placeholder="Column name"
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                  boxSizing: "border-box",
+                  marginBottom: "16px",
+                }}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") confirmAddCol();
+                }}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  gap: "8px",
+                  justifyContent: "flex-end",
+                }}
+              >
+                <button
+                  onClick={() => {
+                    setAddColTarget(null);
+                    setNewColLabel("");
+                  }}
+                  style={{
+                    padding: "8px 16px",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "6px",
+                    background: "#f1f5f9",
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmAddCol}
+                  disabled={!newColLabel.trim()}
+                  style={{
+                    padding: "8px 16px",
+                    border: "none",
+                    borderRadius: "6px",
+                    background: "#2c3e7a",
+                    color: "#fff",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    opacity: newColLabel.trim() ? 1 : 0.5,
+                  }}
+                >
+                  Add
+                </button>
               </div>
             </div>
           </div>
