@@ -522,14 +522,14 @@ const BPH_COL_DEFS = [
     key: "regGroupNumber",
     label: "Registration Group Number",
     type: "text",
-    width: "360px",
-    align: "left",
+    width: "180px",
+    align: "center",
   },
   {
     key: "rate",
     label: "Price per hours",
     type: "number",
-    width: "220px",
+    width: "150px",
     align: "right",
   },
 ];
@@ -734,9 +734,14 @@ export default function ServiceQuote() {
   }, []);
 
   const clearSchedule = useCallback(() => {
-    if (!window.confirm("Clear all rows and reset to default data?")) return;
-    setScheduleRows(DEFAULT_SCHEDULE_ROWS.map((r) => ({ ...r, _extra: {} })));
-    setScheduleExtraCols([]);
+    if (!window.confirm("Clear Hrs/Day and Shared for all rows?")) return;
+    setScheduleRows((prev) =>
+      prev.map((r) => ({
+        ...r,
+        hoursPerDay: 0,
+        shared: false,
+      })),
+    );
   }, []);
 
   // ── Base rate item helpers ──────────────────────────────────────────────
@@ -761,8 +766,8 @@ export default function ServiceQuote() {
   }, []);
 
   const clearBaseRate = useCallback(() => {
-    if (!window.confirm("Clear all rows and reset to default data?")) return;
-    setBaseRateItems(DEFAULT_RATES.map((r) => ({ ...r })));
+    if (!window.confirm("Clear Price per hours for all rows?")) return;
+    setBaseRateItems((prev) => prev.map((r) => ({ ...r, rate: "" })));
   }, []);
 
   // ── Rate table helpers ───────────────────────────────────────────────────
@@ -991,34 +996,25 @@ export default function ServiceQuote() {
 
   // ─── Computed: Service Quote data ────────────────────────────────
   const quoteData = useMemo(() => {
-    // Get rates from rateTable
-    const getRate = (regGroup, timeOfDay) => {
-      // Find matching rate row
-      for (const rt of rateTable) {
-        if (rt.regGroupNo !== String(regGroup)) continue;
-        const name = (rt.supportItemName || "").toLowerCase();
-        if (
-          timeOfDay === "Overnight" &&
-          name.includes("night-time sleepover")
-        ) {
-          return rt;
-        }
-        if (
-          timeOfDay === "Evening" &&
-          (name.includes("evening") || name.includes("weekday evening"))
-        ) {
-          return rt;
-        }
-        if (
-          timeOfDay === "Day" &&
-          !name.includes("night-time sleepover") &&
-          !name.includes("evening") &&
-          !name.includes("domestic")
-        ) {
-          return rt;
-        }
-      }
-      return rateTable.find((rt) => rt.regGroupNo === String(regGroup)) || null;
+    const findBaseRate = (keyword) => {
+      const row = baseRateItems.find((item) =>
+        (item.supportItemName || "").toLowerCase().includes(keyword),
+      );
+      return parseFloat(row?.rate) || 0;
+    };
+
+    const weekdayDayRate = findBaseRate("weekday daytime");
+    const weekdayEveningRate = findBaseRate("weekday evening");
+    const saturdayRate = findBaseRate("saturday");
+    const sundayRate = findBaseRate("sunday");
+    const sleepoverRate = findBaseRate("night-time sleepover");
+
+    const getPricePerHour = (timeOfDay, day) => {
+      if (timeOfDay === "Overnight") return sleepoverRate;
+      if (day === "Saturday") return saturdayRate;
+      if (day === "Sunday") return sundayRate;
+      if (timeOfDay === "Evening") return weekdayEveningRate || weekdayDayRate;
+      return weekdayDayRate;
     };
 
     // Group schedule rows by serviceType
@@ -1033,22 +1029,12 @@ export default function ServiceQuote() {
 
       const hours = parseFloat(sr.hoursPerDay) || 0;
       const ratio = getRatio(st);
-      const rateRow = getRate("107", sr.timeOfDay);
-
-      if (!rateRow) return;
-
-      const weekdayPricePerHour = rateRow.weekdayRate;
-      const saturdayPricePerHour = rateRow.saturdayRate;
-      const sundayPricePerHour = rateRow.sundayRate;
+      if (!hours) return;
 
       const priceHourRatio = (price) => parseFloat((price / ratio).toFixed(2));
 
       const dayData = DAYS.map((day) => {
-        const isWeekend = day === "Saturday" || day === "Sunday";
-        let pricePerHour;
-        if (day === "Saturday") pricePerHour = saturdayPricePerHour;
-        else if (day === "Sunday") pricePerHour = sundayPricePerHour;
-        else pricePerHour = weekdayPricePerHour;
+        const pricePerHour = getPricePerHour(sr.timeOfDay, day);
 
         const ratioPrice = priceHourRatio(pricePerHour);
         const cost = ratioPrice * hours;
@@ -1072,24 +1058,12 @@ export default function ServiceQuote() {
       grouped[st].totalCost += weekTotal;
     });
 
-    // Sleepover section
-    const sleepoverRate = rateTable.find(
-      (rt) =>
-        rt.regGroupNo === "107" &&
-        (rt.supportItemName || "")
-          .toLowerCase()
-          .includes("night-time sleepover"),
-    );
-
     const sleepover = {
       rate: sleepoverRate,
       nightsPerWeek: 7,
-      costPerNight: sleepoverRate?.weekdayRate || 0,
-      weekTotal: (sleepoverRate?.weekdayRate || 0) * 7,
+      costPerNight: sleepoverRate,
+      weekTotal: sleepoverRate * 7,
     };
-
-    // 115 section
-    const rate115 = rateTable.find((rt) => rt.regGroupNo === "115");
 
     // Public holiday / Irregular
     const phTotal = publicHolidayRate * publicHolidayHours;
@@ -1112,7 +1086,6 @@ export default function ServiceQuote() {
     return {
       grouped,
       sleepover,
-      rate115,
       phTotal,
       irrTotal,
       estimatedWeekly,
@@ -1124,7 +1097,7 @@ export default function ServiceQuote() {
     };
   }, [
     scheduleRows,
-    rateTable,
+    baseRateItems,
     publicHolidayRate,
     publicHolidayHours,
     irregularRate,
@@ -1218,16 +1191,16 @@ export default function ServiceQuote() {
             <i className="fas fa-table"></i> Price per hours
           </button>
           <button
-            className={`sq-tab ${activeTab === "rates" ? "active" : ""}`}
-            onClick={() => setActiveTab("rates")}
-          >
-            <i className="fas fa-dollar-sign"></i> Price / Rates
-          </button>
-          <button
             className={`sq-tab ${activeTab === "quote" ? "active" : ""}`}
             onClick={() => setActiveTab("quote")}
           >
             <i className="fas fa-file-invoice-dollar"></i> Service Quote
+          </button>
+          <button
+            className={`sq-tab ${activeTab === "rates" ? "active" : ""}`}
+            onClick={() => setActiveTab("rates")}
+          >
+            <i className="fas fa-dollar-sign"></i> Price / Rates
           </button>
         </div>
 
@@ -2077,7 +2050,7 @@ export default function ServiceQuote() {
               })}
 
               {/* Sleepover section */}
-              {quoteData.sleepover.rate && (
+              {quoteData.sleepover.rate > 0 && (
                 <div className="sq-quote-section">
                   <div className="sq-quote-section-header sq-sleepover-header">
                     <span className="sq-section-regis">107</span>
@@ -2104,16 +2077,16 @@ export default function ServiceQuote() {
                         <tr key={day}>
                           <td className="sq-day-cell">{day}</td>
                           <td className="sq-money">
-                            ${fmt(quoteData.sleepover.rate?.weekdayRate || 0)}
+                            ${fmt(quoteData.sleepover.rate || 0)}
                           </td>
                           <td className="sq-money">
-                            ${fmt(quoteData.sleepover.rate?.weekdayRate || 0)}
+                            ${fmt(quoteData.sleepover.rate || 0)}
                           </td>
                           <td>per night</td>
                           <td className="sq-right">1.00</td>
                           <td className="sq-money">$</td>
                           <td className="sq-money">
-                            {fmt(quoteData.sleepover.rate?.weekdayRate || 0)}
+                            {fmt(quoteData.sleepover.rate || 0)}
                           </td>
                         </tr>
                       ))}
