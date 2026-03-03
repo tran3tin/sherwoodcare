@@ -1017,19 +1017,24 @@ export default function ServiceQuote() {
       return weekdayDayRate;
     };
 
-    // Group schedule rows by serviceType
+    // Group schedule rows by serviceType + time bucket (day/evening)
     const grouped = {};
     SERVICE_TYPES.forEach((st) => {
-      grouped[st] = { rows: [], totalHrsWeek: 0, totalCost: 0 };
+      grouped[st] = {
+        day: { rows: [], totalHrsWeek: 0, totalCost: 0 },
+        evening: { rows: [], totalHrsWeek: 0, totalCost: 0 },
+      };
     });
 
     scheduleRows.forEach((sr) => {
       const st = sr.serviceType;
       if (!grouped[st]) return;
+      if (sr.timeOfDay === "Overnight") return;
 
       const hours = parseFloat(sr.hoursPerDay) || 0;
       const ratio = getRatio(st);
       if (!hours) return;
+      const period = sr.timeOfDay === "Evening" ? "evening" : "day";
 
       const priceHourRatio = (price) => parseFloat((price / ratio).toFixed(2));
 
@@ -1049,13 +1054,13 @@ export default function ServiceQuote() {
       });
 
       const weekTotal = dayData.reduce((sum, d) => sum + d.cost, 0);
-      grouped[st].rows.push({
+      grouped[st][period].rows.push({
         ...sr,
         dayData,
         weekTotal,
       });
-      grouped[st].totalHrsWeek += hours * 7;
-      grouped[st].totalCost += weekTotal;
+      grouped[st][period].totalHrsWeek += hours * 7;
+      grouped[st][period].totalCost += weekTotal;
     });
 
     const sleepover = {
@@ -1070,13 +1075,12 @@ export default function ServiceQuote() {
     const irrTotal = irregularRate * irregularHours;
 
     // Grand totals
-    let totalWeeklyDay = 0;
-    let totalWeeklyEvening = 0;
+    let totalWeekly = 0;
     Object.values(grouped).forEach((g) => {
-      totalWeeklyDay += g.totalCost;
+      totalWeekly += (g.day?.totalCost || 0) + (g.evening?.totalCost || 0);
     });
 
-    const estimatedWeekly = totalWeeklyDay;
+    const estimatedWeekly = totalWeekly;
     const estimatedSleepoverWeekly = sleepover.weekTotal;
     const estimatedFortnightly =
       (estimatedWeekly + estimatedSleepoverWeekly) * 2;
@@ -1970,84 +1974,80 @@ export default function ServiceQuote() {
                 </div>
               </div>
 
-              {/* Quote sections by service type */}
-              {SERVICE_TYPES.map((st) => {
-                const group = quoteData.grouped[st];
-                if (!group || group.rows.length === 0) return null;
+              {/* Quote sections by service type + day/evening */}
+              {SERVICE_TYPES.flatMap((st) =>
+                ["day", "evening"].map((period) => {
+                  const group = quoteData.grouped[st]?.[period];
+                  if (!group || group.rows.length === 0) return null;
 
-                return (
-                  <div key={st} className="sq-quote-section">
-                    <div className="sq-quote-section-header">
-                      <span className="sq-section-regis">107</span>
-                      <span>
-                        Assistance With Self-Care Activities (
-                        {st === "1:1"
-                          ? "DAY"
-                          : st.includes("Evening")
-                            ? "EVENING"
-                            : "DAY"}
-                        )
-                      </span>
-                      <span className="sq-section-type">{st}</span>
+                  return (
+                    <div key={`${st}-${period}`} className="sq-quote-section">
+                      <div className="sq-quote-section-header">
+                        <span className="sq-section-regis">107</span>
+                        <span>
+                          Assistance With Self-Care Activities (
+                          {period === "evening" ? "EVENING" : "DAY"})
+                        </span>
+                        <span className="sq-section-type">{st}</span>
+                      </div>
+
+                      <table className="sq-quote-table">
+                        <thead>
+                          <tr>
+                            <th></th>
+                            <th>Price/hour</th>
+                            <th>Price/hour/ratio</th>
+                            <th>Units</th>
+                            <th>Category</th>
+                            <th></th>
+                            <th>$</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {DAYS.map((day) => {
+                            const dayIdx = DAYS.indexOf(day);
+                            let totalHrs = 0;
+                            let totalCost = 0;
+                            let pricePerHour = 0;
+                            let priceRatio = 0;
+
+                            group.rows.forEach((r) => {
+                              const dd = r.dayData[dayIdx];
+                              totalHrs += dd.hours;
+                              totalCost += dd.cost;
+                              pricePerHour = dd.pricePerHour;
+                              priceRatio = dd.pricePerHourRatio;
+                            });
+
+                            return (
+                              <tr key={day}>
+                                <td className="sq-day-cell">{day}</td>
+                                <td className="sq-money">${fmt(pricePerHour)}</td>
+                                <td className="sq-money">${fmt(priceRatio)}</td>
+                                <td>hrs / Day</td>
+                                <td className="sq-right">{fmt(totalHrs)}</td>
+                                <td className="sq-money">$</td>
+                                <td className="sq-money">{fmt(totalCost)}</td>
+                              </tr>
+                            );
+                          })}
+                          <tr className="sq-subtotal-row">
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td>Hrs/ week</td>
+                            <td className="sq-right">
+                              {fmt(group.totalHrsWeek)}
+                            </td>
+                            <td className="sq-money">$</td>
+                            <td className="sq-money">{fmt(group.totalCost)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
-
-                    <table className="sq-quote-table">
-                      <thead>
-                        <tr>
-                          <th></th>
-                          <th>Price/hour</th>
-                          <th>Price/hour/ratio</th>
-                          <th>Units</th>
-                          <th>Category</th>
-                          <th></th>
-                          <th>$</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {DAYS.map((day) => {
-                          // Sum hours and cost for all rows in this group for this day
-                          const dayIdx = DAYS.indexOf(day);
-                          let totalHrs = 0;
-                          let totalCost = 0;
-                          let pricePerHour = 0;
-                          let priceRatio = 0;
-
-                          group.rows.forEach((r) => {
-                            const dd = r.dayData[dayIdx];
-                            totalHrs += dd.hours;
-                            totalCost += dd.cost;
-                            pricePerHour = dd.pricePerHour;
-                            priceRatio = dd.pricePerHourRatio;
-                          });
-
-                          return (
-                            <tr key={day}>
-                              <td className="sq-day-cell">{day}</td>
-                              <td className="sq-money">${fmt(pricePerHour)}</td>
-                              <td className="sq-money">${fmt(priceRatio)}</td>
-                              <td>hrs / Day</td>
-                              <td className="sq-right">{fmt(totalHrs)}</td>
-                              <td className="sq-money">$</td>
-                              <td className="sq-money">{fmt(totalCost)}</td>
-                            </tr>
-                          );
-                        })}
-                        <tr className="sq-subtotal-row">
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td>Hrs/ week</td>
-                          <td className="sq-right">
-                            {fmt(group.totalHrsWeek)}
-                          </td>
-                          <td className="sq-money">$</td>
-                          <td className="sq-money">{fmt(group.totalCost)}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                );
-              })}
+                  );
+                }),
+              )}
 
               {/* Sleepover section */}
               {quoteData.sleepover.rate > 0 && (
