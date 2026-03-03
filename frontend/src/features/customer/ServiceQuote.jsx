@@ -272,8 +272,7 @@ const DEFAULT_RATES = [
   {
     id: 4,
     supportItemNumber: "01_014_0107_1_1",
-    supportItemName:
-      "Assistance With Self-Care Activities - Standard - Sunday",
+    supportItemName: "Assistance With Self-Care Activities - Standard - Sunday",
     regGroupNumber: "0107",
     rate: 127.43,
   },
@@ -365,7 +364,10 @@ const getRatio = (serviceType) => {
 };
 
 const fmt = (n) =>
-  n.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  n.toLocaleString("en-AU", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
 const fmtOr = (n) => (n === 0 ? "-" : fmt(n));
 
@@ -388,9 +390,9 @@ export default function ServiceQuote() {
   const [rateTable, setRateTable] = useState(DEFAULT_RATE_TABLE);
 
   // Public holiday & irregular
-  const [publicHolidayRate, setPublicHolidayRate] = useState(150.10);
+  const [publicHolidayRate, setPublicHolidayRate] = useState(150.1);
   const [publicHolidayHours, setPublicHolidayHours] = useState(5.0);
-  const [irregularRate, setIrregularRate] = useState(150.10);
+  const [irregularRate, setIrregularRate] = useState(150.1);
   const [irregularHours, setIrregularHours] = useState(5.0);
 
   // Print ref
@@ -482,6 +484,92 @@ export default function ServiceQuote() {
     setRateTable((prev) => prev.filter((_, i) => i !== idx));
   }, []);
 
+  // ─── Excel paste helpers ─────────────────────────────────────────
+  // Parse TSV text from Excel clipboard
+  const parseTsv = (text) => {
+    return text
+      .split(/\r?\n/)
+      .map((line) => line.split("\t"))
+      .filter((cols) => cols.some((c) => c.trim() !== ""));
+  };
+
+  // Paste handler for Daily Service Schedule
+  // Expected Excel columns (matching the schedule table):
+  // [0]=Regis [1]=Description [2]=TimeOfDay [3]=TimeFrame [4]=Staff [5]=Hrs/Day [6]=Shared [7]=ServiceType
+  const [showSchedulePaste, setShowSchedulePaste] = useState(false);
+  const [schedulePasteText, setSchedulePasteText] = useState("");
+
+  const applySchedulePaste = useCallback(() => {
+    const rows = parseTsv(schedulePasteText);
+    if (!rows.length) return;
+    const newRows = rows.map((cols, i) => ({
+      id: `paste-${Date.now()}-${i}`,
+      regis: (cols[0] || "107/115").trim(),
+      description: (cols[1] || "").trim(),
+      timeOfDay: TIME_OF_DAY_OPTIONS.includes((cols[2] || "").trim())
+        ? cols[2].trim()
+        : "Day",
+      timeFrame: (cols[3] || "").trim(),
+      staff: parseInt(cols[4]) || 1,
+      hoursPerDay: parseFloat(cols[5]) || 0,
+      shared: ["true", "yes", "1", "x"].includes(
+        (cols[6] || "").trim().toLowerCase(),
+      ),
+      serviceType: SERVICE_TYPES.includes((cols[7] || "").trim())
+        ? cols[7].trim()
+        : "1:1",
+    }));
+    setScheduleRows((prev) => [...prev, ...newRows]);
+    setSchedulePasteText("");
+    setShowSchedulePaste(false);
+  }, [schedulePasteText]);
+
+  // Paste handler for Rate Table
+  // Expected Excel columns:
+  // [0]=RegGroup [1]=SupportCategory [2]=SupportItemName [3]=DailyHrs [4]=Weekday [5]=Saturday [6]=Sunday [7]=PH
+  const [showRatePaste, setShowRatePaste] = useState(false);
+  const [ratePasteText, setRatePasteText] = useState("");
+
+  const applyRatePaste = useCallback(() => {
+    const rows = parseTsv(ratePasteText);
+    if (!rows.length) return;
+    const newRows = rows.map((cols, i) => ({
+      id: Date.now() + i,
+      regGroupNo: (cols[0] || "107").trim(),
+      supportCategory: (cols[1] || "").trim(),
+      supportItemName: (cols[2] || "").trim(),
+      dailyHours: parseFloat(cols[3]) || 0,
+      weekdayRate: parseFloat(cols[4]) || 0,
+      saturdayRate: parseFloat(cols[5]) || 0,
+      sundayRate: parseFloat(cols[6]) || 0,
+      phRate: parseFloat(cols[7]) || 0,
+    }));
+    setRateTable((prev) => [...prev, ...newRows]);
+    setRatePasteText("");
+    setShowRatePaste(false);
+  }, [ratePasteText]);
+
+  // Paste handler for Support Item Rates
+  // Expected Excel columns:
+  // [0]=SupportItemNumber [1]=SupportItemName [2]=RegGroupNumber [3]=Rate
+  const [showRateItemPaste, setShowRateItemPaste] = useState(false);
+  const [rateItemPasteText, setRateItemPasteText] = useState("");
+
+  const applyRateItemPaste = useCallback(() => {
+    const rows = parseTsv(rateItemPasteText);
+    if (!rows.length) return;
+    const newRows = rows.map((cols, i) => ({
+      id: Date.now() + i,
+      supportItemNumber: (cols[0] || "").trim(),
+      supportItemName: (cols[1] || "").trim(),
+      regGroupNumber: (cols[2] || "0107").trim(),
+      rate: parseFloat(cols[3]) || 0,
+    }));
+    setRateItems((prev) => [...prev, ...newRows]);
+    setRateItemPasteText("");
+    setShowRateItemPaste(false);
+  }, [rateItemPasteText]);
+
   // ─── Computed: summary hours ─────────────────────────────────────
   const summaryHours = useMemo(() => {
     const byType = {};
@@ -511,7 +599,10 @@ export default function ServiceQuote() {
       for (const rt of rateTable) {
         if (rt.regGroupNo !== String(regGroup)) continue;
         const name = (rt.supportItemName || "").toLowerCase();
-        if (timeOfDay === "Overnight" && name.includes("night-time sleepover")) {
+        if (
+          timeOfDay === "Overnight" &&
+          name.includes("night-time sleepover")
+        ) {
           return rt;
         }
         if (
@@ -555,8 +646,7 @@ export default function ServiceQuote() {
       const priceHourRatio = (price) => parseFloat((price / ratio).toFixed(2));
 
       const dayData = DAYS.map((day) => {
-        const isWeekend =
-          day === "Saturday" || day === "Sunday";
+        const isWeekend = day === "Saturday" || day === "Sunday";
         let pricePerHour;
         if (day === "Saturday") pricePerHour = saturdayPricePerHour;
         else if (day === "Sunday") pricePerHour = sundayPricePerHour;
@@ -588,7 +678,9 @@ export default function ServiceQuote() {
     const sleepoverRate = rateTable.find(
       (rt) =>
         rt.regGroupNo === "107" &&
-        (rt.supportItemName || "").toLowerCase().includes("night-time sleepover"),
+        (rt.supportItemName || "")
+          .toLowerCase()
+          .includes("night-time sleepover"),
     );
 
     const sleepover = {
@@ -614,7 +706,8 @@ export default function ServiceQuote() {
 
     const estimatedWeekly = totalWeeklyDay;
     const estimatedSleepoverWeekly = sleepover.weekTotal;
-    const estimatedFortnightly = (estimatedWeekly + estimatedSleepoverWeekly) * 2;
+    const estimatedFortnightly =
+      (estimatedWeekly + estimatedSleepoverWeekly) * 2;
     const estimatedAnnual = (estimatedWeekly + estimatedSleepoverWeekly) * 52;
     const estimatedIrregularAnnual = phTotal + irrTotal;
 
@@ -631,7 +724,14 @@ export default function ServiceQuote() {
       estimatedIrregularAnnual,
       grandTotal: estimatedAnnual + estimatedIrregularAnnual,
     };
-  }, [scheduleRows, rateTable, publicHolidayRate, publicHolidayHours, irregularRate, irregularHours]);
+  }, [
+    scheduleRows,
+    rateTable,
+    publicHolidayRate,
+    publicHolidayHours,
+    irregularRate,
+    irregularHours,
+  ]);
 
   // ─── Print ───────────────────────────────────────────────────────
   const handlePrint = useCallback(() => {
@@ -736,8 +836,7 @@ export default function ServiceQuote() {
                         />
                       </td>
                       <td>
-                        <input
-                          type="text"
+                        <textarea
                           value={row.description}
                           onChange={(e) =>
                             updateScheduleRow(
@@ -746,7 +845,8 @@ export default function ServiceQuote() {
                               e.target.value,
                             )
                           }
-                          className="sq-wide-input"
+                          className="sq-wide-input sq-textarea"
+                          rows={2}
                         />
                       </td>
                       <td>
@@ -764,13 +864,14 @@ export default function ServiceQuote() {
                         </select>
                       </td>
                       <td>
-                        <input
-                          type="text"
+                        <textarea
                           value={row.timeFrame}
                           onChange={(e) =>
                             updateScheduleRow(idx, "timeFrame", e.target.value)
                           }
+                          className="sq-textarea"
                           style={{ width: 130 }}
+                          rows={2}
                         />
                       </td>
                       <td>
@@ -845,9 +946,62 @@ export default function ServiceQuote() {
                 </tbody>
               </table>
             </div>
-            <button className="sq-btn sq-btn-add" onClick={addScheduleRow}>
-              <i className="fas fa-plus"></i> Add Row
-            </button>
+            <div className="sq-paste-bar">
+              <button className="sq-btn sq-btn-add" onClick={addScheduleRow}>
+                <i className="fas fa-plus"></i> Add Row
+              </button>
+              <button
+                className="sq-btn sq-btn-paste"
+                onClick={() => setShowSchedulePaste((v) => !v)}
+              >
+                <i className="fas fa-paste"></i>{" "}
+                {showSchedulePaste ? "Hide Paste Area" : "Paste from Excel"}
+              </button>
+            </div>
+
+            {showSchedulePaste && (
+              <div className="sq-paste-area">
+                <p className="sq-paste-hint">
+                  Copy rows from Excel and paste below. Column order:{" "}
+                  <strong>
+                    Regis | Description | Time of Day | Time Frame | Staff |
+                    Hrs/Day | Shared (yes/no) | Service Type
+                  </strong>
+                </p>
+                <textarea
+                  className="sq-paste-textarea"
+                  value={schedulePasteText}
+                  onChange={(e) => setSchedulePasteText(e.target.value)}
+                  onPaste={(e) => {
+                    // auto-apply after paste
+                    setTimeout(() => {
+                      const v = e.target.value + (e.clipboardData?.getData("text") || "");
+                      setSchedulePasteText(v);
+                    }, 0);
+                  }}
+                  placeholder="Paste Excel rows here (Ctrl+V)..."
+                  rows={6}
+                />
+                <div className="sq-paste-actions">
+                  <button
+                    className="sq-btn sq-btn-apply"
+                    onClick={applySchedulePaste}
+                    disabled={!schedulePasteText.trim()}
+                  >
+                    <i className="fas fa-check"></i> Apply
+                  </button>
+                  <button
+                    className="sq-btn sq-btn-cancel"
+                    onClick={() => {
+                      setSchedulePasteText("");
+                      setShowSchedulePaste(false);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Summary hours */}
             <div className="sq-summary-box">
@@ -875,9 +1029,7 @@ export default function ServiceQuote() {
                       )}
                     </td>
                     {SERVICE_TYPES.map((st) => (
-                      <td key={st}>
-                        {fmt(summaryHours.byType[st]?.day || 0)}
-                      </td>
+                      <td key={st}>{fmt(summaryHours.byType[st]?.day || 0)}</td>
                     ))}
                   </tr>
                   <tr>
@@ -921,7 +1073,11 @@ export default function ServiceQuote() {
                       const t = summaryHours.byType[st];
                       return (
                         <td key={st}>
-                          {fmt((t?.day || 0) + (t?.evening || 0) + (t?.overnight || 0))}
+                          {fmt(
+                            (t?.day || 0) +
+                              (t?.evening || 0) +
+                              (t?.overnight || 0),
+                          )}
                         </td>
                       );
                     })}
@@ -986,8 +1142,7 @@ export default function ServiceQuote() {
                         />
                       </td>
                       <td>
-                        <input
-                          type="text"
+                        <textarea
                           value={item.supportItemName}
                           onChange={(e) =>
                             updateRateItem(
@@ -996,7 +1151,8 @@ export default function ServiceQuote() {
                               e.target.value,
                             )
                           }
-                          className="sq-wide-input"
+                          className="sq-wide-input sq-textarea"
+                          rows={2}
                         />
                       </td>
                       <td>
@@ -1042,9 +1198,54 @@ export default function ServiceQuote() {
                 </tbody>
               </table>
             </div>
-            <button className="sq-btn sq-btn-add" onClick={addRateItem}>
-              <i className="fas fa-plus"></i> Add Rate Item
-            </button>
+            <div className="sq-paste-bar">
+              <button className="sq-btn sq-btn-add" onClick={addRateItem}>
+                <i className="fas fa-plus"></i> Add Rate Item
+              </button>
+              <button
+                className="sq-btn sq-btn-paste"
+                onClick={() => setShowRateItemPaste((v) => !v)}
+              >
+                <i className="fas fa-paste"></i>{" "}
+                {showRateItemPaste ? "Hide Paste Area" : "Paste from Excel"}
+              </button>
+            </div>
+
+            {showRateItemPaste && (
+              <div className="sq-paste-area">
+                <p className="sq-paste-hint">
+                  Copy rows from Excel and paste below. Column order:{" "}
+                  <strong>
+                    Support Item Number | Support Item Name | Reg Group | Rate
+                  </strong>
+                </p>
+                <textarea
+                  className="sq-paste-textarea"
+                  value={rateItemPasteText}
+                  onChange={(e) => setRateItemPasteText(e.target.value)}
+                  placeholder="Paste Excel rows here (Ctrl+V)..."
+                  rows={6}
+                />
+                <div className="sq-paste-actions">
+                  <button
+                    className="sq-btn sq-btn-apply"
+                    onClick={applyRateItemPaste}
+                    disabled={!rateItemPasteText.trim()}
+                  >
+                    <i className="fas fa-check"></i> Apply
+                  </button>
+                  <button
+                    className="sq-btn sq-btn-cancel"
+                    onClick={() => {
+                      setRateItemPasteText("");
+                      setShowRateItemPaste(false);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
 
             <h3 style={{ marginTop: 24 }}>Rate Table (by Day Type)</h3>
             <div className="sq-table-wrap">
@@ -1076,8 +1277,7 @@ export default function ServiceQuote() {
                         />
                       </td>
                       <td>
-                        <input
-                          type="text"
+                        <textarea
                           value={row.supportCategory}
                           onChange={(e) =>
                             updateRateTable(
@@ -1086,12 +1286,12 @@ export default function ServiceQuote() {
                               e.target.value,
                             )
                           }
-                          className="sq-wide-input"
+                          className="sq-wide-input sq-textarea"
+                          rows={2}
                         />
                       </td>
                       <td>
-                        <input
-                          type="text"
+                        <textarea
                           value={row.supportItemName}
                           onChange={(e) =>
                             updateRateTable(
@@ -1100,7 +1300,8 @@ export default function ServiceQuote() {
                               e.target.value,
                             )
                           }
-                          className="sq-wide-input"
+                          className="sq-wide-input sq-textarea"
+                          rows={2}
                         />
                       </td>
                       <td>
@@ -1192,9 +1393,55 @@ export default function ServiceQuote() {
                 </tbody>
               </table>
             </div>
-            <button className="sq-btn sq-btn-add" onClick={addRateTableRow}>
-              <i className="fas fa-plus"></i> Add Rate Row
-            </button>
+            <div className="sq-paste-bar">
+              <button className="sq-btn sq-btn-add" onClick={addRateTableRow}>
+                <i className="fas fa-plus"></i> Add Rate Row
+              </button>
+              <button
+                className="sq-btn sq-btn-paste"
+                onClick={() => setShowRatePaste((v) => !v)}
+              >
+                <i className="fas fa-paste"></i>{" "}
+                {showRatePaste ? "Hide Paste Area" : "Paste from Excel"}
+              </button>
+            </div>
+
+            {showRatePaste && (
+              <div className="sq-paste-area">
+                <p className="sq-paste-hint">
+                  Copy rows from Excel and paste below. Column order:{" "}
+                  <strong>
+                    Reg Group | Support Category | Support Item Name | Daily Hrs
+                    | Weekday ($) | Saturday ($) | Sunday ($) | PH ($)
+                  </strong>
+                </p>
+                <textarea
+                  className="sq-paste-textarea"
+                  value={ratePasteText}
+                  onChange={(e) => setRatePasteText(e.target.value)}
+                  placeholder="Paste Excel rows here (Ctrl+V)..."
+                  rows={6}
+                />
+                <div className="sq-paste-actions">
+                  <button
+                    className="sq-btn sq-btn-apply"
+                    onClick={applyRatePaste}
+                    disabled={!ratePasteText.trim()}
+                  >
+                    <i className="fas fa-check"></i> Apply
+                  </button>
+                  <button
+                    className="sq-btn sq-btn-cancel"
+                    onClick={() => {
+                      setRatePasteText("");
+                      setShowRatePaste(false);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
 
             <h3 style={{ marginTop: 24 }}>
               Public Holidays &amp; Irregular Supports
@@ -1329,14 +1576,10 @@ export default function ServiceQuote() {
                           return (
                             <tr key={day}>
                               <td className="sq-day-cell">{day}</td>
-                              <td className="sq-money">
-                                ${fmt(pricePerHour)}
-                              </td>
+                              <td className="sq-money">${fmt(pricePerHour)}</td>
                               <td className="sq-money">${fmt(priceRatio)}</td>
                               <td>hrs / Day</td>
-                              <td className="sq-right">
-                                {fmt(totalHrs)}
-                              </td>
+                              <td className="sq-right">{fmt(totalHrs)}</td>
                               <td className="sq-money">$</td>
                               <td className="sq-money">{fmt(totalCost)}</td>
                             </tr>
@@ -1387,24 +1630,16 @@ export default function ServiceQuote() {
                         <tr key={day}>
                           <td className="sq-day-cell">{day}</td>
                           <td className="sq-money">
-                            $
-                            {fmt(
-                              quoteData.sleepover.rate?.weekdayRate || 0,
-                            )}
+                            ${fmt(quoteData.sleepover.rate?.weekdayRate || 0)}
                           </td>
                           <td className="sq-money">
-                            $
-                            {fmt(
-                              quoteData.sleepover.rate?.weekdayRate || 0,
-                            )}
+                            ${fmt(quoteData.sleepover.rate?.weekdayRate || 0)}
                           </td>
                           <td>per night</td>
                           <td className="sq-right">1.00</td>
                           <td className="sq-money">$</td>
                           <td className="sq-money">
-                            {fmt(
-                              quoteData.sleepover.rate?.weekdayRate || 0,
-                            )}
+                            {fmt(quoteData.sleepover.rate?.weekdayRate || 0)}
                           </td>
                         </tr>
                       ))}
@@ -1518,9 +1753,7 @@ export default function ServiceQuote() {
                     <tr className="sq-grand-total">
                       <td></td>
                       <td></td>
-                      <td className="sq-money">
-                        ${fmt(quoteData.grandTotal)}
-                      </td>
+                      <td className="sq-money">${fmt(quoteData.grandTotal)}</td>
                     </tr>
                   </tbody>
                 </table>
