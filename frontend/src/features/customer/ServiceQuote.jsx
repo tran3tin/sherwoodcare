@@ -307,6 +307,10 @@ const DEFAULT_RATE_TABLE = [
     saturdayRate: 92.12,
     sundayRate: 118.78,
     phRate: 145.44,
+    weekdayCode: "01_011_0107_1_1",
+    saturdayCode: "01_013_0107_1_1",
+    sundayCode: "01_014_0107_1_1",
+    phCode: "01_012_0107_1_1",
   },
   {
     id: 2,
@@ -319,6 +323,10 @@ const DEFAULT_RATE_TABLE = [
     saturdayRate: 92.12,
     sundayRate: 118.78,
     phRate: 145.44,
+    weekdayCode: "01_015_0107_1_1",
+    saturdayCode: "01_013_0107_1_1",
+    sundayCode: "01_014_0107_1_1",
+    phCode: "01_012_0107_1_1",
   },
   {
     id: 3,
@@ -331,6 +339,10 @@ const DEFAULT_RATE_TABLE = [
     saturdayRate: 277.27,
     sundayRate: 278.27,
     phRate: 279.27,
+    weekdayCode: "01_010_0107_1_1",
+    saturdayCode: "01_010_0107_1_2",
+    sundayCode: "01_010_0107_1_3",
+    phCode: "01_010_0107_1_4",
   },
   {
     id: 4,
@@ -342,6 +354,10 @@ const DEFAULT_RATE_TABLE = [
     saturdayRate: 55.03,
     sundayRate: 55.03,
     phRate: 55.03,
+    weekdayCode: "01_004_0107_1_1",
+    saturdayCode: "01_004_0107_1_1",
+    sundayCode: "01_004_0107_1_1",
+    phCode: "01_004_0107_1_1",
   },
   {
     id: 5,
@@ -354,6 +370,10 @@ const DEFAULT_RATE_TABLE = [
     saturdayRate: 92.12,
     sundayRate: 118.78,
     phRate: 145.44,
+    weekdayCode: "01_801_0115_1_1",
+    saturdayCode: "01_804_0115_1_1",
+    sundayCode: "01_805_0115_1_1",
+    phCode: "01_806_0115_1_1",
   },
 ];
 
@@ -444,9 +464,13 @@ const RT_FIXED_KEYS = [
   "supportItemName",
   "dailyHours",
   "weekdayRate",
+  "weekdayCode",
   "saturdayRate",
+  "saturdayCode",
   "sundayRate",
+  "sundayCode",
   "phRate",
+  "phCode",
 ];
 
 // ─── Column rendering definitions ────────────────────────────────────────
@@ -569,6 +593,7 @@ const RT_COL_DEFS = [
     type: "number",
     width: "90px",
     align: "right",
+    codeKey: "weekdayCode",
   },
   {
     key: "saturdayRate",
@@ -576,6 +601,7 @@ const RT_COL_DEFS = [
     type: "number",
     width: "90px",
     align: "right",
+    codeKey: "saturdayCode",
   },
   {
     key: "sundayRate",
@@ -583,6 +609,7 @@ const RT_COL_DEFS = [
     type: "number",
     width: "90px",
     align: "right",
+    codeKey: "sundayCode",
   },
   {
     key: "phRate",
@@ -590,6 +617,7 @@ const RT_COL_DEFS = [
     type: "number",
     width: "90px",
     align: "right",
+    codeKey: "phCode",
   },
 ];
 
@@ -687,9 +715,13 @@ export default function ServiceQuote() {
       supportItemName: "",
       dailyHours: 0,
       weekdayRate: 0,
+      weekdayCode: "",
       saturdayRate: 0,
+      saturdayCode: "",
       sundayRate: 0,
+      sundayCode: "",
       phRate: 0,
+      phCode: "",
       _extra: {},
     }),
     [],
@@ -1828,6 +1860,71 @@ export default function ServiceQuote() {
                         const val = col.key.startsWith("extra_")
                           ? (row._extra?.[col.key] ?? "")
                           : row[col.key];
+
+                        if (col.codeKey) {
+                          return (
+                            <td key={col.key} style={TD_STYLE}>
+                              <textarea
+                                id={`rt-${rowIdx}-${colIdx}`}
+                                value={val ?? ""}
+                                rows={1}
+                                onChange={(e) => {
+                                  updateRateCell(
+                                    rowIdx,
+                                    col.key,
+                                    e.target.value,
+                                  );
+                                  autoResize(e.target);
+                                }}
+                                onBlur={(e) => {
+                                  updateRateCell(
+                                    rowIdx,
+                                    col.key,
+                                    parseFloat(e.target.value) || 0,
+                                  );
+                                }}
+                                onPaste={(e) =>
+                                  handleRatePaste(e, rowIdx, colIdx)
+                                }
+                                onKeyDown={(e) =>
+                                  handleCellKeyDown(
+                                    e,
+                                    "rt",
+                                    rowIdx,
+                                    colIdx,
+                                    rtAllCols.length,
+                                    rateTable.length,
+                                    addRateRows,
+                                  )
+                                }
+                                style={{
+                                  ...CELL_STYLE,
+                                  textAlign: col.align || "right",
+                                  fontWeight: 600,
+                                  color: "#1f2937",
+                                }}
+                              />
+                              <textarea
+                                value={row[col.codeKey] ?? ""}
+                                rows={2}
+                                onChange={(e) => {
+                                  updateRateCell(
+                                    rowIdx,
+                                    col.codeKey,
+                                    e.target.value,
+                                  );
+                                  autoResize(e.target);
+                                }}
+                                style={{
+                                  ...CELL_STYLE,
+                                  marginTop: 2,
+                                  minHeight: "34px",
+                                  textAlign: "left",
+                                }}
+                              />
+                            </td>
+                          );
+                        }
 
                         return (
                           <td key={col.key} style={TD_STYLE}>
