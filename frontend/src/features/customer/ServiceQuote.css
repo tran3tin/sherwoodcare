@@ -248,6 +248,69 @@
   margin-top: 8px;
 }
 
+/* ═══ Invoice Tab ═══════════════════════════════════════════ */
+.sq-invoice-head {
+  margin-bottom: 12px;
+}
+
+.sq-invoice-sub {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.sq-invoice-wrap {
+  border: 1px solid #a3a3a3;
+  overflow-x: auto;
+}
+
+.sq-invoice-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+  font-size: 13px;
+}
+
+.sq-invoice-table th {
+  background: #d4d4d4;
+  color: #1f2937;
+  border: 1px solid #a3a3a3;
+  padding: 8px 8px;
+  text-align: left;
+  font-weight: 700;
+}
+
+.sq-invoice-table td {
+  border: 1px solid #d4d4d4;
+  padding: 6px 8px;
+  vertical-align: top;
+}
+
+.sq-invoice-table tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.sq-invoice-empty {
+  text-align: center;
+  color: #64748b;
+  padding: 16px;
+}
+
+.sq-invoice-table tfoot td {
+  background: #f3f4f6;
+  border-color: #a3a3a3;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.sq-invoice-total-label {
+  color: #111827;
+}
+
+.sq-invoice-total-value {
+  color: #111827;
+}
+
 /* ═══ Quote Output ═══════════════════════════════════════════ */
 .sq-quote-actions {
   display: flex;

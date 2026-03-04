@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import * as XLSX from "xlsx";
 import Layout from "../../components/Layout";
 import "./ServiceQuote.css";
@@ -392,6 +398,26 @@ const fmt = (n) =>
   });
 
 const fmtOr = (n) => (n === 0 ? "-" : fmt(n));
+
+const getMondayToSunday = (baseDate = new Date()) => {
+  const start = new Date(baseDate);
+  start.setHours(0, 0, 0, 0);
+  const day = (start.getDay() + 6) % 7;
+  start.setDate(start.getDate() - day);
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return d;
+  });
+};
+
+const fmtDate = (date) =>
+  date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 
 // ─── Spreadsheet helpers ─────────────────────────────────────────────────
 const parseClipboard = (str) => {
@@ -1205,6 +1231,68 @@ export default function ServiceQuote() {
     irregularHours,
   ]);
 
+  // ─── Computed: Invoice rows (Mon-Sun) ───────────────────────────────
+  const invoiceData = useMemo(() => {
+    const findBaseItem = (keyword) =>
+      baseRateItems.find((item) =>
+        (item.supportItemName || "").toLowerCase().includes(keyword),
+      );
+
+    const weekdayDayItem = findBaseItem("weekday daytime");
+    const weekdayEveningItem = findBaseItem("weekday evening");
+    const saturdayItem = findBaseItem("saturday");
+    const sundayItem = findBaseItem("sunday");
+    const sleepoverItem = findBaseItem("night-time sleepover");
+
+    const getItemByDay = (timeOfDay, dayName) => {
+      if (timeOfDay === "Overnight") return sleepoverItem;
+      if (dayName === "Saturday") return saturdayItem;
+      if (dayName === "Sunday") return sundayItem;
+      if (timeOfDay === "Evening") return weekdayEveningItem || weekdayDayItem;
+      return weekdayDayItem;
+    };
+
+    const weekDates = getMondayToSunday();
+    const rows = [];
+
+    weekDates.forEach((date, dayIdx) => {
+      const dayName = DAYS[dayIdx];
+
+      scheduleRows.forEach((row) => {
+        const isOvernight = row.timeOfDay === "Overnight";
+        const units = isOvernight
+          ? parseFloat(row.hoursPerDay) || 1
+          : parseFloat(row.hoursPerDay) || 0;
+
+        if (units <= 0) return;
+
+        const baseItem = getItemByDay(row.timeOfDay, dayName);
+        const baseRate = parseFloat(baseItem?.rate) || 0;
+        const ratio = getRatio(row.serviceType || "1:1");
+        const unitPrice = ratio ? baseRate / ratio : 0;
+        const amount = units * unitPrice;
+
+        rows.push({
+          date,
+          dateLabel: fmtDate(date),
+          units,
+          itemCode: baseItem?.supportItemNumber || "",
+          description:
+            `${baseItem?.supportItemName || row.description || ""} (${row.serviceType || "1:1"})`.trim(),
+          unitPrice,
+          taxCode: "FRE",
+          amount,
+        });
+      });
+    });
+
+    return {
+      weekDates,
+      rows,
+      totalAmount: rows.reduce((sum, r) => sum + r.amount, 0),
+    };
+  }, [scheduleRows, baseRateItems]);
+
   // ─── Computed: column arrays ───────────────────────────────────────
   const schAllCols = useMemo(
     () => [
@@ -1522,6 +1610,12 @@ export default function ServiceQuote() {
             onClick={() => setActiveTab("rates")}
           >
             <i className="fas fa-dollar-sign"></i> Price / Rates
+          </button>
+          <button
+            className={`sq-tab ${activeTab === "invoice" ? "active" : ""}`}
+            onClick={() => setActiveTab("invoice")}
+          >
+            <i className="fas fa-file-invoice"></i> Invoice
           </button>
         </div>
 
@@ -2621,6 +2715,69 @@ export default function ServiceQuote() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ TAB 5: Invoice ═══ */}
+        {activeTab === "invoice" && (
+          <div className="sq-panel">
+            <div className="sq-invoice-head">
+              <h3 style={{ marginBottom: 6 }}>Service Invoice (Monday - Sunday)</h3>
+              <p className="sq-invoice-sub">
+                Client: {clientName || "—"} | Plan: {planNumber || "—"} | Period:
+                {" "}
+                {invoiceData.weekDates.length
+                  ? `${fmtDate(invoiceData.weekDates[0])} - ${fmtDate(invoiceData.weekDates[6])}`
+                  : "—"}
+              </p>
+            </div>
+
+            <div className="sq-invoice-wrap">
+              <table className="sq-invoice-table">
+                <thead>
+                  <tr>
+                    <th>DATE</th>
+                    <th>HRS/KM</th>
+                    <th>ITEM CODE</th>
+                    <th>DESCRIPTIONS</th>
+                    <th>UNIT PRICE</th>
+                    <th>TAX CODE</th>
+                    <th>AMOUNT</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoiceData.rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="sq-invoice-empty">
+                        No invoice rows. Please enter Hrs/Day values in Daily Service Schedule.
+                      </td>
+                    </tr>
+                  ) : (
+                    invoiceData.rows.map((r, i) => (
+                      <tr key={`${r.dateLabel}-${r.itemCode}-${i}`}>
+                        <td>{r.dateLabel}</td>
+                        <td className="sq-right">{Number(r.units.toFixed(2))}</td>
+                        <td>{r.itemCode}</td>
+                        <td>{r.description}</td>
+                        <td className="sq-right">{fmt(r.unitPrice)}</td>
+                        <td className="sq-center">{r.taxCode}</td>
+                        <td className="sq-right sq-money">${fmt(r.amount)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={6} className="sq-right sq-invoice-total-label">
+                      Balance Due
+                    </td>
+                    <td className="sq-right sq-money sq-invoice-total-value">
+                      ${fmt(invoiceData.totalAmount)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           </div>
         )}
