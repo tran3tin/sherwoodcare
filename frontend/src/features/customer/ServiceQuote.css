@@ -253,6 +253,12 @@
   margin-bottom: 12px;
 }
 
+.sq-invoice-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
 .sq-invoice-sub {
   margin: 0;
   color: #64748b;

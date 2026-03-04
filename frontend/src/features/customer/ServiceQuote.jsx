@@ -5,6 +5,8 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import Layout from "../../components/Layout";
 import "./ServiceQuote.css";
@@ -1547,6 +1549,81 @@ export default function ServiceQuote() {
     window.print();
   }, []);
 
+  const handleExportInvoicePdf = useCallback(() => {
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.text("Service Invoice (Monday - Sunday)", 40, 40);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    const periodText = invoiceData.weekDates.length
+      ? `${fmtDate(invoiceData.weekDates[0])} - ${fmtDate(invoiceData.weekDates[6])}`
+      : "-";
+    doc.text(`Client: ${clientName || "-"}`, 40, 60);
+    doc.text(`Plan: ${planNumber || "-"}`, 40, 74);
+    doc.text(`Period: ${periodText}`, 40, 88);
+
+    const body = invoiceData.rows.map((row) => [
+      row.dateLabel,
+      Number(row.units.toFixed(2)).toString(),
+      row.itemCode,
+      row.description,
+      fmt(row.unitPrice),
+      row.taxCode,
+      `$${fmt(row.amount)}`,
+    ]);
+
+    autoTable(doc, {
+      startY: 102,
+      head: [
+        [
+          "DATE",
+          "HRS/KM",
+          "ITEM CODE",
+          "DESCRIPTIONS",
+          "UNIT PRICE",
+          "TAX CODE",
+          "AMOUNT",
+        ],
+      ],
+      body,
+      styles: {
+        fontSize: 8,
+        cellPadding: 4,
+        lineColor: [160, 160, 160],
+        lineWidth: 0.4,
+      },
+      headStyles: {
+        fillColor: [212, 212, 212],
+        textColor: [31, 41, 55],
+        fontStyle: "bold",
+      },
+      columnStyles: {
+        0: { cellWidth: 55 },
+        1: { cellWidth: 45, halign: "right" },
+        2: { cellWidth: 70 },
+        3: { cellWidth: 190 },
+        4: { cellWidth: 55, halign: "right" },
+        5: { cellWidth: 45, halign: "center" },
+        6: { cellWidth: 60, halign: "right" },
+      },
+      margin: { left: 40, right: 40 },
+    });
+
+    const y = (doc.lastAutoTable?.finalY || 120) + 20;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(`Balance Due: $${fmt(invoiceData.totalAmount)}`, 555, y, {
+      align: "right",
+    });
+
+    const datePart = new Date().toISOString().slice(0, 10);
+    const safeClient = (clientName || "client").replace(/[^a-z0-9_-]/gi, "_");
+    doc.save(`Service_Invoice_${safeClient}_${datePart}.pdf`);
+  }, [invoiceData, clientName, planNumber]);
+
   // ─── Render ──────────────────────────────────────────────────────
   return (
     <Layout
@@ -2722,6 +2799,12 @@ export default function ServiceQuote() {
         {/* ═══ TAB 5: Invoice ═══ */}
         {activeTab === "invoice" && (
           <div className="sq-panel">
+            <div className="sq-invoice-actions">
+              <button className="sq-btn sq-btn-export" onClick={handleExportInvoicePdf}>
+                <i className="fas fa-file-pdf"></i> Export PDF
+              </button>
+            </div>
+
             <div className="sq-invoice-head">
               <h3 style={{ marginBottom: 6 }}>Service Invoice (Monday - Sunday)</h3>
               <p className="sq-invoice-sub">
