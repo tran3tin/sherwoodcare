@@ -1560,6 +1560,29 @@ export default function ServiceQuote() {
     const wsRateTable = XLSX.utils.json_to_sheet(rateTableExport);
     XLSX.utils.book_append_sheet(wb, wsRateTable, "Price Rates");
 
+    const invoiceExportRows = invoiceData.rows.map((row) => ({
+      DATE: row.dateLabel,
+      "HRS/KM": Number((row.units || 0).toFixed(2)),
+      "ITEM CODE": row.itemCode || "",
+      DESCRIPTIONS: row.description || "",
+      "UNIT PRICE": Number((row.unitPrice || 0).toFixed(2)),
+      "TAX CODE": row.taxCode || "",
+      AMOUNT: Number((row.amount || 0).toFixed(2)),
+    }));
+
+    invoiceExportRows.push({
+      DATE: "",
+      "HRS/KM": "",
+      "ITEM CODE": "",
+      DESCRIPTIONS: "Balance Due",
+      "UNIT PRICE": "",
+      "TAX CODE": "",
+      AMOUNT: Number((invoiceData.totalAmount || 0).toFixed(2)),
+    });
+
+    const wsInvoice = XLSX.utils.json_to_sheet(invoiceExportRows);
+    XLSX.utils.book_append_sheet(wb, wsInvoice, "Invoice");
+
     const datePart = new Date().toISOString().slice(0, 10);
     const safeClient = (clientName || "client").replace(/[^a-z0-9_-]/gi, "_");
     XLSX.writeFile(wb, `Service_Quote_${safeClient}_${datePart}.xlsx`);
@@ -1577,6 +1600,7 @@ export default function ServiceQuote() {
     baseRateItems,
     rateTable,
     rtAllCols,
+    invoiceData,
   ]);
 
   // ─── Print ───────────────────────────────────────────────────────
