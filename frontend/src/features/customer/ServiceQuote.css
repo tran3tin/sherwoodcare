@@ -256,7 +256,26 @@
 .sq-invoice-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   margin-bottom: 10px;
+}
+
+.sq-btn-excel {
+  background: #166534;
+  color: #fff;
+}
+
+.sq-btn-excel:hover {
+  background: #15803d;
+}
+
+.sq-btn-pdf {
+  background: #b91c1c;
+  color: #fff;
+}
+
+.sq-btn-pdf:hover {
+  background: #991b1b;
 }
 
 .sq-invoice-sub {
