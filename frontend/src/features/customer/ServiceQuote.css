@@ -252,7 +252,17 @@
 .sq-quote-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   margin-bottom: 16px;
+}
+
+.sq-btn-export {
+  background: #166534;
+  color: #fff;
+}
+
+.sq-btn-export:hover {
+  background: #15803d;
 }
 
 .sq-quote {

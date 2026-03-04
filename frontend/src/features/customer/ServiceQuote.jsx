@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 import Layout from "../../components/Layout";
 import "./ServiceQuote.css";
 import "../../assets/styles/list.css";
@@ -1189,6 +1190,226 @@ export default function ServiceQuote() {
     [rateTableExtraCols],
   );
 
+  // ─── Export Excel ─────────────────────────────────────────────────────
+  const handleExportExcel = useCallback(() => {
+    const wb = XLSX.utils.book_new();
+
+    const summaryRows = [
+      {
+        Metric: "Client",
+        Unit: "",
+        Value: clientName || "-",
+      },
+      {
+        Metric: "Plan Number",
+        Unit: "",
+        Value: planNumber || "-",
+      },
+      {
+        Metric: "Plan Period",
+        Unit: "",
+        Value: planPeriod || "TBA",
+      },
+      {
+        Metric: "Estimated weekly services amount (Day & Evening)",
+        Unit: "$/week",
+        "Hrs/Nights": Number((quoteData.weeklyHrsNights || 0).toFixed(2)),
+        Amount: Number((quoteData.estimatedWeekly || 0).toFixed(2)),
+      },
+      {
+        Metric: "Estimated weekly inactive sleepover",
+        Unit: "$/week",
+        "Hrs/Nights": Number((quoteData.sleepoverHrsNights || 0).toFixed(2)),
+        Amount: Number((quoteData.estimatedSleepoverWeekly || 0).toFixed(2)),
+      },
+      {
+        Metric: "Estimated fortnightly amount",
+        Unit: "$/fortnight",
+        "Hrs/Nights": Number((quoteData.fortnightlyHrsNights || 0).toFixed(2)),
+        Amount: Number((quoteData.estimatedFortnightly || 0).toFixed(2)),
+      },
+      {
+        Metric: "Estimated annual amount",
+        Unit: "$/year",
+        "Hrs/Nights": Number((quoteData.annualHrsNights || 0).toFixed(2)),
+        Amount: Number((quoteData.estimatedAnnual || 0).toFixed(2)),
+      },
+      {
+        Metric: "Estimated annual irregular supports amount",
+        Unit: "$/year",
+        "Hrs/Nights": Number((quoteData.irregularHrsNights || 0).toFixed(2)),
+        Amount: Number((quoteData.estimatedIrregularAnnual || 0).toFixed(2)),
+      },
+      {
+        Metric: "Grand Total",
+        Unit: "",
+        "Hrs/Nights": Number((quoteData.totalHrsNights || 0).toFixed(2)),
+        Amount: Number((quoteData.grandTotal || 0).toFixed(2)),
+      },
+      {
+        Metric: "Public holiday rate",
+        Unit: "$/hr",
+        Value: Number((publicHolidayRate || 0).toFixed(2)),
+      },
+      {
+        Metric: "Public holiday hours/year",
+        Unit: "hrs/year",
+        Value: Number((publicHolidayHours || 0).toFixed(2)),
+      },
+      {
+        Metric: "Irregular supports rate",
+        Unit: "$/hr",
+        Value: Number((irregularRate || 0).toFixed(2)),
+      },
+      {
+        Metric: "Irregular supports hours/year",
+        Unit: "hrs/year",
+        Value: Number((irregularHours || 0).toFixed(2)),
+      },
+    ];
+
+    const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+    XLSX.utils.book_append_sheet(wb, wsSummary, "Quote Summary");
+
+    const breakdownRows = [];
+    SERVICE_TYPES.forEach((st) => {
+      ["day", "evening"].forEach((period) => {
+        const group = quoteData.grouped?.[st]?.[period];
+        if (!group?.rows?.length) return;
+
+        DAYS.forEach((day, dayIdx) => {
+          let totalHrs = 0;
+          let totalCost = 0;
+          let pricePerHour = 0;
+          let pricePerHourRatio = 0;
+
+          group.rows.forEach((row) => {
+            const dd = row.dayData?.[dayIdx];
+            if (!dd) return;
+            totalHrs += dd.hours || 0;
+            totalCost += dd.cost || 0;
+            pricePerHour = dd.pricePerHour || 0;
+            pricePerHourRatio = dd.pricePerHourRatio || 0;
+          });
+
+          breakdownRows.push({
+            Regis: "107",
+            "Service Type": st,
+            Period: period === "evening" ? "Evening" : "Day",
+            Day: day,
+            "Price/Hour": Number(pricePerHour.toFixed(2)),
+            "Price/Hour/Ratio": Number(pricePerHourRatio.toFixed(2)),
+            "Hours/Day": Number(totalHrs.toFixed(2)),
+            Cost: Number(totalCost.toFixed(2)),
+          });
+        });
+
+        breakdownRows.push({
+          Regis: "107",
+          "Service Type": st,
+          Period: period === "evening" ? "Evening" : "Day",
+          Day: "Subtotal",
+          "Price/Hour": "",
+          "Price/Hour/Ratio": "",
+          "Hours/Day": Number((group.totalHrsWeek || 0).toFixed(2)),
+          Cost: Number((group.totalCost || 0).toFixed(2)),
+        });
+      });
+    });
+
+    breakdownRows.push({
+      Regis: "107",
+      "Service Type": "Group (2:45)",
+      Period: "Overnight",
+      Day: "Sleepover weekly",
+      "Price/Hour": Number(
+        (quoteData.sleepover?.pricePerNight || 0).toFixed(2),
+      ),
+      "Price/Hour/Ratio": Number((quoteData.sleepover?.rate || 0).toFixed(2)),
+      "Hours/Day": Number((quoteData.sleepover?.nightsPerWeek || 0).toFixed(2)),
+      Cost: Number((quoteData.sleepover?.weekTotal || 0).toFixed(2)),
+    });
+
+    breakdownRows.push({
+      Regis: "",
+      "Service Type": "Public holiday",
+      Period: "Irregular",
+      Day: "Yearly",
+      "Price/Hour": Number((publicHolidayRate || 0).toFixed(2)),
+      "Price/Hour/Ratio": "",
+      "Hours/Day": Number((publicHolidayHours || 0).toFixed(2)),
+      Cost: Number((quoteData.phTotal || 0).toFixed(2)),
+    });
+
+    breakdownRows.push({
+      Regis: "",
+      "Service Type": "Irregular supports",
+      Period: "Irregular",
+      Day: "Yearly",
+      "Price/Hour": Number((irregularRate || 0).toFixed(2)),
+      "Price/Hour/Ratio": "",
+      "Hours/Day": Number((irregularHours || 0).toFixed(2)),
+      Cost: Number((quoteData.irrTotal || 0).toFixed(2)),
+    });
+
+    const wsBreakdown = XLSX.utils.json_to_sheet(breakdownRows);
+    XLSX.utils.book_append_sheet(wb, wsBreakdown, "Quote Breakdown");
+
+    const scheduleExport = scheduleRows.map((row) => {
+      const out = {};
+      schAllCols.forEach((col) => {
+        out[col.label] = col.key.startsWith("extra_")
+          ? (row._extra?.[col.key] ?? "")
+          : (row[col.key] ?? "");
+      });
+      return out;
+    });
+    const wsSchedule = XLSX.utils.json_to_sheet(scheduleExport);
+    XLSX.utils.book_append_sheet(wb, wsSchedule, "Daily Schedule");
+
+    const baseRateExport = baseRateItems.map((item) => ({
+      "Support Item Number": item.supportItemNumber || "",
+      "Support Item Name": item.supportItemName || "",
+      "Registration Group Number": item.regGroupNumber || "",
+      "Price per hours": Number((parseFloat(item.rate) || 0).toFixed(2)),
+    }));
+    const wsBaseRate = XLSX.utils.json_to_sheet(baseRateExport);
+    XLSX.utils.book_append_sheet(wb, wsBaseRate, "Price per hours");
+
+    const rateTableExport = rateTable.map((row) => {
+      const out = {};
+      rtAllCols.forEach((col) => {
+        out[col.label] = col.key.startsWith("extra_")
+          ? (row._extra?.[col.key] ?? "")
+          : (row[col.key] ?? "");
+        if (col.codeKey) {
+          out[`${col.label} Code`] = row[col.codeKey] ?? "";
+        }
+      });
+      return out;
+    });
+    const wsRateTable = XLSX.utils.json_to_sheet(rateTableExport);
+    XLSX.utils.book_append_sheet(wb, wsRateTable, "Price Rates");
+
+    const datePart = new Date().toISOString().slice(0, 10);
+    const safeClient = (clientName || "client").replace(/[^a-z0-9_-]/gi, "_");
+    XLSX.writeFile(wb, `Service_Quote_${safeClient}_${datePart}.xlsx`);
+  }, [
+    clientName,
+    planNumber,
+    planPeriod,
+    quoteData,
+    publicHolidayRate,
+    publicHolidayHours,
+    irregularRate,
+    irregularHours,
+    scheduleRows,
+    schAllCols,
+    baseRateItems,
+    rateTable,
+    rtAllCols,
+  ]);
+
   // ─── Print ───────────────────────────────────────────────────────
   const handlePrint = useCallback(() => {
     window.print();
@@ -2067,6 +2288,12 @@ export default function ServiceQuote() {
         {activeTab === "quote" && (
           <div className="sq-panel">
             <div className="sq-quote-actions">
+              <button
+                className="sq-btn sq-btn-export"
+                onClick={handleExportExcel}
+              >
+                <i className="fas fa-file-excel"></i> Export Excel
+              </button>
               <button className="sq-btn sq-btn-print" onClick={handlePrint}>
                 <i className="fas fa-print"></i> Print / PDF
               </button>
@@ -2139,7 +2366,9 @@ export default function ServiceQuote() {
                             return (
                               <tr key={day}>
                                 <td className="sq-day-cell">{day}</td>
-                                <td className="sq-money">${fmt(pricePerHour)}</td>
+                                <td className="sq-money">
+                                  ${fmt(pricePerHour)}
+                                </td>
                                 <td className="sq-money">${fmt(priceRatio)}</td>
                                 <td>hrs / Day</td>
                                 <td className="sq-right">{fmt(totalHrs)}</td>
@@ -2340,7 +2569,9 @@ export default function ServiceQuote() {
                     <tr className="sq-grand-total">
                       <td></td>
                       <td></td>
-                      <td className="sq-right">{fmt(quoteData.totalHrsNights)}</td>
+                      <td className="sq-right">
+                        {fmt(quoteData.totalHrsNights)}
+                      </td>
                       <td className="sq-money">${fmt(quoteData.grandTotal)}</td>
                     </tr>
                   </tbody>
