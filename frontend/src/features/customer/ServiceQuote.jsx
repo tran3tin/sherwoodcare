@@ -1254,11 +1254,24 @@ export default function ServiceQuote() {
       return weekdayDayItem;
     };
 
+    const getSortRank = (row) => {
+      if (row.timeOfDay === "Overnight") return 5;
+      const orderMap = {
+        "1:1": 0,
+        "Group (1:45)": 1,
+        "Group (2:45)": 2,
+        "Group (3:45)": 3,
+        "Group (4:45)": 4,
+      };
+      return orderMap[row.serviceType] ?? 4;
+    };
+
     const weekDates = getMondayToSunday();
     const rows = [];
 
     weekDates.forEach((date, dayIdx) => {
       const dayName = DAYS[dayIdx];
+      const dayRows = [];
 
       scheduleRows.forEach((row) => {
         const isOvernight = row.timeOfDay === "Overnight";
@@ -1274,7 +1287,8 @@ export default function ServiceQuote() {
         const unitPrice = ratio ? baseRate / ratio : 0;
         const amount = units * unitPrice;
 
-        rows.push({
+        dayRows.push({
+          sortRank: getSortRank(row),
           date,
           dateLabel: fmtDate(date),
           units,
@@ -1286,6 +1300,14 @@ export default function ServiceQuote() {
           amount,
         });
       });
+
+      dayRows
+        .sort(
+          (a, b) =>
+            a.sortRank - b.sortRank ||
+            (a.description || "").localeCompare(b.description || ""),
+        )
+        .forEach(({ sortRank, ...item }) => rows.push(item));
     });
 
     return {
