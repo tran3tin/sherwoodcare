@@ -1271,7 +1271,7 @@ export default function ServiceQuote() {
 
     weekDates.forEach((date, dayIdx) => {
       const dayName = DAYS[dayIdx];
-      const dayRows = [];
+      const groupedDayRows = new Map();
 
       scheduleRows.forEach((row) => {
         const isOvernight = row.timeOfDay === "Overnight";
@@ -1287,27 +1287,40 @@ export default function ServiceQuote() {
         const unitPrice = ratio ? baseRate / ratio : 0;
         const amount = units * unitPrice;
 
-        dayRows.push({
+        const ratioGroup = row.serviceType || "1:1";
+        const itemCode = baseItem?.supportItemNumber || "";
+        const groupKey = `${ratioGroup}__${itemCode}`;
+        const existing = groupedDayRows.get(groupKey);
+
+        if (existing) {
+          existing.units += units;
+          existing.amount += amount;
+          return;
+        }
+
+        groupedDayRows.set(groupKey, {
           sortRank: getSortRank(row),
+          ratioGroup,
           date,
           dateLabel: fmtDate(date),
           units,
-          itemCode: baseItem?.supportItemNumber || "",
+          itemCode,
           description:
-            `${baseItem?.supportItemName || row.description || ""} (${row.serviceType || "1:1"})`.trim(),
+            `${baseItem?.supportItemName || row.description || ""} (${ratioGroup})`.trim(),
           unitPrice,
           taxCode: "FRE",
           amount,
         });
       });
 
-      dayRows
+      Array.from(groupedDayRows.values())
         .sort(
           (a, b) =>
             a.sortRank - b.sortRank ||
+            (a.itemCode || "").localeCompare(b.itemCode || "") ||
             (a.description || "").localeCompare(b.description || ""),
         )
-        .forEach(({ sortRank, ...item }) => rows.push(item));
+        .forEach(({ sortRank, ratioGroup, ...item }) => rows.push(item));
     });
 
     return {
