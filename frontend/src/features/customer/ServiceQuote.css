@@ -315,6 +315,10 @@
   background: #fafafa;
 }
 
+.sq-invoice-table tbody tr.sq-invoice-day-sep td {
+  border-top: 3px solid #9ca3af;
+}
+
 .sq-invoice-empty {
   text-align: center;
   color: #64748b;

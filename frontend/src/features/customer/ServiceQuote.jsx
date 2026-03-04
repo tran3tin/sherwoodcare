@@ -2859,19 +2859,27 @@ export default function ServiceQuote() {
         {activeTab === "invoice" && (
           <div className="sq-panel">
             <div className="sq-invoice-actions">
-              <button className="sq-btn sq-btn-excel" onClick={handleExportExcel}>
+              <button
+                className="sq-btn sq-btn-excel"
+                onClick={handleExportExcel}
+              >
                 <i className="fas fa-file-excel"></i> Export Excel
               </button>
-              <button className="sq-btn sq-btn-pdf" onClick={handleExportInvoicePdf}>
+              <button
+                className="sq-btn sq-btn-pdf"
+                onClick={handleExportInvoicePdf}
+              >
                 <i className="fas fa-file-pdf"></i> Export PDF
               </button>
             </div>
 
             <div className="sq-invoice-head">
-              <h3 style={{ marginBottom: 6 }}>Service Invoice (Monday - Sunday)</h3>
+              <h3 style={{ marginBottom: 6 }}>
+                Service Invoice (Monday - Sunday)
+              </h3>
               <p className="sq-invoice-sub">
-                Client: {clientName || "—"} | Plan: {planNumber || "—"} | Period:
-                {" "}
+                Client: {clientName || "—"} | Plan: {planNumber || "—"} |
+                Period:{" "}
                 {invoiceData.weekDates.length
                   ? `${fmtDate(invoiceData.weekDates[0])} - ${fmtDate(invoiceData.weekDates[6])}`
                   : "—"}
@@ -2895,21 +2903,32 @@ export default function ServiceQuote() {
                   {invoiceData.rows.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="sq-invoice-empty">
-                        No invoice rows. Please enter Hrs/Day values in Daily Service Schedule.
+                        No invoice rows. Please enter Hrs/Day values in Daily
+                        Service Schedule.
                       </td>
                     </tr>
                   ) : (
-                    invoiceData.rows.map((r, i) => (
-                      <tr key={`${r.dateLabel}-${r.itemCode}-${i}`}>
+                    invoiceData.rows.map((r, i) => {
+                      const isNewDay =
+                        i > 0 && invoiceData.rows[i - 1].dateLabel !== r.dateLabel;
+
+                      return (
+                      <tr
+                        key={`${r.dateLabel}-${r.itemCode}-${i}`}
+                        className={isNewDay ? "sq-invoice-day-sep" : ""}
+                      >
                         <td>{r.dateLabel}</td>
-                        <td className="sq-right">{Number(r.units.toFixed(2))}</td>
+                        <td className="sq-right">
+                          {Number(r.units.toFixed(2))}
+                        </td>
                         <td>{r.itemCode}</td>
                         <td>{r.description}</td>
                         <td className="sq-right">{fmt(r.unitPrice)}</td>
                         <td className="sq-center">{r.taxCode}</td>
                         <td className="sq-right sq-money">${fmt(r.amount)}</td>
                       </tr>
-                    ))
+                      );
+                    })
                   )}
                 </tbody>
                 <tfoot>
