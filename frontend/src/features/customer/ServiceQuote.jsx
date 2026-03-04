@@ -2859,6 +2859,9 @@ export default function ServiceQuote() {
         {activeTab === "invoice" && (
           <div className="sq-panel">
             <div className="sq-invoice-actions">
+              <button className="sq-btn sq-btn-export" onClick={handleExportExcel}>
+                <i className="fas fa-file-excel"></i> Export Excel
+              </button>
               <button className="sq-btn sq-btn-export" onClick={handleExportInvoicePdf}>
                 <i className="fas fa-file-pdf"></i> Export PDF
               </button>
