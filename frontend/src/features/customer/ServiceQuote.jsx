@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import Layout from "../../components/Layout";
 import "./ServiceQuote.css";
@@ -1189,6 +1189,101 @@ export default function ServiceQuote() {
     ],
     [rateTableExtraCols],
   );
+
+  // ─── Auto-sync Price / Rates from Service Quote ───────────────────────
+  useEffect(() => {
+    const autoRows = [];
+
+    const toRate = (totalCost, totalHours) => {
+      if (!totalHours) return 0;
+      return totalCost / totalHours;
+    };
+
+    SERVICE_TYPES.forEach((serviceType) => {
+      ["day", "evening"].forEach((period) => {
+        const group = quoteData.grouped?.[serviceType]?.[period];
+        if (!group?.rows?.length) return;
+
+        let weekdayCost = 0;
+        let weekdayHours = 0;
+        let saturdayCost = 0;
+        let saturdayHours = 0;
+        let sundayCost = 0;
+        let sundayHours = 0;
+
+        group.rows.forEach((row) => {
+          (row.dayData || []).forEach((dayRow, idx) => {
+            const dayName = DAYS[idx];
+            const hours = parseFloat(dayRow?.hours) || 0;
+            const cost = parseFloat(dayRow?.cost) || 0;
+
+            if (dayName === "Saturday") {
+              saturdayHours += hours;
+              saturdayCost += cost;
+            } else if (dayName === "Sunday") {
+              sundayHours += hours;
+              sundayCost += cost;
+            } else {
+              weekdayHours += hours;
+              weekdayCost += cost;
+            }
+          });
+        });
+
+        autoRows.push({
+          id: `auto-${serviceType}-${period}`,
+          regGroupNo: "107",
+          supportCategory:
+            "Assistance with daily Personal Activities/Personal life",
+          supportItemName: `${serviceType} (${period === "evening" ? "Evening" : "Day"})`,
+          dailyHours: Number(((group.totalHrsWeek || 0) / 7).toFixed(2)),
+          weekdayRate: Number(toRate(weekdayCost, weekdayHours).toFixed(2)),
+          weekdayCode: "",
+          saturdayRate: Number(toRate(saturdayCost, saturdayHours).toFixed(2)),
+          saturdayCode: "",
+          sundayRate: Number(toRate(sundayCost, sundayHours).toFixed(2)),
+          sundayCode: "",
+          phRate: Number((publicHolidayRate || 0).toFixed(2)),
+          phCode: "",
+          _extra: {},
+        });
+      });
+    });
+
+    if ((quoteData.sleepover?.weekTotal || 0) > 0) {
+      autoRows.push({
+        id: "auto-sleepover",
+        regGroupNo: "107",
+        supportCategory: "Assistance with daily Personal Activities/Personal life",
+        supportItemName: "Night-Time Sleepover",
+        dailyHours: Number(((quoteData.sleepover?.nightsPerWeek || 0) / 7).toFixed(2)),
+        weekdayRate: Number((quoteData.sleepover?.rate || 0).toFixed(2)),
+        weekdayCode: "",
+        saturdayRate: Number((quoteData.sleepover?.rate || 0).toFixed(2)),
+        saturdayCode: "",
+        sundayRate: Number((quoteData.sleepover?.rate || 0).toFixed(2)),
+        sundayCode: "",
+        phRate: Number((publicHolidayRate || 0).toFixed(2)),
+        phCode: "",
+        _extra: {},
+      });
+    }
+
+    if (autoRows.length > 0) {
+      setRateTable((prev) => {
+        const hasExtraCols = rateTableExtraCols.length > 0;
+        if (!hasExtraCols) return autoRows;
+
+        return autoRows.map((row) => {
+          const prevRow = prev.find((r) => r.id === row.id);
+          return {
+            ...row,
+            _extra: prevRow?._extra || {},
+          };
+        });
+      });
+    }
+  }, [quoteData, publicHolidayRate, rateTableExtraCols]);
 
   // ─── Export Excel ─────────────────────────────────────────────────────
   const handleExportExcel = useCallback(() => {
