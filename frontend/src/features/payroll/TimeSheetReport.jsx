@@ -815,6 +815,39 @@ const TimeSheetReport = () => {
     );
   };
 
+  const autofillFullNameFromDB = async (empIndex) => {
+    try {
+      const response = await employeeService.getAll(); // Fetch employees from the database
+      const employeesFromDB = response.data;
+
+      setReportData((prev) =>
+        prev.map((employee, eIndex) => {
+          if (eIndex !== empIndex) return employee;
+
+          const preferName = employee.name;
+          const matchedEmployee = employeesFromDB.find(
+            (emp) => `${emp.first_name} ${emp.last_name}`.toLowerCase() === preferName.toLowerCase()
+          );
+
+          if (matchedEmployee) {
+            return {
+              ...employee,
+              jobs: employee.jobs.map((job) => ({
+                ...job,
+                full_name: `${matchedEmployee.first_name} ${matchedEmployee.last_name}`,
+                level: matchedEmployee.level || job.level || "",
+              })),
+            };
+          }
+
+          return employee; // No match, keep as is
+        })
+      );
+    } catch (error) {
+      console.error("Error fetching employees from database:", error);
+    }
+  };
+
   if (loading) {
     return (
       <Layout
