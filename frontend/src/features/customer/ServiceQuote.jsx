@@ -2910,23 +2910,26 @@ export default function ServiceQuote() {
                   ) : (
                     invoiceData.rows.map((r, i) => {
                       const isNewDay =
-                        i > 0 && invoiceData.rows[i - 1].dateLabel !== r.dateLabel;
+                        i > 0 &&
+                        invoiceData.rows[i - 1].dateLabel !== r.dateLabel;
 
                       return (
-                      <tr
-                        key={`${r.dateLabel}-${r.itemCode}-${i}`}
-                        className={isNewDay ? "sq-invoice-day-sep" : ""}
-                      >
-                        <td>{r.dateLabel}</td>
-                        <td className="sq-right">
-                          {Number(r.units.toFixed(2))}
-                        </td>
-                        <td>{r.itemCode}</td>
-                        <td>{r.description}</td>
-                        <td className="sq-right">{fmt(r.unitPrice)}</td>
-                        <td className="sq-center">{r.taxCode}</td>
-                        <td className="sq-right sq-money">${fmt(r.amount)}</td>
-                      </tr>
+                        <tr
+                          key={`${r.dateLabel}-${r.itemCode}-${i}`}
+                          className={isNewDay ? "sq-invoice-day-sep" : ""}
+                        >
+                          <td>{r.dateLabel}</td>
+                          <td className="sq-right">
+                            {Number(r.units.toFixed(2))}
+                          </td>
+                          <td>{r.itemCode}</td>
+                          <td>{r.description}</td>
+                          <td className="sq-right">{fmt(r.unitPrice)}</td>
+                          <td className="sq-center">{r.taxCode}</td>
+                          <td className="sq-right sq-money">
+                            ${fmt(r.amount)}
+                          </td>
+                        </tr>
                       );
                     })
                   )}
