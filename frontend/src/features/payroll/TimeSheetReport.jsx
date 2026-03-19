@@ -712,11 +712,101 @@ const TimeSheetReport = () => {
 
   const updateEmployeeField = (empIndex, value) => {
     setReportData((prev) =>
-      prev.map((employee, index) =>
-        index === empIndex ? { ...employee, name: value } : employee,
-      ),
+      prev.map((employee, index) => {
+        if (index !== empIndex) return employee;
+
+        const updated = { ...employee, name: value };
+
+        // Attempt to autofill full_name when Prefer name uniquely matches an employee
+        try {
+          const prefer = String(value || "").trim().toLowerCase();
+          if (prefer && Array.isArray(employees) && employees.length > 0) {
+            const candidates = employees.filter((emp) => {
+              const full = `${emp.first_name || ""} ${emp.last_name || ""}`
+                .trim()
+                .toLowerCase();
+              const first = (emp.prefer_name || emp.first_name || "")
+                .toString()
+                .trim()
+                .toLowerCase();
+              return (
+                full === prefer ||
+                first === prefer ||
+                (emp.first_name || "").toLowerCase() === prefer
+              );
+            });
+
+            if (candidates.length === 1) {
+              const sel = candidates[0];
+              return {
+                ...updated,
+                jobs: updated.jobs.map((job) => ({
+                  ...job,
+                  full_name: `${sel.first_name} ${sel.last_name}`.trim(),
+                  level: sel.level || job.level || "",
+                })),
+              };
+            }
+          }
+        } catch (e) {
+          // swallow any matching errors and leave data untouched
+        }
+
+        return updated;
+      }),
     );
   };
+
+  // On employees load (or reportData load), attempt to autofill full_name for rows
+  // where Prefer name is present and there's a unique match in the employees list.
+  useEffect(() => {
+    if (!Array.isArray(employees) || employees.length === 0) return;
+    if (!Array.isArray(reportData) || reportData.length === 0) return;
+
+    setReportData((prev) =>
+      prev.map((employee) => {
+        const prefer = String(employee.name || "").trim().toLowerCase();
+        if (!prefer) return employee;
+
+        try {
+          const candidates = employees.filter((emp) => {
+            const full = `${emp.first_name || ""} ${emp.last_name || ""}`
+              .trim()
+              .toLowerCase();
+            const first = (emp.prefer_name || emp.first_name || "")
+              .toString()
+              .trim()
+              .toLowerCase();
+            return (
+              full === prefer ||
+              first === prefer ||
+              (emp.first_name || "").toLowerCase() === prefer
+            );
+          });
+
+          if (candidates.length === 1) {
+            const sel = candidates[0];
+            const newJobs = (employee.jobs || []).map((job) => {
+              // only fill when empty to avoid overwriting user selection
+              if (job.full_name && String(job.full_name).trim() !== "") return job;
+              return {
+                ...job,
+                full_name: `${sel.first_name} ${sel.last_name}`.trim(),
+                level: sel.level || job.level || "",
+              };
+            });
+
+            return { ...employee, jobs: newJobs };
+          }
+        } catch (e) {
+          // ignore
+        }
+
+        return employee;
+      }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employees]);
 
   const updateJobField = (empIndex, jobIndex, field, value) => {
     setReportData((prev) =>
