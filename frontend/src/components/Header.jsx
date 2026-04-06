@@ -285,7 +285,7 @@ export default function Header({ onToggle }) {
                       >
                         <div
                           className={`item-icon ${getPriorityColor(
-                            notification.priority
+                            notification.priority,
                           )}`}
                         >
                           <i
@@ -320,8 +320,8 @@ export default function Header({ onToggle }) {
                               color: notification.isOverdue
                                 ? "#dc3545"
                                 : notification.isDueToday
-                                ? "#ffc107"
-                                : "#666",
+                                  ? "#ffc107"
+                                  : "#666",
                               fontWeight:
                                 notification.isOverdue ||
                                 notification.isDueToday
@@ -332,7 +332,7 @@ export default function Header({ onToggle }) {
                             {formatDueDate(
                               notification.dueDate,
                               notification.isOverdue,
-                              notification.isDueToday
+                              notification.isDueToday,
                             )}
                           </span>
                         </div>
