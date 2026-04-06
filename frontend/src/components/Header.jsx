@@ -195,7 +195,7 @@ export default function Header({ onToggle }) {
             )}
           </li>
 
-          {/* Messages */}
+          {/* Messages Messages */}
           <li
             className={`navbar-item dropdown header-message ${
               showMessages ? "show" : ""
