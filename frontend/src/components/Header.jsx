@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import logo from "../assets/images/Sherwood-care-logo.webp";
 import { notificationService } from "../services/notificationService";
 
 export default function Header({ onToggle }) {
@@ -73,15 +72,6 @@ export default function Header({ onToggle }) {
     <div className="navbar navbar-expand-md header-menu-one bg-light">
       {/* Logo and Toggle */}
       <div className="nav-bar-header-one">
-        <div className="header-logo">
-          <Link to="/">
-            <img
-              src={logo}
-              alt="logo"
-              style={{ maxWidth: "100%", maxHeight: "60px" }}
-            />
-          </Link>
-        </div>
         <div className="toggle-button sidebar-toggle">
           <button type="button" className="item-link" onClick={onToggle}>
             <span className="btn-icon-wrap">

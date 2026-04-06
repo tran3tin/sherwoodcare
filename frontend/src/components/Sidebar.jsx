@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { NavLink, Link } from "react-router-dom";
-import logo from "../assets/images/Sherwood-care-logo.webp";
+import React, { useState } from "react";
+import { NavLink } from "react-router-dom";
 
 const menuItems = [
   {
@@ -79,19 +78,6 @@ export default function Sidebar({ collapsed, onToggle }) {
 
   return (
     <>
-      {/* Mobile header */}
-      <div className="mobile-sidebar-header d-md-none">
-        <div className="header-logo">
-          <Link to="/">
-            <img
-              src={logo}
-              alt="logo"
-              style={{ maxWidth: "100%", maxHeight: "50px" }}
-            />
-          </Link>
-        </div>
-      </div>
-
       <div className="sidebar-menu-content">
         <ul className="nav nav-sidebar-menu sidebar-toggle-view">
           {menuItems.map((item, index) => (
