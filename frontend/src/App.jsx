@@ -51,6 +51,20 @@ export default function App() {
     () => localStorage.getItem("simple_auth") === "true",
   );
 
+  useEffect(() => {
+    const syncAuthFromStorage = () => {
+      setIsAuthenticated(localStorage.getItem("simple_auth") === "true");
+    };
+
+    window.addEventListener("storage", syncAuthFromStorage);
+    window.addEventListener("auth-changed", syncAuthFromStorage);
+
+    return () => {
+      window.removeEventListener("storage", syncAuthFromStorage);
+      window.removeEventListener("auth-changed", syncAuthFromStorage);
+    };
+  }, []);
+
   // ── Keep backend alive (ping every 4 minutes) ──────────────────────────
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -70,6 +84,7 @@ export default function App() {
 
     if (isValid) {
       localStorage.setItem("simple_auth", "true");
+      window.dispatchEvent(new Event("auth-changed"));
       setIsAuthenticated(true);
       return true;
     }

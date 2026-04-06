@@ -12,17 +12,11 @@ export default function Header({ onToggle }) {
 
   const handleLogout = () => {
     try {
-      // Clear simple local auth flag and any session hints
       localStorage.removeItem("simple_auth");
-      // Optionally clear ephemeral caches related to user session
-      // localStorage.removeItem("rosterData");
-      // localStorage.removeItem("dateHeaders");
-      // localStorage.removeItem("myobTimesheetData");
-
-      // Hard redirect to reset App state derived from localStorage
-      window.location.href = "/login";
+      window.dispatchEvent(new Event("auth-changed"));
+      setShowAdmin(false);
+      navigate("/login", { replace: true });
     } catch (e) {
-      // Fallback to navigate if direct redirect fails
       navigate("/login", { replace: true });
     }
   };
