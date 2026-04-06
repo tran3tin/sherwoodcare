@@ -10,6 +10,23 @@ export default function Header({ onToggle }) {
   const [notifications, setNotifications] = useState([]);
   const navigate = useNavigate();
 
+  const handleLogout = () => {
+    try {
+      // Clear simple local auth flag and any session hints
+      localStorage.removeItem("simple_auth");
+      // Optionally clear ephemeral caches related to user session
+      // localStorage.removeItem("rosterData");
+      // localStorage.removeItem("dateHeaders");
+      // localStorage.removeItem("myobTimesheetData");
+
+      // Hard redirect to reset App state derived from localStorage
+      window.location.href = "/login";
+    } catch (e) {
+      // Fallback to navigate if direct redirect fails
+      navigate("/login", { replace: true });
+    }
+  };
+
   useEffect(() => {
     loadNotifications();
     // Refresh notifications every 5 minutes
@@ -169,9 +186,14 @@ export default function Header({ onToggle }) {
                       </Link>
                     </li>
                     <li>
-                      <Link to="/login">
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="dropdown-item"
+                        style={{ background: "none", border: 0, padding: 0 }}
+                      >
                         <i className="flaticon-turn-off"></i>Log Out
-                      </Link>
+                      </button>
                     </li>
                   </ul>
                 </div>
