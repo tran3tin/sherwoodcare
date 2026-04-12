@@ -2,6 +2,57 @@ const fs = require("fs");
 const path = require("path");
 const TrainingArticleModel = require("../models/TrainingArticleModel");
 
+const toNormalizedRelativePath = (url) => String(url || "").replace(/^\/+/, "");
+
+const deletePublicFile = (attachmentUrl) => {
+  if (!attachmentUrl) return;
+  const relativePath = toNormalizedRelativePath(attachmentUrl);
+  const filePath = path.join(__dirname, "..", "public", relativePath);
+  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+};
+
+const toIncomingFiles = (req) => {
+  if (!req.files) return [];
+  if (Array.isArray(req.files)) return req.files;
+
+  const attachments = Array.isArray(req.files.attachments)
+    ? req.files.attachments
+    : [];
+  const legacyAttachment = Array.isArray(req.files.attachment)
+    ? req.files.attachment
+    : [];
+
+  return [...attachments, ...legacyAttachment];
+};
+
+const buildAttachmentRecord = (file) => ({
+  url: `/uploads/training/${file.filename}`,
+  name: file.originalname,
+});
+
+const parseRemoveAttachmentUrls = (rawValue) => {
+  if (!rawValue) return [];
+
+  if (Array.isArray(rawValue)) {
+    return rawValue.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  if (typeof rawValue === "string") {
+    try {
+      const parsed = JSON.parse(rawValue);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item || "").trim()).filter(Boolean);
+      }
+    } catch (_) {
+      // Ignore parsing error and treat as single string value.
+    }
+
+    return [rawValue.trim()].filter(Boolean);
+  }
+
+  return [];
+};
+
 const getAllArticles = async (req, res) => {
   try {
     const data = await TrainingArticleModel.getAll();
@@ -51,19 +102,17 @@ const createArticle = async (req, res) => {
         .json({ success: false, error: "Content is required" });
     }
 
-    let attachment_url = null;
-    let attachment_name = null;
-
-    if (req.file) {
-      attachment_url = `/uploads/training/${req.file.filename}`;
-      attachment_name = req.file.originalname;
-    }
+    const uploadedFiles = toIncomingFiles(req);
+    const attachments = uploadedFiles.map(buildAttachmentRecord);
+    const attachment_url = attachments[0]?.url || null;
+    const attachment_name = attachments[0]?.name || null;
 
     const created = await TrainingArticleModel.create({
       title: String(title).trim(),
       content,
       attachment_url,
       attachment_name,
+      attachments,
     });
 
     res.status(201).json({ success: true, data: created });
@@ -104,35 +153,52 @@ const updateArticle = async (req, res) => {
         .json({ success: false, error: "Content is required" });
     }
 
-    let attachment_url = existing.attachment_url || null;
-    let attachment_name = existing.attachment_name || null;
+    const existingAttachments = Array.isArray(existing.attachments)
+      ? existing.attachments
+      : existing.attachment_url
+        ? [
+            {
+              url: existing.attachment_url,
+              name: existing.attachment_name || "Attachment",
+            },
+          ]
+        : [];
+
+    const removeAttachmentUrls = parseRemoveAttachmentUrls(
+      req.body.remove_attachment_urls,
+    );
 
     const removeAttachmentFlag =
       remove_attachment === true || String(remove_attachment) === "true";
+    const shouldRemoveAll =
+      removeAttachmentFlag && removeAttachmentUrls.length === 0;
+    const attachmentsToRemove = shouldRemoveAll
+      ? existingAttachments
+      : existingAttachments.filter((item) =>
+          removeAttachmentUrls.includes(String(item?.url || "").trim()),
+        );
 
-    if (removeAttachmentFlag && attachment_url) {
-      const relativePath = String(attachment_url).replace(/^\/+/, "");
-      const filePath = path.join(__dirname, "..", "public", relativePath);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      attachment_url = null;
-      attachment_name = null;
-    }
+    attachmentsToRemove.forEach((item) => deletePublicFile(item?.url));
 
-    if (req.file) {
-      if (attachment_url) {
-        const relativePath = String(attachment_url).replace(/^\/+/, "");
-        const oldFilePath = path.join(__dirname, "..", "public", relativePath);
-        if (fs.existsSync(oldFilePath)) fs.unlinkSync(oldFilePath);
-      }
-      attachment_url = `/uploads/training/${req.file.filename}`;
-      attachment_name = req.file.originalname;
-    }
+    const keptAttachments = shouldRemoveAll
+      ? []
+      : existingAttachments.filter(
+          (item) =>
+            !removeAttachmentUrls.includes(String(item?.url || "").trim()),
+        );
+
+    const incomingAttachments = toIncomingFiles(req).map(buildAttachmentRecord);
+    const attachments = [...keptAttachments, ...incomingAttachments];
+
+    const attachment_url = attachments[0]?.url || null;
+    const attachment_name = attachments[0]?.name || null;
 
     const updated = await TrainingArticleModel.update(articleId, {
       title: nextTitle,
       content: nextContent,
       attachment_url,
       attachment_name,
+      attachments,
     });
 
     res.json({ success: true, data: updated });
@@ -159,13 +225,18 @@ const deleteArticle = async (req, res) => {
         .json({ success: false, error: "Article not found" });
     }
 
-    if (target.attachment_url) {
-      const relativePath = String(target.attachment_url).replace(/^\/+/, "");
-      const filePath = path.join(__dirname, "..", "public", relativePath);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    }
+    const attachments = Array.isArray(target.attachments)
+      ? target.attachments
+      : target.attachment_url
+        ? [
+            {
+              url: target.attachment_url,
+              name: target.attachment_name || "Attachment",
+            },
+          ]
+        : [];
+
+    attachments.forEach((item) => deletePublicFile(item?.url));
 
     const deleted = await TrainingArticleModel.delete(articleId);
     if (!deleted) {

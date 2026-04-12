@@ -14,6 +14,21 @@ const buildAssetUrl = (url) => {
   return `${API_BASE_URL}${raw.startsWith("/") ? "" : "/"}${raw}`;
 };
 
+const getAttachments = (article) => {
+  if (Array.isArray(article?.attachments) && article.attachments.length > 0) {
+    return article.attachments;
+  }
+  if (article?.attachment_url) {
+    return [
+      {
+        url: article.attachment_url,
+        name: article.attachment_name || "Attachment",
+      },
+    ];
+  }
+  return [];
+};
+
 export default function TrainingDetail() {
   const navigate = useNavigate();
   const { articleId } = useParams();
@@ -22,8 +37,10 @@ export default function TrainingDetail() {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
-  const [editAttachmentFile, setEditAttachmentFile] = useState(null);
-  const [removeCurrentAttachment, setRemoveCurrentAttachment] = useState(false);
+  const [editAttachmentFiles, setEditAttachmentFiles] = useState([]);
+  const [removeCurrentAttachmentUrls, setRemoveCurrentAttachmentUrls] = useState(
+    [],
+  );
   const [savingEdit, setSavingEdit] = useState(false);
 
   const modules = useMemo(
@@ -73,8 +90,8 @@ export default function TrainingDetail() {
       setArticle(next);
       setEditTitle(next?.title || "");
       setEditBody(next?.content || "");
-      setEditAttachmentFile(null);
-      setRemoveCurrentAttachment(false);
+      setEditAttachmentFiles([]);
+      setRemoveCurrentAttachmentUrls([]);
     } catch (error) {
       console.error("Failed to load article:", error);
       toast.error(error?.response?.data?.error || "Failed to load article.");
@@ -106,8 +123,8 @@ export default function TrainingDetail() {
       await trainingArticleService.update(articleId, {
         title,
         content: body,
-        attachment: editAttachmentFile,
-        removeAttachment: removeCurrentAttachment,
+        attachments: editAttachmentFiles,
+        removeAttachmentUrls: removeCurrentAttachmentUrls,
       });
       await loadArticle();
       setIsEditing(false);
@@ -212,48 +229,85 @@ export default function TrainingDetail() {
                 style={{ background: "#fff", marginBottom: "8px" }}
               />
 
-              {article.attachment_url && !removeCurrentAttachment && (
+              {getAttachments(article).length > 0 && (
                 <div style={{ marginBottom: "8px" }}>
-                  <a
-                    href={buildAssetUrl(article.attachment_url)}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ color: "#0b4f78", fontSize: "13px" }}
-                  >
-                    <i
-                      className="fas fa-paperclip"
-                      style={{ marginRight: "4px" }}
-                    ></i>
-                    {article.attachment_name || "Attachment"}
-                  </a>
+                  {getAttachments(article).map((attachment) => {
+                    const targetUrl = String(attachment?.url || "").trim();
+                    const checked =
+                      removeCurrentAttachmentUrls.includes(targetUrl);
+
+                    return (
+                      <div
+                        key={targetUrl}
+                        style={{
+                          display: "flex",
+                          gap: "10px",
+                          alignItems: "center",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        <a
+                          href={buildAssetUrl(targetUrl)}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            color: "#0b4f78",
+                            fontSize: "13px",
+                            textDecoration: checked ? "line-through" : "none",
+                            opacity: checked ? 0.6 : 1,
+                          }}
+                        >
+                          <i
+                            className="fas fa-paperclip"
+                            style={{ marginRight: "4px" }}
+                          ></i>
+                          {attachment?.name || "Attachment"}
+                        </a>
+                        <label
+                          style={{
+                            fontSize: "12px",
+                            color: "#374151",
+                            margin: 0,
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setRemoveCurrentAttachmentUrls((prev) => [
+                                  ...prev,
+                                  targetUrl,
+                                ]);
+                                return;
+                              }
+                              setRemoveCurrentAttachmentUrls((prev) =>
+                                prev.filter((item) => item !== targetUrl),
+                              );
+                            }}
+                            style={{ marginRight: "4px" }}
+                          />
+                          Remove
+                        </label>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
               <div style={{ marginBottom: "8px" }}>
                 <input
                   type="file"
+                  multiple
                   onChange={(e) =>
-                    setEditAttachmentFile(e.target.files?.[0] || null)
+                    setEditAttachmentFiles(Array.from(e.target.files || []))
                   }
                 />
-                {article.attachment_url && (
-                  <label
-                    style={{
-                      marginLeft: "10px",
-                      fontSize: "13px",
-                      color: "#374151",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={removeCurrentAttachment}
-                      onChange={(e) =>
-                        setRemoveCurrentAttachment(e.target.checked)
-                      }
-                      style={{ marginRight: "4px" }}
-                    />
-                    Remove current attachment
-                  </label>
+                {editAttachmentFiles.length > 0 && (
+                  <div style={{ marginTop: "6px", fontSize: "12px" }}>
+                    New files ({editAttachmentFiles.length}):{" "}
+                    {editAttachmentFiles.map((file) => file.name).join(", ")}
+                  </div>
                 )}
               </div>
 
@@ -268,8 +322,8 @@ export default function TrainingDetail() {
                     setIsEditing(false);
                     setEditTitle(article.title || "");
                     setEditBody(article.content || "");
-                    setEditAttachmentFile(null);
-                    setRemoveCurrentAttachment(false);
+                    setEditAttachmentFiles([]);
+                    setRemoveCurrentAttachmentUrls([]);
                   }}
                   disabled={savingEdit}
                 >
@@ -295,26 +349,33 @@ export default function TrainingDetail() {
               <small style={{ color: "#6b7280" }}>
                 {new Date(article.created_at).toLocaleString("en-AU")}
               </small>
-              {article.attachment_url && (
+              {getAttachments(article).length > 0 && (
                 <div style={{ marginTop: "8px" }}>
-                  <a
-                    href={buildAssetUrl(article.attachment_url)}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ color: "#0b4f78", fontSize: "13px" }}
-                  >
-                    <i
-                      className="fas fa-paperclip"
-                      style={{ marginRight: "4px" }}
-                    ></i>
-                    {article.attachment_name || "Attachment"}
-                  </a>
+                  {getAttachments(article).map((attachment) => (
+                    <div key={attachment.url} style={{ marginBottom: "4px" }}>
+                      <a
+                        href={buildAssetUrl(attachment.url)}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ color: "#0b4f78", fontSize: "13px" }}
+                      >
+                        <i
+                          className="fas fa-paperclip"
+                          style={{ marginRight: "4px" }}
+                        ></i>
+                        {attachment.name || "Attachment"}
+                      </a>
+                    </div>
+                  ))}
                 </div>
               )}
-              <div
-                style={{ marginTop: "10px", lineHeight: 1.5 }}
-                dangerouslySetInnerHTML={{ __html: article.content }}
-              />
+              <div style={{ marginTop: "10px" }}>
+                <div
+                  className="ql-editor"
+                  style={{ padding: 0, lineHeight: 1.5 }}
+                  dangerouslySetInnerHTML={{ __html: article.content }}
+                />
+              </div>
             </>
           )}
         </div>

@@ -14,13 +14,11 @@ export const trainingArticleService = {
     return response.data;
   },
 
-  create: async ({ title, content, attachment }) => {
+  create: async ({ title, content, attachments = [] }) => {
     const formData = new FormData();
     formData.append("title", title);
     formData.append("content", content);
-    if (attachment) {
-      formData.append("attachment", attachment);
-    }
+    attachments.forEach((file) => formData.append("attachments", file));
 
     const response = await axios.post(API_URL, formData, {
       headers: {
@@ -32,16 +30,20 @@ export const trainingArticleService = {
 
   update: async (
     articleId,
-    { title, content, attachment, removeAttachment },
+    { title, content, attachments = [], removeAttachment, removeAttachmentUrls },
   ) => {
     const formData = new FormData();
     formData.append("title", title);
     formData.append("content", content);
-    if (attachment) {
-      formData.append("attachment", attachment);
-    }
+    attachments.forEach((file) => formData.append("attachments", file));
     if (removeAttachment) {
       formData.append("remove_attachment", "true");
+    }
+    if (Array.isArray(removeAttachmentUrls) && removeAttachmentUrls.length > 0) {
+      formData.append(
+        "remove_attachment_urls",
+        JSON.stringify(removeAttachmentUrls),
+      );
     }
 
     const response = await axios.put(`${API_URL}/${articleId}`, formData, {

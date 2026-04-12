@@ -9,6 +9,21 @@ const stripHtml = (html) =>
     .replace(/<[^>]*>/g, " ")
     .trim();
 
+const getAttachments = (article) => {
+  if (Array.isArray(article?.attachments) && article.attachments.length > 0) {
+    return article.attachments;
+  }
+  if (article?.attachment_url) {
+    return [
+      {
+        url: article.attachment_url,
+        name: article.attachment_name || "Attachment",
+      },
+    ];
+  }
+  return [];
+};
+
 export default function Training() {
   const navigate = useNavigate();
   const [articles, setArticles] = useState([]);
@@ -42,7 +57,7 @@ export default function Training() {
     return articles.filter((article) => {
       const title = String(article?.title || "").toLowerCase();
       const content = stripHtml(article?.content).toLowerCase();
-      const hasAttachment = Boolean(article?.attachment_url);
+      const hasAttachment = getAttachments(article).length > 0;
 
       const matchedText =
         !query || title.includes(query) || content.includes(query);
@@ -185,7 +200,7 @@ export default function Training() {
                       <small style={{ color: "#6b7280" }}>
                         {new Date(article.created_at).toLocaleString("en-AU")}
                       </small>
-                      {article.attachment_url && (
+                      {getAttachments(article).length > 0 && (
                         <div
                           style={{
                             marginTop: "4px",
@@ -197,7 +212,7 @@ export default function Training() {
                             className="fas fa-paperclip"
                             style={{ marginRight: "4px" }}
                           ></i>
-                          Attachment
+                          {getAttachments(article).length} attachment(s)
                         </div>
                       )}
                     </div>

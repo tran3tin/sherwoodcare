@@ -75,8 +75,13 @@ async function runAutoMigrations() {
     "08_create_training_articles.sql",
     "08_create_training_articles.sql",
   );
+  await runFile(
+    "09_add_training_article_attachments.sql",
+    "09_add_training_article_attachments.sql",
+  );
 
   console.log("✅ Database migrations finished.\n");
 }
 
 module.exports = runAutoMigrations;
+

@@ -26,6 +26,7 @@ const upload = multer({
   storage,
   limits: {
     fileSize: 20 * 1024 * 1024,
+    files: 20,
   },
 });
 
@@ -33,12 +34,18 @@ router.get("/", trainingArticleController.getAllArticles);
 router.get("/:articleId", trainingArticleController.getArticleById);
 router.post(
   "/",
-  upload.single("attachment"),
+  upload.fields([
+    { name: "attachments", maxCount: 20 },
+    { name: "attachment", maxCount: 1 },
+  ]),
   trainingArticleController.createArticle,
 );
 router.put(
   "/:articleId",
-  upload.single("attachment"),
+  upload.fields([
+    { name: "attachments", maxCount: 20 },
+    { name: "attachment", maxCount: 1 },
+  ]),
   trainingArticleController.updateArticle,
 );
 router.delete("/:articleId", trainingArticleController.deleteArticle);

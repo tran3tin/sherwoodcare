@@ -10,7 +10,7 @@ export default function TrainingCreate() {
   const navigate = useNavigate();
   const [articleTitle, setArticleTitle] = useState("");
   const [articleBody, setArticleBody] = useState("");
-  const [attachmentFile, setAttachmentFile] = useState(null);
+  const [attachmentFiles, setAttachmentFiles] = useState([]);
   const [publishing, setPublishing] = useState(false);
 
   const modules = useMemo(
@@ -71,7 +71,7 @@ export default function TrainingCreate() {
       await trainingArticleService.create({
         title,
         content: body,
-        attachment: attachmentFile,
+        attachments: attachmentFiles,
       });
       toast.success("Article created successfully.");
       navigate("/training");
@@ -140,13 +140,18 @@ export default function TrainingCreate() {
             </label>
             <input
               type="file"
-              onChange={(e) => setAttachmentFile(e.target.files?.[0] || null)}
+              multiple
+              onChange={(e) =>
+                setAttachmentFiles(Array.from(e.target.files || []))
+              }
             />
-            {attachmentFile && (
+            {attachmentFiles.length > 0 && (
               <div
                 style={{ marginTop: "6px", color: "#374151", fontSize: "13px" }}
               >
-                Selected: {attachmentFile.name}
+                Selected ({attachmentFiles.length}):
+                {" "}
+                {attachmentFiles.map((file) => file.name).join(", ")}
               </div>
             )}
           </div>
@@ -168,7 +173,7 @@ export default function TrainingCreate() {
               onClick={() => {
                 setArticleTitle("");
                 setArticleBody("");
-                setAttachmentFile(null);
+                setAttachmentFiles([]);
               }}
               disabled={publishing}
             >

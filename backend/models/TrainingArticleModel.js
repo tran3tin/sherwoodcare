@@ -1,5 +1,40 @@
 const db = require("../config/db");
 
+const normalizeAttachmentItems = (value) => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => ({
+      url: String(item?.url || "").trim(),
+      name: String(item?.name || "").trim() || "Attachment",
+    }))
+    .filter((item) => Boolean(item.url));
+};
+
+const normalizeArticle = (row) => {
+  if (!row) return null;
+  const fallbackAttachment =
+    row.attachment_url && String(row.attachment_url).trim()
+      ? [
+          {
+            url: String(row.attachment_url).trim(),
+            name: String(row.attachment_name || "").trim() || "Attachment",
+          },
+        ]
+      : [];
+
+  const attachments =
+    normalizeAttachmentItems(row.attachments).length > 0
+      ? normalizeAttachmentItems(row.attachments)
+      : fallbackAttachment;
+
+  return {
+    ...row,
+    attachments,
+    attachment_url: attachments[0]?.url || null,
+    attachment_name: attachments[0]?.name || null,
+  };
+};
+
 class TrainingArticleModel {
   static async getAll() {
     const { rows } = await db.query(
@@ -7,7 +42,7 @@ class TrainingArticleModel {
        FROM training_articles
        ORDER BY created_at DESC`,
     );
-    return rows;
+    return rows.map(normalizeArticle);
   }
 
   static async getById(articleId) {
@@ -15,7 +50,7 @@ class TrainingArticleModel {
       `SELECT * FROM training_articles WHERE article_id = $1`,
       [articleId],
     );
-    return rows[0] || null;
+    return normalizeArticle(rows[0] || null);
   }
 
   static async create(articleData) {
@@ -24,20 +59,32 @@ class TrainingArticleModel {
       content,
       attachment_url = null,
       attachment_name = null,
+      attachments = [],
     } = articleData;
 
+    const normalizedAttachments = normalizeAttachmentItems(attachments);
+
     const { rows } = await db.query(
-      `INSERT INTO training_articles (title, content, attachment_url, attachment_name)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO training_articles (title, content, attachment_url, attachment_name, attachments)
+       VALUES ($1, $2, $3, $4, $5::jsonb)
        RETURNING *`,
-      [title, content, attachment_url, attachment_name],
+      [
+        title,
+        content,
+        attachment_url,
+        attachment_name,
+        JSON.stringify(normalizedAttachments),
+      ],
     );
 
-    return rows[0];
+    return normalizeArticle(rows[0]);
   }
 
   static async update(articleId, articleData) {
-    const { title, content, attachment_url, attachment_name } = articleData;
+    const { title, content, attachment_url, attachment_name, attachments = [] } =
+      articleData;
+
+    const normalizedAttachments = normalizeAttachmentItems(attachments);
 
     const { rows } = await db.query(
       `UPDATE training_articles
@@ -45,13 +92,21 @@ class TrainingArticleModel {
            content = $2,
            attachment_url = $3,
            attachment_name = $4,
+           attachments = $5::jsonb,
            updated_at = CURRENT_TIMESTAMP
-       WHERE article_id = $5
+       WHERE article_id = $6
        RETURNING *`,
-      [title, content, attachment_url, attachment_name, articleId],
+      [
+        title,
+        content,
+        attachment_url,
+        attachment_name,
+        JSON.stringify(normalizedAttachments),
+        articleId,
+      ],
     );
 
-    return rows[0] || null;
+    return normalizeArticle(rows[0] || null);
   }
 
   static async delete(articleId) {
