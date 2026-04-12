@@ -369,10 +369,6 @@ export default function SocialSheetForm() {
     }
   };
 
-  const handleViewReport = () => {
-    navigate("/payroll/social-participant-report");
-  };
-
   return (
     <Layout
       title="Social Sheet"
@@ -460,15 +456,6 @@ export default function SocialSheetForm() {
                 <i className="fas fa-eraser"></i>
               </button>
 
-              <button
-                type="button"
-                className="btn-action btn-report"
-                onClick={handleViewReport}
-                title="View Report"
-                aria-label="View Report"
-              >
-                <i className="fas fa-chart-bar"></i>
-              </button>
             </div>
           </div>
 

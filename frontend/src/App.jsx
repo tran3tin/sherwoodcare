@@ -12,7 +12,6 @@ import PayrollNexgenusForm from "./features/nexgenus/PayrollNexgenusForm";
 import PayrollNexgenuslist from "./features/nexgenus/PayrollNexgenuslist";
 import PayrollNexgenusReport from "./features/nexgenus/PayrollNexgenusReport";
 import SocialSheetForm from "./features/payroll/SocialSheetForm";
-import SocialParticipantReport from "./features/payroll/SocialParticipantReport";
 import SocialEmployeeReport from "./features/payroll/SocialEmployeeReport";
 import SocialParticipantList from "./features/payroll/SocialParticipantList";
 import ViewSocialSheet from "./features/payroll/ViewSocialSheet";
@@ -137,14 +136,6 @@ export default function App() {
         <Route
           path="/nexgenus/payroll/edit/:id"
           element={<PayrollNexgenusForm />}
-        />
-        <Route
-          path="/payroll/social-participant-report"
-          element={<SocialParticipantReport />}
-        />
-        <Route
-          path="/payroll/social-participant-report/:id"
-          element={<SocialParticipantReport />}
         />
         <Route
           path="/payroll/social-employee-report"

@@ -587,11 +587,11 @@ export default function PayrollTax() {
           <button
             type="button"
             className="btn-action"
-            title="Export Excel"
-            onClick={exportExcel}
-            style={{ background: "#1f7a3f", color: "#fff" }}
+            title="Payroll Activity Summary"
+            onClick={() => setShowPayrollActivityPopup(true)}
+            style={{ background: "#2563eb", color: "#fff" }}
           >
-            <i className="fas fa-file-excel"></i>
+            <i className="fas fa-users"></i>
           </button>
           <button
             type="button"
@@ -605,11 +605,11 @@ export default function PayrollTax() {
           <button
             type="button"
             className="btn-action"
-            title="Payroll Activity Summary"
-            onClick={() => setShowPayrollActivityPopup(true)}
-            style={{ background: "#2563eb", color: "#fff" }}
+            title="Export Excel"
+            onClick={exportExcel}
+            style={{ background: "#1f7a3f", color: "#fff" }}
           >
-            <i className="fas fa-users"></i>
+            <i className="fas fa-file-excel"></i>
           </button>
         </div>
 

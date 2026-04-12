@@ -87,18 +87,6 @@ export default function ViewSocialSheet() {
 
               <button
                 type="button"
-                className="btn-action btn-report"
-                onClick={() =>
-                  navigate(`/payroll/social-participant-report/${id}`)
-                }
-                title="Participant Report"
-                aria-label="Participant Report"
-              >
-                <i className="fas fa-users"></i>
-              </button>
-
-              <button
-                type="button"
                 className="btn-action btn-view"
                 onClick={() =>
                   navigate(`/payroll/social-employee-report/${id}`)

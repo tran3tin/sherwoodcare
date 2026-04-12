@@ -392,97 +392,6 @@ export default function SocialEmployeeReport() {
     }
   };
 
-  const handleExportTxt = () => {
-    if (!employeeGroups || employeeGroups.length === 0) {
-      toast.warning("No data to export");
-      return;
-    }
-
-    const headers = [
-      "Employee Co./Last Name",
-      "Employee First Name",
-      "Payroll Category",
-      "Job",
-      "Customer Co./Last Name",
-      "Customer First Name",
-      "Notes",
-      "Date",
-      "Units",
-      "Employee Card ID",
-      "Employee Record ID",
-      "Start/Stop Time",
-      "Customer Card ID",
-      "Customer Record ID",
-    ];
-
-    const lines = [headers.join("\t")];
-
-    employeeGroups.forEach((group) => {
-      const effEmp = getEffectiveEmployee(group.employee);
-
-      let wFirst, wLast;
-      if (effEmp) {
-        wFirst = effEmp.first_name || "";
-        wLast = effEmp.last_name || "";
-      } else {
-        const split = splitName(group.employee);
-        wFirst = split.firstName;
-        wLast = split.lastName;
-      }
-
-      const socialLevel = effEmp?.social_level || "";
-
-      group.activities.forEach((activity) => {
-        const { firstName: pFirst, lastName: pLast } = splitName(
-          activity.participant,
-        );
-
-        const category = getPayrollCategory(
-          socialLevel,
-          activity.date,
-          activity.shift_starts,
-        );
-        const displayDate = formatDateToDisplay(activity.date);
-
-        let details = activity.details_of_activity || "";
-        if (details.length > 50) {
-          details = details.substring(0, 50) + "...";
-        }
-
-        const row = [
-          wLast, // Employee Co./Last Name
-          wFirst, // Employee First Name
-          category, // Payroll Category
-          `${pFirst} ${pLast}`.trim(), // Job
-          pLast ? `${pLast}.` : "", // Customer Co./Last Name
-          pFirst, // Customer First Name
-          details, // Notes
-          displayDate, // Date
-          activity.actual_hours, // Units
-          "", // Employee Card ID
-          "", // Employee Record ID
-          "", // Start/Stop Time
-          "", // Customer Card ID
-          "", // Customer Record ID
-        ];
-        lines.push(row.join("\t"));
-      });
-    });
-
-    const content = lines.join("\r\n");
-    const blob = new Blob(["\uFEFF" + content], { type: "text/plain;charset=utf-8" });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute(
-      "download",
-      `Social_Export_${new Date().toISOString().slice(0, 10)}.txt`,
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const handleSave = async () => {
     if (saving || deleting) return;
     if (!rawRows || rawRows.length === 0) {
@@ -664,17 +573,6 @@ export default function SocialEmployeeReport() {
               disabled={deleting || saving}
             >
               <i className="fas fa-file-excel"></i>
-            </button>
-
-            <button
-              type="button"
-              className="btn-action btn-view"
-              onClick={handleExportTxt}
-              title="Export TXT"
-              aria-label="Export TXT"
-              disabled={deleting || saving}
-            >
-              <i className="fas fa-file-alt"></i>
             </button>
 
             <button
