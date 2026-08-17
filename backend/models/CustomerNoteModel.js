@@ -5,8 +5,8 @@ class CustomerNoteModel {
   static async getByCustomerId(customerId) {
     try {
       const { rows } = await db.query(
-        `SELECT * FROM customer_notes 
-         WHERE customer_id = $1 
+        `SELECT * FROM customer_notes
+         WHERE customer_id = ?
          ORDER BY is_pinned DESC, COALESCE(pinned_at, created_at) DESC, is_completed ASC, created_at DESC`,
         [customerId]
       );
@@ -14,15 +14,15 @@ class CustomerNoteModel {
     } catch (err) {
       const message = (err && err.message) || "";
       const missingPinColumns =
-        message.includes('column "is_pinned" does not exist') ||
-        message.includes('column "pinned_at" does not exist');
+        message.includes("is_pinned") ||
+        message.includes("pinned_at");
 
       if (!missingPinColumns) throw err;
 
       // Backward-compatible fallback if DB hasn't been migrated yet
       const { rows } = await db.query(
         `SELECT * FROM customer_notes
-         WHERE customer_id = $1
+         WHERE customer_id = ?
          ORDER BY is_completed ASC, created_at DESC`,
         [customerId]
       );
@@ -33,7 +33,7 @@ class CustomerNoteModel {
   // Get single note by ID
   static async getById(noteId) {
     const { rows } = await db.query(
-      `SELECT * FROM customer_notes WHERE note_id = $1`,
+      `SELECT * FROM customer_notes WHERE note_id = ?`,
       [noteId]
     );
     return rows[0];
@@ -52,10 +52,9 @@ class CustomerNoteModel {
     } = noteData;
 
     const { rows: result } = await db.query(
-      `INSERT INTO customer_notes 
-       (customer_id, title, content, priority, due_date, attachment_url, attachment_name) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING note_id`,
+      `INSERT INTO customer_notes
+       (customer_id, title, content, priority, due_date, attachment_url, attachment_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         customer_id,
         title,
@@ -67,7 +66,7 @@ class CustomerNoteModel {
       ]
     );
 
-    return { note_id: result[0].note_id, ...noteData };
+    return { note_id: result.insertId, ...noteData };
   }
 
   // Update note
@@ -83,11 +82,11 @@ class CustomerNoteModel {
     } = noteData;
 
     const { rowCount } = await db.query(
-      `UPDATE customer_notes 
-       SET title = $1, content = $2, priority = $3, due_date = $4, 
-           is_completed = $5, attachment_url = $6, attachment_name = $7,
+      `UPDATE customer_notes
+       SET title = ?, content = ?, priority = ?, due_date = ?,
+           is_completed = ?, attachment_url = ?, attachment_name = ?,
            updated_at = CURRENT_TIMESTAMP
-       WHERE note_id = $8`,
+       WHERE note_id = ?`,
       [
         title,
         content,
@@ -106,10 +105,10 @@ class CustomerNoteModel {
   // Toggle completion status
   static async toggleComplete(noteId) {
     const { rowCount } = await db.query(
-      `UPDATE customer_notes 
-       SET is_completed = NOT is_completed, 
-           updated_at = CURRENT_TIMESTAMP 
-       WHERE note_id = $1`,
+      `UPDATE customer_notes
+       SET is_completed = NOT is_completed,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE note_id = ?`,
       [noteId]
     );
     return rowCount > 0;
@@ -123,15 +122,15 @@ class CustomerNoteModel {
          SET is_pinned = NOT is_pinned,
              pinned_at = CASE WHEN is_pinned = false THEN CURRENT_TIMESTAMP ELSE NULL END,
              updated_at = CURRENT_TIMESTAMP
-         WHERE note_id = $1`,
+         WHERE note_id = ?`,
         [noteId]
       );
       return rowCount > 0;
     } catch (err) {
       const message = (err && err.message) || "";
       const missingPinColumns =
-        message.includes('column "is_pinned" does not exist') ||
-        message.includes('column "pinned_at" does not exist');
+        message.includes("is_pinned") ||
+        message.includes("pinned_at");
 
       if (missingPinColumns) {
         err.code = "PIN_COLUMNS_MISSING";
@@ -144,7 +143,7 @@ class CustomerNoteModel {
   // Delete note
   static async delete(noteId) {
     const { rowCount } = await db.query(
-      `DELETE FROM customer_notes WHERE note_id = $1`,
+      `DELETE FROM customer_notes WHERE note_id = ?`,
       [noteId]
     );
     return rowCount > 0;
@@ -153,28 +152,37 @@ class CustomerNoteModel {
   // Get notes count by customer
   static async getCountByCustomerId(customerId) {
     const { rows } = await db.query(
-      `SELECT 
+      `SELECT
          COUNT(*) as total,
          SUM(CASE WHEN is_completed = true THEN 1 ELSE 0 END) as completed,
          SUM(CASE WHEN is_completed = false THEN 1 ELSE 0 END) as pending
-       FROM customer_notes 
-       WHERE customer_id = $1`,
+       FROM customer_notes
+       WHERE customer_id = ?`,
       [customerId]
     );
     return rows[0];
   }
 
   // Get all due and overdue notes (for notifications)
+  // MySQL equivalent of Postgres: due_date <= (today + INTERVAL '7 days')
   static async getDueNotes(today) {
+    // Compute the deadline in JS: today + 7 days, format as YYYY-MM-DD
+    const d = new Date(today);
+    d.setDate(d.getDate() + 7);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const deadline = `${yyyy}-${mm}-${dd}`;
+
     const { rows } = await db.query(
       `SELECT cn.*, c.full_name
        FROM customer_notes cn
        LEFT JOIN customers c ON cn.customer_id = c.customer_id
-       WHERE cn.due_date IS NOT NULL 
-         AND cn.due_date <= ($1::date + INTERVAL '7 days')
+       WHERE cn.due_date IS NOT NULL
+         AND cn.due_date <= ?
          AND cn.is_completed = false
        ORDER BY cn.due_date ASC, cn.priority DESC`,
-      [today]
+      [deadline]
     );
     return rows;
   }

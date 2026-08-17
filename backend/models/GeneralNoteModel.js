@@ -12,8 +12,8 @@ class GeneralNoteModel {
     } catch (err) {
       const message = (err && err.message) || "";
       const missingPinColumns =
-        message.includes('column "is_pinned" does not exist') ||
-        message.includes('column "pinned_at" does not exist');
+        message.includes("is_pinned") ||
+        message.includes("pinned_at");
 
       if (!missingPinColumns) throw err;
 
@@ -28,7 +28,7 @@ class GeneralNoteModel {
 
   static async getById(noteId) {
     const { rows } = await db.query(
-      `SELECT * FROM general_notes WHERE note_id = $1`,
+      `SELECT * FROM general_notes WHERE note_id = ?`,
       [noteId]
     );
     return rows[0];
@@ -47,12 +47,11 @@ class GeneralNoteModel {
     const { rows: result } = await db.query(
       `INSERT INTO general_notes
        (title, content, priority, due_date, attachment_url, attachment_name)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING note_id`,
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [title, content, priority, due_date, attachment_url, attachment_name]
     );
 
-    return { note_id: result[0].note_id, ...noteData };
+    return { note_id: result.insertId, ...noteData };
   }
 
   static async update(noteId, noteData) {
@@ -68,15 +67,15 @@ class GeneralNoteModel {
 
     const { rowCount } = await db.query(
       `UPDATE general_notes
-       SET title = $1,
-           content = $2,
-           priority = $3,
-           due_date = $4,
-           is_completed = $5,
-           attachment_url = $6,
-           attachment_name = $7,
+       SET title = ?,
+           content = ?,
+           priority = ?,
+           due_date = ?,
+           is_completed = ?,
+           attachment_url = ?,
+           attachment_name = ?,
            updated_at = CURRENT_TIMESTAMP
-       WHERE note_id = $8`,
+       WHERE note_id = ?`,
       [
         title,
         content,
@@ -97,7 +96,7 @@ class GeneralNoteModel {
       `UPDATE general_notes
        SET is_completed = NOT is_completed,
            updated_at = CURRENT_TIMESTAMP
-       WHERE note_id = $1`,
+       WHERE note_id = ?`,
       [noteId]
     );
     return rowCount > 0;
@@ -110,15 +109,15 @@ class GeneralNoteModel {
          SET is_pinned = NOT is_pinned,
              pinned_at = CASE WHEN is_pinned = false THEN CURRENT_TIMESTAMP ELSE NULL END,
              updated_at = CURRENT_TIMESTAMP
-         WHERE note_id = $1`,
+         WHERE note_id = ?`,
         [noteId]
       );
       return rowCount > 0;
     } catch (err) {
       const message = (err && err.message) || "";
       const missingPinColumns =
-        message.includes('column "is_pinned" does not exist') ||
-        message.includes('column "pinned_at" does not exist');
+        message.includes("is_pinned") ||
+        message.includes("pinned_at");
 
       if (missingPinColumns) {
         err.code = "PIN_COLUMNS_MISSING";
@@ -130,7 +129,7 @@ class GeneralNoteModel {
 
   static async delete(noteId) {
     const { rowCount } = await db.query(
-      `DELETE FROM general_notes WHERE note_id = $1`,
+      `DELETE FROM general_notes WHERE note_id = ?`,
       [noteId]
     );
     return rowCount > 0;

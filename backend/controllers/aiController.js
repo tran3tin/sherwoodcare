@@ -15,11 +15,11 @@ function isReadOnlySql(sql) {
 }
 
 async function getDbSchema() {
-  // PostgreSQL
+  // MySQL
   const sql = `
     SELECT table_name, column_name, data_type, is_nullable
     FROM information_schema.columns
-    WHERE table_schema = 'public'
+    WHERE table_schema = DATABASE()
     ORDER BY table_name, ordinal_position
   `;
 
@@ -33,7 +33,7 @@ async function getDbSchema() {
       nullable: r.is_nullable === "YES",
     });
   }
-  return { client: "pg", tables };
+  return { client: "mysql", tables };
 }
 
 async function runReadOnlyQuery(sql, { limit = 50 } = {}) {
@@ -45,7 +45,7 @@ async function runReadOnlyQuery(sql, { limit = 50 } = {}) {
     throw err;
   }
 
-  // Wrap to enforce LIMIT without parsing - PostgreSQL syntax
+  // Wrap to enforce LIMIT (MySQL supports subquery in FROM with alias)
   const wrapped = `SELECT * FROM (${sql}) AS _t LIMIT ${Number(limit) || 50}`;
 
   const { rows } = await db.query(wrapped);

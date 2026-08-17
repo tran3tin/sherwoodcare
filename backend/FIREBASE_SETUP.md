@@ -21,24 +21,33 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBAD...(copy toàn bộ
 
 **Lưu ý:** Private key phải giữ nguyên định dạng `\n` (newline escaped)
 
-## Bước 3: Tạo bảng documents trong Supabase
+## Bước 3: Tạo bảng documents trong MySQL
 
-Chạy migration:
+Chạy migration tự động (khuyến nghị):
 
 ```bash
 cd backend
-node scripts/create-documents-table.js
+npm run migrate
 ```
 
-Hoặc thực thi SQL trực tiếp trong Supabase SQL Editor:
+Hoặc chạy script khởi tạo nếu chưa có database:
+
+```bash
+cd backend
+npm run init-db
+npm run migrate
+```
+
+SQL tương đương cho bảng `documents` (đã có trong `migrations/schema.sql`):
 
 ```sql
 CREATE TABLE IF NOT EXISTS documents (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  file_url TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'Stores metadata for files uploaded to Uploads volume',
+  name VARCHAR(255) NOT NULL COMMENT 'Original file name',
+  file_url TEXT NOT NULL COMMENT 'Public URL to the stored file',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
 ## Bước 4: Test API

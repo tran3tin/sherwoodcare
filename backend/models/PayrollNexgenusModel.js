@@ -5,11 +5,10 @@ class PayrollNexgenusModel {
   static async create({ start_date }) {
     const sql = `
       INSERT INTO payroll_nexgenus (start_date)
-      VALUES ($1)
-      RETURNING *
+      VALUES (?)
     `;
-    const { rows } = await db.query(sql, [start_date]);
-    return rows[0];
+    const { insertId } = await db.query(sql, [start_date]);
+    return this.findById(insertId);
   }
 
   // Get all payrolls
@@ -24,7 +23,7 @@ class PayrollNexgenusModel {
 
   // Get payroll by ID
   static async findById(id) {
-    const sql = `SELECT * FROM payroll_nexgenus WHERE id = $1`;
+    const sql = `SELECT * FROM payroll_nexgenus WHERE id = ?`;
     const { rows } = await db.query(sql, [id]);
     return rows[0];
   }
@@ -33,12 +32,11 @@ class PayrollNexgenusModel {
   static async update(id, { start_date }) {
     const sql = `
       UPDATE payroll_nexgenus
-      SET start_date = $1, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2
-      RETURNING *
+      SET start_date = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
     `;
-    const { rows } = await db.query(sql, [start_date, id]);
-    return rows[0];
+    await db.query(sql, [start_date, id]);
+    return this.findById(id);
   }
 
   // Delete payroll
@@ -46,14 +44,14 @@ class PayrollNexgenusModel {
     const payroll = await this.findById(id);
     if (!payroll) return null;
 
-    const sql = `DELETE FROM payroll_nexgenus WHERE id = $1`;
+    const sql = `DELETE FROM payroll_nexgenus WHERE id = ?`;
     await db.query(sql, [id]);
     return payroll;
   }
 
   // Get entries for a payroll
   static async getEntries(payrollId) {
-    const sql = `SELECT * FROM payroll_nexgenus_entries WHERE payroll_id = $1 ORDER BY row_number ASC`;
+    const sql = `SELECT * FROM payroll_nexgenus_entries WHERE payroll_id = ? ORDER BY row_number ASC`;
     const { rows } = await db.query(sql, [payrollId]);
     return rows;
   }
@@ -62,25 +60,14 @@ class PayrollNexgenusModel {
   static async saveEntries(payrollId, entries) {
     // Delete existing entries
     const deleteSql =
-      "DELETE FROM payroll_nexgenus_entries WHERE payroll_id = $1";
+      "DELETE FROM payroll_nexgenus_entries WHERE payroll_id = ?";
     await db.query(deleteSql, [payrollId]);
 
     // Insert new entries
     if (entries && entries.length > 0) {
       const values = [];
-      const placeholders = [];
-      let paramIndex = 1;
 
       entries.forEach((entry) => {
-        placeholders.push(
-          `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${
-            paramIndex + 3
-          }, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${
-            paramIndex + 7
-          }, $${paramIndex + 8}, $${paramIndex + 9}, $${paramIndex + 10}, $${
-            paramIndex + 11
-          }, $${paramIndex + 12})`
-        );
         values.push(
           payrollId,
           entry.row_number,
@@ -96,8 +83,10 @@ class PayrollNexgenusModel {
           entry.employer?.kpcd || null,
           entry.pit || null
         );
-        paramIndex += 13;
       });
+
+      const rowPlaceholder = "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+      const placeholders = entries.map(() => rowPlaceholder);
 
       const sql = `
         INSERT INTO payroll_nexgenus_entries (

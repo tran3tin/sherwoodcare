@@ -7,7 +7,7 @@ class CustomerInvoiceModel {
     let paramIndex = 1;
 
     if (customerId) {
-      where.push(`ci.customer_id = $${paramIndex}`);
+      where.push(`ci.customer_id = ?`);
       params.push(customerId);
       paramIndex++;
     }
@@ -59,7 +59,7 @@ class CustomerInvoiceModel {
         ci.updated_at
       FROM customer_invoices ci
       JOIN customers c ON c.customer_id = ci.customer_id
-      WHERE ci.invoice_id = $1
+      WHERE ci.invoice_id = ?
       LIMIT 1
     `;
 
@@ -77,11 +77,10 @@ class CustomerInvoiceModel {
         amount,
         amount_due,
         note
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING invoice_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
-    const { rows } = await db.query(sql, [
+    const { insertId } = await db.query(sql, [
       data.customer_id,
       data.invoice_date,
       data.invoice_no || null,
@@ -91,7 +90,6 @@ class CustomerInvoiceModel {
       data.note || null,
     ]);
 
-    const insertId = rows[0].invoice_id;
     return this.getById(insertId);
   }
 
@@ -99,15 +97,15 @@ class CustomerInvoiceModel {
     const sql = `
       UPDATE customer_invoices
       SET
-        customer_id = $1,
-        invoice_date = $2,
-        invoice_no = $3,
-        memory = $4,
-        amount = $5,
-        amount_due = $6,
-        note = $7,
+        customer_id = ?,
+        invoice_date = ?,
+        invoice_no = ?,
+        memory = ?,
+        amount = ?,
+        amount_due = ?,
+        note = ?,
         updated_at = CURRENT_TIMESTAMP
-      WHERE invoice_id = $8
+      WHERE invoice_id = ?
     `;
 
     await db.query(sql, [
@@ -125,7 +123,7 @@ class CustomerInvoiceModel {
   }
 
   static async delete(id) {
-    const sql = "DELETE FROM customer_invoices WHERE invoice_id = $1";
+    const sql = "DELETE FROM customer_invoices WHERE invoice_id = ?";
     await db.query(sql, [id]);
     return true;
   }

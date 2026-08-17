@@ -5,8 +5,7 @@ class SocialSheetModel {
     const rowsJson = rows ? JSON.stringify(rows) : JSON.stringify([]);
 
     const sql = `INSERT INTO social_sheets (name, start_date, end_date, rows_json)
-           VALUES ($1, $2, $3, $4)
-           RETURNING sheet_id`;
+           VALUES (?, ?, ?, ?)`;
 
     const { rows: result } = await db.query(sql, [
       name || null,
@@ -14,7 +13,7 @@ class SocialSheetModel {
       end_date || null,
       rowsJson,
     ]);
-    return result[0].sheet_id;
+    return result.insertId;
   }
 
   static async getAllSheets() {
@@ -87,7 +86,7 @@ class SocialSheetModel {
         created_at,
         updated_at
       FROM social_sheets
-      WHERE sheet_id = $1
+      WHERE sheet_id = ?
     `;
 
     const { rows } = await db.query(sql, [sheetId]);
@@ -119,12 +118,12 @@ class SocialSheetModel {
     const rowsJson = rows ? JSON.stringify(rows) : JSON.stringify([]);
 
     const sql = `UPDATE social_sheets
-           SET name = $1,
-               start_date = $2,
-               end_date = $3,
-               rows_json = $4,
+           SET name = ?,
+               start_date = ?,
+               end_date = ?,
+               rows_json = ?,
                updated_at = CURRENT_TIMESTAMP
-           WHERE sheet_id = $5`;
+           WHERE sheet_id = ?`;
 
     await db.query(sql, [
       name || null,
@@ -136,7 +135,7 @@ class SocialSheetModel {
   }
 
   static async deleteSheet(sheetId) {
-    const sql = `DELETE FROM social_sheets WHERE sheet_id = $1`;
+    const sql = `DELETE FROM social_sheets WHERE sheet_id = ?`;
 
     await db.query(sql, [sheetId]);
   }

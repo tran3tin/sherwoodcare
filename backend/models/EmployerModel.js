@@ -4,7 +4,7 @@ class EmployerModel {
   // Get all employers
   static async getAll() {
     const sql = `
-      SELECT 
+      SELECT
         employer_id,
         full_name,
         rent_monthly,
@@ -27,7 +27,7 @@ class EmployerModel {
   // Get single employer by ID
   static async getById(id) {
     const sql = `
-      SELECT 
+      SELECT
         employer_id,
         full_name,
         rent_monthly,
@@ -41,7 +41,7 @@ class EmployerModel {
         created_at,
         updated_at
       FROM employers
-      WHERE employer_id = $1
+      WHERE employer_id = ?
     `;
     const { rows } = await db.query(sql, [id]);
     return rows[0] || null;
@@ -60,8 +60,7 @@ class EmployerModel {
         da_weekly_email,
         social_fortnightly,
         social_fortnightly_email
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING employer_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const values = [
       data.full_name,
@@ -75,8 +74,7 @@ class EmployerModel {
       data.social_fortnightly_email || false,
     ];
 
-    const { rows } = await db.query(sql, values);
-    const insertId = rows[0].employer_id;
+    const { insertId } = await db.query(sql, values);
     return this.getById(insertId);
   }
 
@@ -85,17 +83,17 @@ class EmployerModel {
     const sql = `
       UPDATE employers
       SET
-        full_name = $1,
-        rent_monthly = $2,
-        rent_monthly_email = $3,
-        rent_fortnightly = $4,
-        rent_fortnightly_email = $5,
-        da_weekly = $6,
-        da_weekly_email = $7,
-        social_fortnightly = $8,
-        social_fortnightly_email = $9,
+        full_name = ?,
+        rent_monthly = ?,
+        rent_monthly_email = ?,
+        rent_fortnightly = ?,
+        rent_fortnightly_email = ?,
+        da_weekly = ?,
+        da_weekly_email = ?,
+        social_fortnightly = ?,
+        social_fortnightly_email = ?,
         updated_at = CURRENT_TIMESTAMP
-      WHERE employer_id = $10
+      WHERE employer_id = ?
     `;
     const values = [
       data.full_name,
@@ -116,7 +114,7 @@ class EmployerModel {
 
   // Delete employer
   static async delete(id) {
-    const sql = "DELETE FROM employers WHERE employer_id = $1";
+    const sql = "DELETE FROM employers WHERE employer_id = ?";
     await db.query(sql, [id]);
     return true;
   }

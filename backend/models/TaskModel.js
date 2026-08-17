@@ -1,33 +1,48 @@
 const db = require("../config/db");
 
 class TaskModel {
+  // Map an attachment row → { id, url, name }
+  static mapAttachment(row) {
+    return { id: row.attachment_id, url: row.file_url, name: row.file_name };
+  }
+
+  // Fetch attachments for the given task ids and attach to each task.
+  // Done in a separate query + JS merge instead of JSON_ARRAYAGG so it works
+  // on both MySQL 8 and MariaDB 10.x (JSON_ARRAYAGG is missing before MariaDB 10.5).
+  static async attachFiles(tasks) {
+    if (!tasks.length) return tasks;
+    const ids = tasks.map((t) => t.task_id);
+    const { rows: attachments } = await db.query(
+      `SELECT attachment_id, task_id, file_url, file_name
+       FROM task_attachments
+       WHERE task_id IN (?)`,
+      [ids]
+    );
+    const byTask = {};
+    for (const row of attachments) {
+      (byTask[row.task_id] = byTask[row.task_id] || []).push(
+        TaskModel.mapAttachment(row)
+      );
+    }
+    for (const task of tasks) {
+      task.attachments = byTask[task.task_id] || [];
+    }
+    return tasks;
+  }
+
   // Get all tasks with attachments
   static async getAll() {
-    const query = `
-      SELECT t.*,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'id', ta.attachment_id,
-              'url', ta.file_url,
-              'name', ta.file_name
-            )
-          ) FILTER (WHERE ta.attachment_id IS NOT NULL),
-          '[]'
-        ) as attachments
-      FROM tasks t
-      LEFT JOIN task_attachments ta ON t.task_id = ta.task_id
-      GROUP BY t.task_id
-      ORDER BY t.position ASC, t.created_at DESC
-    `;
-    const { rows } = await db.query(query);
-    return rows;
+    const { rows } = await db.query(
+      `SELECT * FROM tasks
+       ORDER BY position ASC, created_at DESC`
+    );
+    return await TaskModel.attachFiles(rows);
   }
 
   // Get tasks by status
   static async getByStatus(status) {
     const { rows } = await db.query(
-      `SELECT * FROM tasks WHERE status = $1 ORDER BY position ASC`,
+      `SELECT * FROM tasks WHERE status = ? ORDER BY position ASC`,
       [status]
     );
     return rows;
@@ -35,28 +50,16 @@ class TaskModel {
 
   // Get single task by ID
   static async getById(taskId) {
-    const query = `
-      SELECT t.*,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'id', ta.attachment_id,
-              'url', ta.file_url,
-              'name', ta.file_name
-            )
-          ) FILTER (WHERE ta.attachment_id IS NOT NULL),
-          '[]'
-        ) as attachments
-      FROM tasks t
-      LEFT JOIN task_attachments ta ON t.task_id = ta.task_id
-      WHERE t.task_id = $1
-      GROUP BY t.task_id
-    `;
-    const { rows } = await db.query(query, [taskId]);
-    return rows[0];
+    const { rows } = await db.query(
+      `SELECT * FROM tasks WHERE task_id = ?`,
+      [taskId]
+    );
+    if (!rows.length) return null;
+    const [task] = await TaskModel.attachFiles(rows);
+    return task;
   }
 
-  // Helper to convert empty strings to null (PostgreSQL compatibility)
+  // Helper to convert empty strings to null
   static toNull(value) {
     return value === "" || value === undefined ? null : value;
   }
@@ -74,22 +77,22 @@ class TaskModel {
       files = [], // Array of { url, name }
     } = taskData;
 
+    const conn = await db.getConnection();
     try {
-      await db.query("BEGIN");
+      await conn.beginTransaction();
 
       // Get max position for the status
-      const { rows: posRows } = await db.query(
-        `SELECT COALESCE(MAX(position), -1) + 1 as next_pos FROM tasks WHERE status = $1`,
+      const [posRows] = await conn.query(
+        `SELECT COALESCE(MAX(position), -1) + 1 as next_pos FROM tasks WHERE status = ?`,
         [status]
       );
       const nextPosition = posRows[0]?.next_pos || 0;
 
       // Insert task
-      const { rows: result } = await db.query(
-        `INSERT INTO tasks 
-         (title, description, status, priority, due_date, assigned_to, position) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING task_id`,
+      const [result] = await conn.query(
+        `INSERT INTO tasks
+         (title, description, status, priority, due_date, assigned_to, position)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           title,
           description,
@@ -101,26 +104,27 @@ class TaskModel {
         ]
       );
 
-      const taskId = result[0].task_id;
+      const taskId = result.insertId;
 
       // Insert attachments
       if (files && files.length > 0) {
         for (const file of files) {
-          await db.query(
-            `INSERT INTO task_attachments (task_id, file_url, file_name) VALUES ($1, $2, $3)`,
+          await conn.query(
+            `INSERT INTO task_attachments (task_id, file_url, file_name) VALUES (?, ?, ?)`,
             [taskId, file.url, file.name]
           );
         }
       }
 
-      await db.query("COMMIT");
-      
+      await conn.commit();
+
       // Return the complete task
       return await TaskModel.getById(taskId);
-
     } catch (error) {
-      await db.query("ROLLBACK");
+      await conn.rollback();
       throw error;
+    } finally {
+      conn.release();
     }
   }
 
@@ -137,15 +141,16 @@ class TaskModel {
       files = [], // New files to add
     } = taskData;
 
+    const conn = await db.getConnection();
     try {
-      await db.query("BEGIN");
+      await conn.beginTransaction();
 
-      const { rowCount } = await db.query(
-        `UPDATE tasks 
-         SET title = $1, description = $2, status = $3, priority = $4, 
-             due_date = $5, assigned_to = $6, position = $7,
+      const [updateResult] = await conn.query(
+        `UPDATE tasks
+         SET title = ?, description = ?, status = ?, priority = ?,
+             due_date = ?, assigned_to = ?, position = ?,
              updated_at = CURRENT_TIMESTAMP
-         WHERE task_id = $8`,
+         WHERE task_id = ?`,
         [
           title,
           description,
@@ -158,35 +163,36 @@ class TaskModel {
         ]
       );
 
-      if (rowCount === 0) {
-        await db.query("ROLLBACK");
+      if (updateResult.affectedRows === 0) {
+        await conn.rollback();
         throw new Error("Task not found");
       }
 
       // Add new attachments
       if (files && files.length > 0) {
         for (const file of files) {
-          await db.query(
-            `INSERT INTO task_attachments (task_id, file_url, file_name) VALUES ($1, $2, $3)`,
+          await conn.query(
+            `INSERT INTO task_attachments (task_id, file_url, file_name) VALUES (?, ?, ?)`,
             [taskId, file.url, file.name]
           );
         }
       }
 
-      await db.query("COMMIT");
+      await conn.commit();
       return true;
-
     } catch (error) {
-      await db.query("ROLLBACK");
+      await conn.rollback();
       console.error("TaskModel.update error:", error.message);
       throw error;
+    } finally {
+      conn.release();
     }
   }
 
   static async removeAttachment(attachmentId) {
     const { rowCount } = await db.query(
-        `DELETE FROM task_attachments WHERE attachment_id = $1`,
-        [attachmentId]
+      `DELETE FROM task_attachments WHERE attachment_id = ?`,
+      [attachmentId]
     );
     return rowCount > 0;
   }
@@ -194,9 +200,9 @@ class TaskModel {
   // Update task status and position (for drag & drop)
   static async updatePosition(taskId, status, position) {
     const { rowCount } = await db.query(
-      `UPDATE tasks 
-       SET status = $1, position = $2, updated_at = CURRENT_TIMESTAMP
-       WHERE task_id = $3`,
+      `UPDATE tasks
+       SET status = ?, position = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE task_id = ?`,
       [status, position, taskId]
     );
     return rowCount > 0;
@@ -206,7 +212,7 @@ class TaskModel {
   static async reorderTasks(status, taskIds) {
     for (let i = 0; i < taskIds.length; i++) {
       await db.query(
-        `UPDATE tasks SET position = $1, status = $2 WHERE task_id = $3`,
+        `UPDATE tasks SET position = ?, status = ? WHERE task_id = ?`,
         [i, status, taskIds[i]]
       );
     }
@@ -216,7 +222,7 @@ class TaskModel {
   // Delete task
   static async delete(taskId) {
     const { rowCount } = await db.query(
-      `DELETE FROM tasks WHERE task_id = $1`,
+      `DELETE FROM tasks WHERE task_id = ?`,
       [taskId]
     );
     return rowCount > 0;
@@ -232,10 +238,10 @@ class TaskModel {
 
   // Toggle task pin
   static async togglePin(taskId) {
-    // Check if pin columns exist
+    // Check if pin columns exist (MySQL information_schema)
     const { rows: schemaCheck } = await db.query(
-      `SELECT column_name FROM information_schema.columns 
-       WHERE table_schema = 'public' AND table_name = 'tasks' 
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema = DATABASE() AND table_name = 'tasks'
        AND column_name IN ('is_pinned', 'pinned_at')`
     );
 
@@ -247,17 +253,16 @@ class TaskModel {
       throw err;
     }
 
-    const { rows } = await db.query(
-      `UPDATE tasks 
-       SET is_pinned = NOT is_pinned, 
+    const { rowCount } = await db.query(
+      `UPDATE tasks
+       SET is_pinned = NOT is_pinned,
            pinned_at = CASE WHEN is_pinned THEN NULL ELSE CURRENT_TIMESTAMP END,
            updated_at = CURRENT_TIMESTAMP
-       WHERE task_id = $1
-       RETURNING is_pinned`,
+       WHERE task_id = ?`,
       [taskId]
     );
 
-    return rows.length > 0;
+    return rowCount > 0;
   }
 }
 

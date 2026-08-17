@@ -24,15 +24,22 @@ const uploadFile = async (req, res) => {
 
     // Lưu thông tin vào database
     const sql =
-      "INSERT INTO documents (name, file_url, created_at) VALUES ($1, $2, NOW()) RETURNING *";
+      "INSERT INTO documents (name, file_url, created_at) VALUES (?, ?, NOW())";
     const values = [req.file.originalname, publicUrl];
 
     const result = await dbQuery(sql, values);
 
+    // Fetch the inserted row so the response keeps its shape
+    const inserted = await dbQuery(
+      "SELECT * FROM documents WHERE id = ?",
+      [result.insertId],
+    );
+    const row = inserted.rows && inserted.rows[0] ? inserted.rows[0] : null;
+
     res.status(200).json({
       success: true,
       message: "Upload thành công!",
-      data: result.rows[0],
+      data: row,
     });
   } catch (error) {
     console.error("Upload error:", error);
@@ -73,11 +80,11 @@ const deleteFile = async (req, res) => {
     const { id } = req.params;
 
     // 1. Lấy thông tin file từ database
-    const fileResult = await dbQuery("SELECT * FROM documents WHERE id = $1", [
+    const fileResult = await dbQuery("SELECT * FROM documents WHERE id = ?", [
       id,
     ]);
 
-    if (fileResult.rows.length === 0) {
+    if (!fileResult.rows || fileResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
         error: "File không tồn tại",
@@ -104,15 +111,12 @@ const deleteFile = async (req, res) => {
     }
 
     // 3. Xóa record khỏi database
-    const deleteResult = await dbQuery(
-      "DELETE FROM documents WHERE id = $1 RETURNING *",
-      [id],
-    );
+    await dbQuery("DELETE FROM documents WHERE id = ?", [id]);
 
     res.status(200).json({
       success: true,
       message: "Xóa file thành công",
-      data: deleteResult.rows[0],
+      data: file,
     });
   } catch (error) {
     console.error("Delete file error:", error);

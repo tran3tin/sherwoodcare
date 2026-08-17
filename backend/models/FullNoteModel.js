@@ -32,13 +32,14 @@ class FullNoteModel {
     const tables = [...new Set(wanted.map((w) => w.table))];
     const columns = [...new Set(wanted.map((w) => w.column))];
 
+    // MySQL: information_schema with IN (?) — mysql2 expands the array param
     const { rows } = await db.query(
       `
         SELECT table_name, column_name
         FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = ANY($1)
-          AND column_name = ANY($2)
+        WHERE table_schema = DATABASE()
+          AND table_name IN (?)
+          AND column_name IN (?)
       `,
       [tables, columns]
     );
@@ -99,25 +100,28 @@ class FullNoteModel {
       filters.push("n.note_type = 'other'");
     }
 
-    const whereClause = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+    const whereClause = filters.length
+      ? `WHERE ${filters.join(" AND ")}`
+      : "";
 
+    // MySQL doesn't have ::text / ::int / ::boolean casts, use CONCAT/CAST instead
     const cnPinnedSelect = caps.customerNotes.isPinned
       ? "cn.is_pinned"
-      : "false::boolean";
+      : "false";
     const cnPinnedAtSelect = caps.customerNotes.pinnedAt
       ? "cn.pinned_at"
-      : "NULL::timestamp";
+      : "NULL";
 
     const enPinnedSelect = caps.employeeNotes.isPinned
       ? "en.is_pinned"
-      : "false::boolean";
+      : "false";
     const enPinnedAtSelect = caps.employeeNotes.pinnedAt
       ? "en.pinned_at"
-      : "NULL::timestamp";
+      : "NULL";
 
     const customerNameSelect = caps.customers.fullName
       ? "COALESCE(c.full_name, '')"
-      : "''::text";
+      : "''";
 
     const employeeNameSelect = caps.employees.preferredName
       ? "COALESCE(e.preferred_name, CONCAT(e.first_name, ' ', e.last_name), '')"
@@ -125,15 +129,15 @@ class FullNoteModel {
 
     const gnPinnedSelect = caps.generalNotes.isPinned
       ? "gn.is_pinned"
-      : "false::boolean";
+      : "false";
     const gnPinnedAtSelect = caps.generalNotes.pinnedAt
       ? "gn.pinned_at"
-      : "NULL::timestamp";
+      : "NULL";
 
     const unionParts = [
       `
         SELECT
-          'customer'::text AS note_type,
+          'customer' AS note_type,
           cn.note_id,
           cn.customer_id AS entity_id,
           ${customerNameSelect} AS entity_name,
@@ -153,7 +157,7 @@ class FullNoteModel {
       `,
       `
         SELECT
-          'employee'::text AS note_type,
+          'employee' AS note_type,
           en.note_id,
           en.employee_id AS entity_id,
           ${employeeNameSelect} AS entity_name,
@@ -176,10 +180,10 @@ class FullNoteModel {
     if (caps.generalNotes.exists) {
       unionParts.push(`
         SELECT
-          'other'::text AS note_type,
+          'other' AS note_type,
           gn.note_id,
-          NULL::int AS entity_id,
-          ''::text AS entity_name,
+          CAST(NULL AS INT) AS entity_id,
+          '' AS entity_name,
           gn.title,
           gn.content,
           gn.priority,
@@ -195,17 +199,14 @@ class FullNoteModel {
       `);
     }
 
+    const unionSql = unionParts.join("\n\n        UNION ALL\n\n");
     const sql = `
-      WITH n AS (
-        ${unionParts.join("\n\n        UNION ALL\n\n")}
-      )
-      SELECT *
-      FROM n
+      ${unionSql}
       ${whereClause}
       ORDER BY
         is_pinned DESC,
         COALESCE(pinned_at, created_at) DESC,
-        created_at DESC;
+        created_at DESC
     `;
 
     const { rows } = await db.query(sql, params);

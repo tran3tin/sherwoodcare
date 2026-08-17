@@ -4,12 +4,12 @@ const db = require("../config/db");
  * Get complete database schema including tables, columns, primary keys, and foreign keys
  */
 async function getCompleteDbSchema() {
-  // PostgreSQL
+  // MySQL information_schema (no table_schema = 'public'; use DATABASE())
   const columnsSql = `
     SELECT table_name, column_name, data_type, is_nullable,
            column_default
     FROM information_schema.columns
-    WHERE table_schema = 'public'
+    WHERE table_schema = DATABASE()
     ORDER BY table_name, ordinal_position
   `;
   const { rows: columns } = await db.query(columnsSql);
@@ -17,26 +17,26 @@ async function getCompleteDbSchema() {
   const pkSql = `
     SELECT tc.table_name, kcu.column_name
     FROM information_schema.table_constraints tc
-    JOIN information_schema.key_column_usage kcu 
+    JOIN information_schema.key_column_usage kcu
       ON tc.constraint_name = kcu.constraint_name
-    WHERE tc.constraint_type = 'PRIMARY KEY' 
-      AND tc.table_schema = 'public'
+      AND tc.table_schema = kcu.table_schema
+    WHERE tc.constraint_type = 'PRIMARY KEY'
+      AND tc.table_schema = DATABASE()
   `;
   const { rows: primaryKeys } = await db.query(pkSql);
 
   const fkSql = `
-    SELECT 
-      tc.table_name,
+    SELECT
+      kcu.table_name,
       kcu.column_name,
-      ccu.table_name AS referenced_table,
-      ccu.column_name AS referenced_column
+      kcu.referenced_table_name AS referenced_table,
+      kcu.referenced_column_name AS referenced_column
     FROM information_schema.table_constraints tc
-    JOIN information_schema.key_column_usage kcu 
+    JOIN information_schema.key_column_usage kcu
       ON tc.constraint_name = kcu.constraint_name
-    JOIN information_schema.constraint_column_usage ccu 
-      ON ccu.constraint_name = tc.constraint_name
-    WHERE tc.constraint_type = 'FOREIGN KEY' 
-      AND tc.table_schema = 'public'
+      AND tc.table_schema = kcu.table_schema
+    WHERE tc.constraint_type = 'FOREIGN KEY'
+      AND tc.table_schema = DATABASE()
   `;
   const { rows: foreignKeys } = await db.query(fkSql);
 
@@ -72,14 +72,14 @@ async function getCompleteDbSchema() {
     }
   }
 
-  return { client: "pg", tables };
+  return { client: "mysql", tables };
 }
 
 /**
  * Generate a human-readable schema description for AI
  */
 function generateSchemaDescription(schema) {
-  let description = `Database: ${schema.database || "PostgreSQL"} (${
+  let description = `Database: ${schema.database || "MySQL"} (${
     schema.client
   })\n\n`;
   description += "=== TABLES AND RELATIONSHIPS ===\n\n";

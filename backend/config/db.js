@@ -1,150 +1,111 @@
 require("dotenv").config();
 
-// PostgreSQL database configuration (Supabase compatible)
-const { Pool } = require("pg");
-const dns = require("dns");
+// MySQL database configuration (mysql2 driver)
+const mysql = require("mysql2/promise");
 
-// Node's URL parser is reliable for postgres:// and postgresql://
-const { URL } = require("url");
+// Parse connection settings from DATABASE_URL (mysql://) or individual env vars.
+// Example DATABASE_URL: mysql://user:pass@host:3306/dbname
+const dbUrl = process.env.DATABASE_URL || "";
 
-// Force IPv4 DNS resolution for cloud platforms (Render, Railway, etc.)
-if (typeof dns.setDefaultResultOrder === "function") {
-  dns.setDefaultResultOrder("ipv4first");
-}
+let config = {};
 
-const primaryDatabaseUrl =
-  process.env.DATABASE_URL ||
-  (() => {
-    const host = process.env.PGHOST || "localhost";
-    const port = process.env.PGPORT || 5432;
-    const user = process.env.PGUSER || "postgres";
-    const password = process.env.PGPASSWORD || "";
-    const db = process.env.PGDATABASE || "nexgenus";
-    return `postgres://${user}:${encodeURIComponent(
-      password,
-    )}@${host}:${port}/${db}`;
-  })();
-
-// Render currently has IPv6 egress issues in some regions. Supabase direct hostnames
-// can be IPv6-only (no A record). If you hit ENETUNREACH, set DATABASE_URL_IPV4 to
-// Supabase's Pooler connection string (IPv4-capable host, usually port 6543).
-const databaseUrl = process.env.DATABASE_URL_IPV4 || primaryDatabaseUrl;
-
-// Detect if using Supabase (cloud) or local PostgreSQL
-const isSupabase =
-  databaseUrl.includes("supabase.co") ||
-  databaseUrl.includes("supabase.com") ||
-  process.env.USE_SSL === "true";
-
-const ssl = isSupabase ? { rejectUnauthorized: false } : false;
-
-async function resolveHostnameToIpv4(hostname) {
-  // Prefer explicit A record resolution to avoid hosts that try AAAA first.
+if (dbUrl.startsWith("mysql")) {
   try {
-    const aRecords = await dns.promises.resolve4(hostname);
-    if (Array.isArray(aRecords) && aRecords.length > 0) return aRecords[0];
-  } catch (_) {
-    // Ignore and fall back
-  }
-
-  // Helpful message for the common Supabase-on-Render failure mode:
-  // hostname has no A record, so IPv4-only hosts can never connect.
-  try {
-    await dns.promises.resolve6(hostname);
-    console.warn(
-      "⚠️  DB hostname appears to be IPv6-only (no IPv4 A record). " +
-        "If you're on Render and see ENETUNREACH, set DATABASE_URL_IPV4 to Supabase Pooler URL.",
-    );
-  } catch (_) {
-    // ignore
-  }
-
-  // Fallback to lookup() constrained to IPv4
-  try {
-    const result = await dns.promises.lookup(hostname, { family: 4 });
-    if (result && result.address) return result.address;
-  } catch (_) {
-    // Ignore and fall back
-  }
-
-  return hostname;
-}
-
-async function createPool() {
-  let parsed;
-  try {
-    parsed = new URL(databaseUrl);
+    const parsed = new URL(dbUrl);
+    config = {
+      host: parsed.hostname,
+      port: Number(parsed.port || 3306),
+      user: decodeURIComponent(parsed.username || ""),
+      password: decodeURIComponent(parsed.password || ""),
+      database: decodeURIComponent((parsed.pathname || "").replace(/^\//, "")),
+    };
   } catch (err) {
-    // If URL parsing fails, fall back to connectionString (best-effort)
-    return new Pool({
-      connectionString: databaseUrl,
-      family: 4,
-      ssl,
-      connectionTimeoutMillis: 10000,
-      idleTimeoutMillis: 30000,
-      max: 20,
-    });
+    console.error("Invalid DATABASE_URL, falling back to env vars:", err.message);
+  }
+} else if (dbUrl.startsWith("postgres")) {
+  // If a legacy postgres:// URL is still set, print a helpful warning and
+  // fall back to the individual MYSQL_* env vars so startup doesn't fail.
+  console.warn(
+    "⚠️  DATABASE_URL is a postgres:// URL but this project now targets MySQL. " +
+      "Update DATABASE_URL to a mysql:// URL or set MYSQL_HOST/MYSQL_PORT/MYSQL_USER/MYSQL_PASSWORD/MYSQL_DATABASE.",
+  );
+}
+
+const pool = mysql.createPool({
+  host: config.host || process.env.MYSQL_HOST || "localhost",
+  port: config.port || Number(process.env.MYSQL_PORT || 3306),
+  user: config.user || process.env.MYSQL_USER || "root",
+  password: config.password || process.env.MYSQL_PASSWORD || "",
+  database: config.database || process.env.MYSQL_DATABASE || "nexgenus",
+  waitForConnections: true,
+  connectionLimit: 20,
+  queueLimit: 0,
+  charset: "utf8mb4",
+  dateStrings: false,
+  decimalNumbers: true,
+  namedPlaceholders: false,
+  // schema.sql is a multi-statement script (auto-migrate reads it and sends the
+  // whole file in one call), so multipleStatements must be on. All user-facing
+  // SQL entry points are guarded by isReadOnlySql() which rejects semicolons.
+  multipleStatements: true,
+});
+
+/**
+ * Query helper.
+ *
+ * mysql2 pool.query() returns:
+ *   - SELECT  → [rowsArray, fieldsArray]
+ *   - INSERT/UPDATE/DELETE → [resultSetHeader] where resultSetHeader has
+ *       insertId / affectedRows / warningStatus / changedRows
+ *
+ * We return a pg-like facade { rows, rowCount, insertId, affectedRows, fields }
+ * so callers can keep using `const { rows } = await db.query(...)`.
+ */
+async function query(sql, params) {
+  const result = await pool.query(sql, params);
+  // result is an array: [rowsOrHeader, fieldsOrUndefined]
+  const rows = result[0];
+  const fields = result[1];
+
+  // For write statements mysql2 returns a ResultSetHeader as rows[0].
+  if (rows && typeof rows.insertId === "number") {
+    return {
+      rows: [],
+      rowCount: rows.affectedRows || 0,
+      insertId: rows.insertId,
+      affectedRows: rows.affectedRows,
+      fields,
+    };
   }
 
-  const hostname = parsed.hostname;
-  const ipv4Host = await resolveHostnameToIpv4(hostname);
+  // SELECT / CALL / other result-set-returning statements
+  return {
+    rows: rows || [],
+    rowCount: rows ? rows.length : 0,
+    fields,
+  };
+}
 
-  const port = Number(parsed.port || 5432);
-  const user = decodeURIComponent(parsed.username || "");
-  const password = decodeURIComponent(parsed.password || "");
-  const database = decodeURIComponent(
-    (parsed.pathname || "").replace(/^\//, ""),
-  );
+// Get a dedicated connection from the pool (needed for BEGIN/COMMIT/ROLLBACK
+// transactions so every statement runs on the same connection).
+async function getConnection() {
+  return pool.getConnection();
+}
 
-  const pool = new Pool({
-    host: ipv4Host,
-    port,
-    user,
-    password,
-    database,
-    // Keep hostname as servername for TLS SNI when possible
-    ssl: ssl
-      ? {
-          ...ssl,
-          servername: hostname,
-        }
-      : false,
-    // Extra belt-and-suspenders: also force IPv4 for any internal lookup
-    family: 4,
-    connectionTimeoutMillis: 10000,
-    idleTimeoutMillis: 30000,
-    max: 20,
+// Test connection on startup (non-fatal)
+pool
+  .query("SELECT 1")
+  .then(() => {
+    console.log("✅ Đã kết nối thành công tới MySQL");
+  })
+  .catch((connectErr) => {
+    console.error("❌ Lỗi kết nối MySQL:", connectErr.message);
   });
 
-  // Test connection on startup (non-fatal)
-  pool
-    .connect()
-    .then((client) => {
-      console.log(
-        "✅ Đã kết nối thành công tới PostgreSQL" +
-          (isSupabase ? " (Supabase)" : " (Local)"),
-      );
-      client.release();
-    })
-    .catch((connectErr) => {
-      console.error("❌ Lỗi kết nối PostgreSQL:", connectErr.message);
-    });
-
-  return pool;
-}
-
-const poolPromise = createPool();
-
-// Backwards-compatible facade so existing code can keep using db.pool.query/end/connect
-const pool = {
-  query: (...args) => poolPromise.then((p) => p.query(...args)),
-  connect: (...args) => poolPromise.then((p) => p.connect(...args)),
-  end: (...args) => poolPromise.then((p) => p.end(...args)),
+module.exports = {
+  client: "mysql",
+  query,
+  pool,
+  getPool: () => pool,
+  getConnection,
 };
-
-async function query(sql, params) {
-  const res = await pool.query(sql, params);
-  return { rows: res.rows, rowCount: res.rowCount };
-}
-
-module.exports = { client: "pg", query, pool, getPool: () => poolPromise };

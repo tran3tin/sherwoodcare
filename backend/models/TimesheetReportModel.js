@@ -15,9 +15,9 @@ class TimesheetReportModel {
     const headersJson = date_headers ? JSON.stringify(date_headers) : null;
 
     const sql = `INSERT INTO timesheetreport (start_date, num_days, num_rows, name, processed_data, date_headers)
-           VALUES ($1, $2, $3, $4, $5, $6) RETURNING report_id`;
+           VALUES (?, ?, ?, ?, ?, ?)`;
 
-    const { rows } = await db.query(sql, [
+    const { insertId } = await db.query(sql, [
       start_date,
       num_days,
       num_rows,
@@ -25,14 +25,14 @@ class TimesheetReportModel {
       processedJson,
       headersJson,
     ]);
-    return rows[0].report_id;
+    return insertId;
   }
 
   static async getAllReports() {
     const sql = `
       SELECT
         report_id,
-        to_char(start_date, 'YYYY-MM-DD') AS start_date,
+        DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date,
         num_days,
         num_rows,
         name,
@@ -104,7 +104,7 @@ class TimesheetReportModel {
     const sql = `
       SELECT
         report_id,
-        to_char(start_date, 'YYYY-MM-DD') AS start_date,
+        DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date,
         num_days,
         num_rows,
         name,
@@ -113,7 +113,7 @@ class TimesheetReportModel {
         created_at,
         updated_at
       FROM timesheetreport
-      WHERE report_id = $1
+      WHERE report_id = ?
     `;
 
     const { rows } = await db.query(sql, [reportId]);
@@ -148,8 +148,8 @@ class TimesheetReportModel {
     const headersJson = date_headers ? JSON.stringify(date_headers) : null;
 
     const sql = `UPDATE timesheetreport
-           SET start_date = $1, num_days = $2, num_rows = $3, name = $4, processed_data = $5, date_headers = $6, updated_at = CURRENT_TIMESTAMP
-           WHERE report_id = $7`;
+           SET start_date = ?, num_days = ?, num_rows = ?, name = ?, processed_data = ?, date_headers = ?, updated_at = CURRENT_TIMESTAMP
+           WHERE report_id = ?`;
 
     await db.query(sql, [
       start_date,
@@ -163,21 +163,21 @@ class TimesheetReportModel {
   }
 
   static async deleteReport(reportId) {
-    const sql = `DELETE FROM timesheetreport WHERE report_id = $1`;
+    const sql = `DELETE FROM timesheetreport WHERE report_id = ?`;
     await db.query(sql, [reportId]);
   }
 
   static async saveEntries(reportId, entries) {
-    const deleteSql = `DELETE FROM timesheetreport_entries WHERE report_id = $1`;
+    const deleteSql = `DELETE FROM timesheetreport_entries WHERE report_id = ?`;
     await db.query(deleteSql, [reportId]);
 
     for (const entry of entries) {
       const { row_number, note, period, hrs, days } = entry;
 
       const insertEntrySql = `INSERT INTO timesheetreport_entries (report_id, row_number, note, period, hrs)
-             VALUES ($1, $2, $3, $4, $5) RETURNING entry_id`;
+             VALUES (?, ?, ?, ?, ?)`;
 
-      const { rows } = await db.query(insertEntrySql, [
+      const { insertId } = await db.query(insertEntrySql, [
         reportId,
         row_number,
         note || "",
@@ -185,13 +185,13 @@ class TimesheetReportModel {
         hrs || "",
       ]);
 
-      const entryId = rows[0].entry_id;
+      const entryId = insertId;
 
       if (days && days.length > 0) {
         for (const day of days) {
           if (day.staff_name && day.staff_name.trim()) {
             const insertDaySql = `INSERT INTO timesheetreport_days (entry_id, day_index, staff_name)
-                   VALUES ($1, $2, $3)`;
+                   VALUES (?, ?, ?)`;
 
             await db.query(insertDaySql, [
               entryId,
@@ -207,13 +207,13 @@ class TimesheetReportModel {
   static async getEntries(reportId) {
     const entriesSql = `SELECT entry_id, row_number, note, period, hrs
            FROM timesheetreport_entries
-           WHERE report_id = $1
+           WHERE report_id = ?
            ORDER BY row_number`;
 
     const { rows: entries } = await db.query(entriesSql, [reportId]);
 
     for (const entry of entries) {
-      const daysSql = `SELECT day_index, staff_name FROM timesheetreport_days WHERE entry_id = $1 ORDER BY day_index`;
+      const daysSql = `SELECT day_index, staff_name FROM timesheetreport_days WHERE entry_id = ? ORDER BY day_index`;
 
       const { rows: days } = await db.query(daysSql, [entry.entry_id]);
       entry.days = days;

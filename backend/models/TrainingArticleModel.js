@@ -1,6 +1,15 @@
 const db = require("../config/db");
 
 const normalizeAttachmentItems = (value) => {
+  if (!value) return [];
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) value = parsed;
+    } catch {
+      return [];
+    }
+  }
   if (!Array.isArray(value)) return [];
   return value
     .map((item) => ({
@@ -47,7 +56,7 @@ class TrainingArticleModel {
 
   static async getById(articleId) {
     const { rows } = await db.query(
-      `SELECT * FROM training_articles WHERE article_id = $1`,
+      `SELECT * FROM training_articles WHERE article_id = ?`,
       [articleId],
     );
     return normalizeArticle(rows[0] || null);
@@ -64,20 +73,18 @@ class TrainingArticleModel {
 
     const normalizedAttachments = normalizeAttachmentItems(attachments);
 
-    const { rows } = await db.query(
-      `INSERT INTO training_articles (title, content, attachment_url, attachment_name, attachments)
-       VALUES ($1, $2, $3, $4, $5::jsonb)
-       RETURNING *`,
-      [
-        title,
-        content,
-        attachment_url,
-        attachment_name,
-        JSON.stringify(normalizedAttachments),
-      ],
-    );
+    const sql = `INSERT INTO training_articles (title, content, attachment_url, attachment_name, attachments)
+       VALUES (?, ?, ?, ?, ?)`;
 
-    return normalizeArticle(rows[0]);
+    const { insertId } = await db.query(sql, [
+      title,
+      content,
+      attachment_url,
+      attachment_name,
+      JSON.stringify(normalizedAttachments),
+    ]);
+
+    return this.getById(insertId);
   }
 
   static async update(articleId, articleData) {
@@ -86,16 +93,15 @@ class TrainingArticleModel {
 
     const normalizedAttachments = normalizeAttachmentItems(attachments);
 
-    const { rows } = await db.query(
+    await db.query(
       `UPDATE training_articles
-       SET title = $1,
-           content = $2,
-           attachment_url = $3,
-           attachment_name = $4,
-           attachments = $5::jsonb,
+       SET title = ?,
+           content = ?,
+           attachment_url = ?,
+           attachment_name = ?,
+           attachments = ?,
            updated_at = CURRENT_TIMESTAMP
-       WHERE article_id = $6
-       RETURNING *`,
+       WHERE article_id = ?`,
       [
         title,
         content,
@@ -103,15 +109,15 @@ class TrainingArticleModel {
         attachment_name,
         JSON.stringify(normalizedAttachments),
         articleId,
-      ],
+      ]
     );
 
-    return normalizeArticle(rows[0] || null);
+    return this.getById(articleId);
   }
 
   static async delete(articleId) {
     const { rowCount } = await db.query(
-      `DELETE FROM training_articles WHERE article_id = $1`,
+      `DELETE FROM training_articles WHERE article_id = ?`,
       [articleId],
     );
     return rowCount > 0;
