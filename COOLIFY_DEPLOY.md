@@ -130,23 +130,34 @@ Server running on port 3000
 ## Bước 3: Deploy Frontend
 
 1. Coolify → **Applications** → **+ Add** → **Public**
-2. Repo `nexgenus`
-3. Cấu hình:
+2. Repo `nexgenus` (branch `main`)
+3. Cấu hình (Railpack / Dynamic — package.json có `serve`):
 
-   | Field                 | Giá trị                                       |
-   |-----------------------|-----------------------------------------------|
-   | **Name**              | `sherwoodcare-fe`                             |
-   | **Build Command**     | `cd frontend && npm install && npm run build` |
-   | **Publish Directory** | `frontend/dist`                               |
-   | **Port**              | `80`                                          |
+   | Field                 | Giá trị                                      |
+   |-----------------------|----------------------------------------------|
+   | **Name**              | `sherwoodcare-fe`                            |
+   | **Build strategy**    | Railpack                                     |
+   | **Site type**         | Dynamic                                      |
+   | **Base directory**    | `/frontend`                                  |
+   | **Install command**   | `npm install` (hoặc để trống → `npm ci`)     |
+   | **Build command**     | `npm run build`                              |
+   | **Start command**     | `npx serve -s dist -l 3000`                  |
+   | **Publish directory** | `dist` (hoặc `/frontend/dist`)               |
+   | **Ports exposes**     | `3000`                                       |
+   | **Domain Port**       | `3000` (port container; Path để **trống**)   |
 
-4. Env (build-time, prefix `VITE_`):
+   > **Quan trọng:** Đã set **Base directory = `/frontend`** thì **không** viết `cd frontend` trong Build/Start.
+   > Sai: `cd frontend && npm run build` → lỗi `can't cd to frontend`.
+   > Đúng: `npm run build` (cwd đã là `/frontend`).
+
+4. Env (build-time, prefix `VITE_` — phải **Rebuild** sau khi sửa):
 
    ```
    VITE_API_BASE_URL=https://your-backend-domain.coolify.app
+   PORT=3000
    ```
 
-5. **Deploy** → lấy domain frontend.
+5. **Deploy** → domain dạng `https://myjob.example.com` (HTTPS 443 → proxy vào container `:3000`).
 
 ## Bước 4: Cập nhật CORS + BACKEND_URL
 
@@ -249,3 +260,26 @@ SHOW TABLES;
 ### Frontend gọi API sai host
 
 - `VITE_API_BASE_URL` bake lúc **build** — sửa env rồi **Rebuild** FE, không chỉ restart
+
+### Frontend build OOM (`Killed` / `cannot allocate memory`)
+
+Log kiểu:
+
+```text
+rendering chunks...
+Killed
+ResourceExhausted: cannot allocate memory
+```
+
+Server Coolify hết RAM lúc `vite build` (thường máy < 2–4 GB hoặc build song song BE+FE).
+
+**Cách xử lý (thử lần lượt):**
+
+1. Redeploy **một app một lúc** (tắt build backend khi build FE).
+2. Coolify FE env thêm:
+   ```
+   NODE_OPTIONS=--max-old-space-size=1536
+   ```
+3. Build command giữ `npm run build` (repo đã tắt sourcemap + split chunk).
+4. Tăng RAM VPS / swap (khuyến nghị ≥ 2 GB free khi build).
+5. Build local rồi đổi strategy Dockerfile copy `dist` nếu VPS quá yếu.

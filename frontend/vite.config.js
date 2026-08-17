@@ -16,6 +16,16 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
-    sourcemap: true,
+    // Sourcemap + big vendor graph OOMs small Coolify builders
+    sourcemap: false,
+    chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom", "react-router-dom"],
+          vendor: ["axios", "bootstrap", "quill", "react-quill"],
+        },
+      },
+    },
   },
 });
