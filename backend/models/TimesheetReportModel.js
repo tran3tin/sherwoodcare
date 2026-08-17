@@ -174,7 +174,7 @@ class TimesheetReportModel {
     for (const entry of entries) {
       const { row_number, note, period, hrs, days } = entry;
 
-      const insertEntrySql = `INSERT INTO timesheetreport_entries (report_id, row_number, note, period, hrs)
+      const insertEntrySql = `INSERT INTO timesheetreport_entries (report_id, `row_number`, note, period, hrs)
              VALUES (?, ?, ?, ?, ?)`;
 
       const { insertId } = await db.query(insertEntrySql, [
@@ -205,10 +205,10 @@ class TimesheetReportModel {
   }
 
   static async getEntries(reportId) {
-    const entriesSql = `SELECT entry_id, row_number, note, period, hrs
+    const entriesSql = `SELECT entry_id, `row_number`, note, period, hrs
            FROM timesheetreport_entries
            WHERE report_id = ?
-           ORDER BY row_number`;
+           ORDER BY `row_number``;
 
     const { rows: entries } = await db.query(entriesSql, [reportId]);
 
