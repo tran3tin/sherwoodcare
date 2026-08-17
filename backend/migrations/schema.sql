@@ -165,13 +165,13 @@ CREATE TABLE IF NOT EXISTS timesheet_periods (
 CREATE TABLE IF NOT EXISTS timesheet_entries (
   entry_id INT AUTO_INCREMENT PRIMARY KEY,
   period_id INT NOT NULL,
-  `row_number` INT NOT NULL,
+  row_num INT NOT NULL,
   note VARCHAR(255) NULL,
   period VARCHAR(100) NULL,
   hrs VARCHAR(50) NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_timesheet_entries (period_id, `row_number`),
+  UNIQUE KEY uq_timesheet_entries (period_id, row_num),
   KEY idx_entries_period (period_id),
   CONSTRAINT fk_timesheet_entries_period FOREIGN KEY (period_id) REFERENCES timesheet_periods(period_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -201,13 +201,13 @@ CREATE TABLE IF NOT EXISTS timesheetreport (
 CREATE TABLE IF NOT EXISTS timesheetreport_entries (
   entry_id INT AUTO_INCREMENT PRIMARY KEY,
   report_id INT NOT NULL,
-  `row_number` INT NOT NULL,
+  row_num INT NOT NULL,
   note VARCHAR(255) NULL,
   period VARCHAR(100) NULL,
   hrs VARCHAR(50) NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_timesheetreport_entries (report_id, `row_number`),
+  UNIQUE KEY uq_timesheetreport_entries (report_id, row_num),
   KEY idx_report_entries_report (report_id),
   CONSTRAINT fk_tsreport_entries_report FOREIGN KEY (report_id) REFERENCES timesheetreport(report_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -243,7 +243,7 @@ CREATE TABLE IF NOT EXISTS payroll_nexgenus (
 CREATE TABLE IF NOT EXISTS payroll_nexgenus_entries (
   id INT AUTO_INCREMENT PRIMARY KEY,
   payroll_id INT NOT NULL,
-  `row_number` INT NOT NULL,
+  row_num INT NOT NULL,
   code VARCHAR(255) NULL,
   total_income VARCHAR(255) NULL,
   employee_bhxh VARCHAR(255) NULL,

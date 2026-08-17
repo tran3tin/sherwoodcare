@@ -85,7 +85,7 @@ class TimesheetModel {
 
   // Save entries (bulk insert with transaction)
   static async saveEntries(periodId, entries) {
-    // entries = [{ row_number, note, period, hrs, days: [{day_index, staff_name}] }]
+    // entries = [{ row_number|row_num, note, period, hrs, days: [{day_index, staff_name}] }]
 
     // Delete existing entries for this period
     const deleteSql = `DELETE FROM timesheet_entries WHERE period_id = ?`;
@@ -93,14 +93,15 @@ class TimesheetModel {
 
     // Insert new entries
     for (const entry of entries) {
-      const { row_number, note, period, hrs, days } = entry;
+      const { note, period, hrs, days } = entry;
+      const rowNum = entry.row_num ?? entry.row_number;
 
-      const insertEntrySql = `INSERT INTO timesheet_entries (period_id, `row_number`, note, period, hrs)
+      const insertEntrySql = `INSERT INTO timesheet_entries (period_id, row_num, note, period, hrs)
              VALUES (?, ?, ?, ?, ?)`;
 
       const { insertId } = await db.query(insertEntrySql, [
         periodId,
-        row_number,
+        rowNum,
         note || "",
         period || "",
         hrs || "",
@@ -128,10 +129,10 @@ class TimesheetModel {
 
   // Get all entries for a period
   static async getEntries(periodId) {
-    const entriesSql = `SELECT entry_id, `row_number`, note, period, hrs
+    const entriesSql = `SELECT entry_id, row_num AS row_number, note, period, hrs
            FROM timesheet_entries
            WHERE period_id = ?
-           ORDER BY `row_number``;
+           ORDER BY row_num`;
 
     const { rows: entries } = await db.query(entriesSql, [periodId]);
 
