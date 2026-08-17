@@ -1,19 +1,12 @@
 const TaskModel = require("../models/TaskModel");
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
+const { subdir } = require("../config/upload");
 
-// Configure multer for task attachments
+// Coolify / local disk under UPLOAD_DIR/task-attachments
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(
-      __dirname,
-      "../public/uploads/task-attachments",
-    );
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
+    cb(null, subdir("task-attachments"));
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);

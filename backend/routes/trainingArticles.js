@@ -1,15 +1,12 @@
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
+const { subdir } = require("../config/upload");
 const trainingArticleController = require("../controllers/trainingArticleController");
 
 const router = express.Router();
 
-const uploadDir = path.join(__dirname, "..", "public", "uploads", "training");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+const uploadDir = subdir("training");
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {

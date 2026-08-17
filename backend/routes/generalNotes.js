@@ -2,22 +2,12 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
+const { subdir } = require("../config/upload");
 const generalNoteController = require("../controllers/generalNoteController");
 
-// Ensure upload directory exists
-const uploadDir = path.join(
-  __dirname,
-  "..",
-  "public",
-  "uploads",
-  "general-notes"
-);
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// Coolify / local disk under UPLOAD_DIR/general-notes
+const uploadDir = subdir("general-notes");
 
-// Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadDir);

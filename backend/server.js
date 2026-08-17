@@ -183,7 +183,7 @@ app.use("/api/tasks", taskRoutes);
 const chatbotRoutes = require("./routes/chatbot");
 app.use("/api/chatbot", chatbotRoutes);
 
-// Upload routes (Firebase Storage)
+// Upload routes (local Coolify / disk storage — no Firebase)
 const uploadRoutes = require("./routes/upload");
 app.use("/api/upload", uploadRoutes);
 
@@ -191,8 +191,10 @@ app.use("/api/upload", uploadRoutes);
 const trainingArticleRoutes = require("./routes/trainingArticles");
 app.use("/api/training-articles", trainingArticleRoutes);
 
-// Serve uploaded files
-app.use("/uploads", express.static(path.join(__dirname, "public", "uploads")));
+// Serve uploaded files from Coolify persistent volume / local disk
+const { uploadDir } = require("./config/upload");
+app.use("/uploads", express.static(uploadDir));
+console.log(`📁 Serving uploads from: ${uploadDir}`);
 
 // Auto-run migrations on startup (only if AUTO_MIGRATE=true in env)
 // Note: runAutoMigrations is already imported above for the /api/db/migrate endpoint

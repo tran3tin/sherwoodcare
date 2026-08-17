@@ -1,11 +1,10 @@
 const path = require("path");
 const fs = require("fs");
 const { query: dbQuery } = require("../config/db");
+const { publicUrlFor, absolutePathFor } = require("../config/upload");
 
 /**
- * Upload file lên Railway Volume (local disk) và lưu URL vào database
- * @param {Object} req - Express request với file từ multer
- * @param {Object} res - Express response
+ * Upload file to local Coolify volume / disk and store URL in `documents`.
  */
 const uploadFile = async (req, res) => {
   try {
@@ -16,24 +15,18 @@ const uploadFile = async (req, res) => {
       });
     }
 
-    // File đã được lưu vào disk bởi Multer
-    // Tạo URL public để truy cập file
-    const backendUrl =
-      process.env.BACKEND_URL || `https://sherwoodcare-backend.up.railway.app`;
-    const publicUrl = `${backendUrl}/uploads/${req.file.filename}`;
+    // Public URL served by express.static("/uploads", ...)
+    const publicUrl = publicUrlFor(req.file.filename);
 
-    // Lưu thông tin vào database
     const sql =
       "INSERT INTO documents (name, file_url, created_at) VALUES (?, ?, NOW())";
     const values = [req.file.originalname, publicUrl];
 
     const result = await dbQuery(sql, values);
 
-    // Fetch the inserted row so the response keeps its shape
-    const inserted = await dbQuery(
-      "SELECT * FROM documents WHERE id = ?",
-      [result.insertId],
-    );
+    const inserted = await dbQuery("SELECT * FROM documents WHERE id = ?", [
+      result.insertId,
+    ]);
     const row = inserted.rows && inserted.rows[0] ? inserted.rows[0] : null;
 
     res.status(200).json({
@@ -51,7 +44,7 @@ const uploadFile = async (req, res) => {
 };
 
 /**
- * Lấy danh sách file từ database
+ * List uploaded documents.
  */
 const getFiles = async (req, res) => {
   try {
@@ -73,13 +66,12 @@ const getFiles = async (req, res) => {
 };
 
 /**
- * Xóa file khỏi Railway Volume và database
+ * Delete file from disk + database.
  */
 const deleteFile = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1. Lấy thông tin file từ database
     const fileResult = await dbQuery("SELECT * FROM documents WHERE id = ?", [
       id,
     ]);
@@ -93,24 +85,19 @@ const deleteFile = async (req, res) => {
 
     const file = fileResult.rows[0];
 
-    // 2. Xóa file khỏi disk
+    // Remove from disk (best-effort)
     try {
-      const filename = path.basename(file.file_url);
-      const filePath = path.join(
-        __dirname,
-        "..",
-        "public",
-        "uploads",
-        filename,
-      );
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      const filename = path.basename(file.file_url || "");
+      if (filename) {
+        const filePath = absolutePathFor(filename);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
       }
     } catch (fsError) {
       console.warn("File delete warning:", fsError.message);
     }
 
-    // 3. Xóa record khỏi database
     await dbQuery("DELETE FROM documents WHERE id = ?", [id]);
 
     res.status(200).json({
