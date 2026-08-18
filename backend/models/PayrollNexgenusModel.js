@@ -51,7 +51,7 @@ class PayrollNexgenusModel {
 
   // Get entries for a payroll
   static async getEntries(payrollId) {
-    const sql = `SELECT *, row_num AS row_number FROM payroll_nexgenus_entries WHERE payroll_id = ? ORDER BY row_num ASC`;
+    const sql = `SELECT *, row_num AS \`row_number\` FROM payroll_nexgenus_entries WHERE payroll_id = ? ORDER BY row_num ASC`;
     const { rows } = await db.query(sql, [payrollId]);
     return rows;
   }

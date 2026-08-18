@@ -206,7 +206,7 @@ class TimesheetReportModel {
   }
 
   static async getEntries(reportId) {
-    const entriesSql = `SELECT entry_id, row_num AS row_number, note, period, hrs
+    const entriesSql = `SELECT entry_id, row_num AS \`row_number\`, note, period, hrs
            FROM timesheetreport_entries
            WHERE report_id = ?
            ORDER BY row_num`;

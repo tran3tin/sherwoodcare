@@ -129,7 +129,7 @@ class TimesheetModel {
 
   // Get all entries for a period
   static async getEntries(periodId) {
-    const entriesSql = `SELECT entry_id, row_num AS row_number, note, period, hrs
+    const entriesSql = `SELECT entry_id, row_num AS \`row_number\`, note, period, hrs
            FROM timesheet_entries
            WHERE period_id = ?
            ORDER BY row_num`;
