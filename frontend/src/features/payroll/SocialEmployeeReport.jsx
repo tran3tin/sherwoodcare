@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 import Layout from "../../components/Layout";
+import SearchableEmployeeSelect from "../../components/SearchableEmployeeSelect";
 import { toast } from "react-toastify";
 import socialSheetService from "../../services/socialSheetService";
 import { employeeService } from "../../services/employeeService";
@@ -11,158 +12,6 @@ import "./TimeSheetForm.css";
 const DRAFT_KEY = "socialSheetDraft:new";
 
 const normalizeText = (value) => String(value ?? "").trim();
-
-const getEmployeeFullName = (emp) =>
-  normalizeText(`${emp?.first_name || ""} ${emp?.last_name || ""}`);
-
-function SearchableEmployeeSelect({
-  employees,
-  value,
-  onChange,
-  placeholder = "-- Match Employee --",
-}) {
-  const rootRef = useRef(null);
-  const inputRef = useRef(null);
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-
-  const selected = useMemo(
-    () =>
-      employees.find((e) => String(e.employee_id) === String(value)) || null,
-    [employees, value],
-  );
-
-  const selectedLabel = selected ? getEmployeeFullName(selected) : "";
-
-  useEffect(() => {
-    if (!open) setQuery(selectedLabel);
-  }, [open, selectedLabel, value]);
-
-  useEffect(() => {
-    if (!open) return undefined;
-
-    const onDocMouseDown = (event) => {
-      if (!rootRef.current?.contains(event.target)) {
-        setOpen(false);
-        setQuery(selectedLabel);
-      }
-    };
-
-    const onKeyDown = (event) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        setQuery(selectedLabel);
-      }
-    };
-
-    document.addEventListener("mousedown", onDocMouseDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onDocMouseDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open, selectedLabel]);
-
-  const filtered = useMemo(() => {
-    const term = normalizeText(query).toLowerCase();
-    if (!term) return employees;
-    return employees.filter((emp) =>
-      getEmployeeFullName(emp).toLowerCase().includes(term),
-    );
-  }, [employees, query]);
-
-  const handleSelect = (emp) => {
-    onChange(emp?.employee_id ?? "");
-    setQuery(getEmployeeFullName(emp));
-    setOpen(false);
-  };
-
-  const handleClear = (event) => {
-    event.stopPropagation();
-    onChange("");
-    setQuery("");
-    setOpen(true);
-    inputRef.current?.focus();
-  };
-
-  return (
-    <div className="employee-combobox" ref={rootRef}>
-      <div className="employee-combobox-control">
-        <input
-          ref={inputRef}
-          type="text"
-          className="employee-combobox-input"
-          value={open ? query : selectedLabel}
-          placeholder={placeholder}
-          onFocus={() => {
-            setOpen(true);
-            setQuery(selectedLabel);
-          }}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            if (!open) setOpen(true);
-          }}
-          onClick={() => setOpen(true)}
-          autoComplete="off"
-          aria-expanded={open}
-          aria-haspopup="listbox"
-        />
-        {(selected || query) && (
-          <button
-            type="button"
-            className="employee-combobox-clear"
-            onClick={handleClear}
-            title="Clear"
-            aria-label="Clear selected employee"
-          >
-            ×
-          </button>
-        )}
-        <button
-          type="button"
-          className="employee-combobox-toggle"
-          onClick={() => {
-            setOpen((prev) => !prev);
-            inputRef.current?.focus();
-          }}
-          tabIndex={-1}
-          aria-label="Toggle employee list"
-        >
-          ▾
-        </button>
-      </div>
-
-      {open && (
-        <div className="employee-combobox-menu" role="listbox">
-          {filtered.length === 0 ? (
-            <div className="employee-combobox-empty">No matches</div>
-          ) : (
-            filtered.map((emp) => {
-              const label = getEmployeeFullName(emp);
-              const isActive =
-                String(emp.employee_id) === String(selected?.employee_id || "");
-              return (
-                <button
-                  key={emp.employee_id}
-                  type="button"
-                  role="option"
-                  aria-selected={isActive}
-                  className={`employee-combobox-option${
-                    isActive ? " is-active" : ""
-                  }`}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => handleSelect(emp)}
-                >
-                  {label}
-                </button>
-              );
-            })
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 const parseDraftRows = (draft) => {
   if (!draft) return [];
@@ -466,20 +315,31 @@ export default function SocialEmployeeReport() {
     }));
   };
 
-  const handleExportExcel = () => {
-    if (!employeeGroups || employeeGroups.length === 0) {
-      toast.warning("No data to export");
-      return;
-    }
+  const EXPORT_HEADERS = [
+    "Employee Co./Last Name",
+    "Employee First Name",
+    "Payroll Category",
+    "Job",
+    "Customer Co./Last Name",
+    "Customer First Name",
+    "Notes",
+    "Date",
+    "Units",
+    "Employee Card ID",
+    "Employee Record ID",
+    "Start/Stop Time",
+    "Customer Card ID",
+    "Customer Record ID",
+  ];
 
+  const buildExportRows = () => {
     const exportData = [];
 
-    // Flatten the grouped data
     employeeGroups.forEach((group) => {
-      // Use effective employee for names if available, else fallback to group name
       const effEmp = getEffectiveEmployee(group.employee);
 
-      let wFirst, wLast;
+      let wFirst;
+      let wLast;
       if (effEmp) {
         wFirst = effEmp.first_name || "";
         wLast = effEmp.last_name || "";
@@ -502,7 +362,6 @@ export default function SocialEmployeeReport() {
           activity.shift_starts,
         );
         const displayDate = formatDateToDisplay(activity.date);
-
         const details = activity.details_of_activity || "";
 
         exportData.push({
@@ -513,8 +372,10 @@ export default function SocialEmployeeReport() {
           "Customer Co./Last Name": pLast ? `${pLast}.` : "",
           "Customer First Name": pFirst,
           Notes: details,
-          Date: parseDateObject(activity.date) || activity.date,
-          Units: activity.actual_hours,
+          // Excel prefers Date object; TXT uses MYOB display string
+          DateExcel: parseDateObject(activity.date) || activity.date,
+          DateTxt: displayDate || activity.date || "",
+          Units: activity.actual_hours ?? "",
           "Employee Card ID": "",
           "Employee Record ID": "",
           "Start/Stop Time": "",
@@ -524,29 +385,128 @@ export default function SocialEmployeeReport() {
       });
     });
 
+    return exportData;
+  };
+
+  const getExportFileBase = () =>
+    id
+      ? `Social_Employee_Report_${id}`
+      : `Social_Employee_Report_${new Date().toISOString().slice(0, 10)}`;
+
+  const handleExportExcel = () => {
+    if (!employeeGroups || employeeGroups.length === 0) {
+      toast.warning("No data to export");
+      return;
+    }
+
+    const rows = buildExportRows();
+    if (rows.length === 0) {
+      toast.warning("No data to export");
+      return;
+    }
+
+    const exportData = rows.map((row) => ({
+      "Employee Co./Last Name": row["Employee Co./Last Name"],
+      "Employee First Name": row["Employee First Name"],
+      "Payroll Category": row["Payroll Category"],
+      Job: row.Job,
+      "Customer Co./Last Name": row["Customer Co./Last Name"],
+      "Customer First Name": row["Customer First Name"],
+      Notes: row.Notes,
+      Date: row.DateExcel,
+      Units: row.Units,
+      "Employee Card ID": row["Employee Card ID"],
+      "Employee Record ID": row["Employee Record ID"],
+      "Start/Stop Time": row["Start/Stop Time"],
+      "Customer Card ID": row["Customer Card ID"],
+      "Customer Record ID": row["Customer Record ID"],
+    }));
+
     try {
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(exportData);
 
-      // Auto-width columns
       const colWidths = Object.keys(exportData[0]).map((key) => ({
         wch: Math.max(key.length, 15),
       }));
       ws["!cols"] = colWidths;
 
       XLSX.utils.book_append_sheet(wb, ws, "Social Employee Report");
-
-      const fileName = id
-        ? `Social_Employee_Report_${id}.xlsx`
-        : `Social_Employee_Report_${new Date()
-            .toISOString()
-            .slice(0, 10)}.xlsx`;
-
-      XLSX.writeFile(wb, fileName);
-      toast.success("Export successful");
+      XLSX.writeFile(wb, `${getExportFileBase()}.xlsx`);
+      toast.success("Excel exported successfully");
     } catch (error) {
       console.error("Export error:", error);
       toast.error("Failed to export Excel");
+    }
+  };
+
+  const handleExportTxt = () => {
+    if (!employeeGroups || employeeGroups.length === 0) {
+      toast.warning("No data to export");
+      return;
+    }
+
+    const rows = buildExportRows();
+    if (rows.length === 0) {
+      toast.warning("No data to export");
+      return;
+    }
+
+    // MYOB-compatible TSV: tab-separated, CRLF, quoted when needed
+    const escapeTsv = (val) => {
+      if (val === null || val === undefined) return "";
+      const str = String(val);
+      if (
+        str.includes("\t") ||
+        str.includes('"') ||
+        str.includes("\n") ||
+        str.includes("\r")
+      ) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    try {
+      const lines = [EXPORT_HEADERS.join("\t")];
+
+      rows.forEach((row) => {
+        lines.push(
+          [
+            escapeTsv(row["Employee Co./Last Name"]),
+            escapeTsv(row["Employee First Name"]),
+            escapeTsv(row["Payroll Category"]),
+            escapeTsv(row.Job),
+            escapeTsv(row["Customer Co./Last Name"]),
+            escapeTsv(row["Customer First Name"]),
+            escapeTsv(row.Notes),
+            escapeTsv(row.DateTxt),
+            escapeTsv(row.Units),
+            escapeTsv(row["Employee Card ID"]),
+            escapeTsv(row["Employee Record ID"]),
+            escapeTsv(row["Start/Stop Time"]),
+            escapeTsv(row["Customer Card ID"]),
+            escapeTsv(row["Customer Record ID"]),
+          ].join("\t"),
+        );
+      });
+
+      const blob = new Blob([lines.join("\r\n")], {
+        type: "text/plain;charset=utf-8",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${getExportFileBase()}.txt`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("TXT exported successfully");
+    } catch (error) {
+      console.error("TXT export error:", error);
+      toast.error("Failed to export TXT");
     }
   };
 
@@ -735,6 +695,18 @@ export default function SocialEmployeeReport() {
 
             <button
               type="button"
+              className="btn-action btn-view"
+              onClick={handleExportTxt}
+              title="Export TXT (MYOB)"
+              aria-label="Export TXT"
+              disabled={deleting || saving}
+              style={{ backgroundColor: "#17a2b8" }}
+            >
+              <i className="fas fa-file-alt"></i>
+            </button>
+
+            <button
+              type="button"
               className="btn-action btn-cancel"
               onClick={handleBack}
               title="Back"
@@ -838,6 +810,7 @@ export default function SocialEmployeeReport() {
                                     employeeId,
                                   )
                                 }
+                                placeholder="-- Match Employee --"
                               />
                             </td>
                             <td rowSpan={group.activities.length}>{wLast}</td>

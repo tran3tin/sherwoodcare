@@ -3,6 +3,9 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
 import Layout from "../../components/Layout";
+import SearchableEmployeeSelect, {
+  getEmployeeFullName,
+} from "../../components/SearchableEmployeeSelect";
 import timesheetReportService from "../../services/timesheetReportService";
 import { employeeService } from "../../services/employeeService";
 import {
@@ -775,15 +778,30 @@ const TimeSheetReport = () => {
     );
   };
 
-  const updateEmployeeFullName = (empIndex, fullName) => {
+  const findEmployeeByFullName = (fullName) => {
+    const target = String(fullName || "").trim().toLowerCase();
+    if (!target) return null;
+    return (
+      employees.find(
+        (emp) => getEmployeeFullName(emp).toLowerCase() === target,
+      ) || null
+    );
+  };
+
+  const updateEmployeeFullName = (empIndex, employeeIdOrName) => {
     setReportData((prev) =>
       prev.map((employee, eIndex) => {
         if (eIndex !== empIndex) return employee;
 
-        // Find selected employee to get level
-        const selectedEmployee = employees.find(
-          (emp) => `${emp.first_name} ${emp.last_name}` === fullName,
-        );
+        // Accept employee_id from searchable select, or legacy full-name string
+        const selectedEmployee =
+          employees.find(
+            (emp) => String(emp.employee_id) === String(employeeIdOrName),
+          ) || findEmployeeByFullName(employeeIdOrName);
+
+        const fullName = selectedEmployee
+          ? getEmployeeFullName(selectedEmployee)
+          : "";
 
         return {
           ...employee,
@@ -970,38 +988,17 @@ const TimeSheetReport = () => {
                               className="fullname-col"
                               rowSpan={employee.jobs.length}
                             >
-                              <select
-                                value={job.full_name || ""}
-                                onChange={(e) =>
-                                  updateEmployeeFullName(
-                                    empIndex,
-                                    e.target.value,
-                                  )
+                              <SearchableEmployeeSelect
+                                employees={employees}
+                                value={
+                                  findEmployeeByFullName(job.full_name)
+                                    ?.employee_id || ""
                                 }
-                                style={{
-                                  width: "100%",
-                                  border: "none",
-                                  background: "transparent",
-                                  textAlign: "left",
-                                  paddingLeft: "10px",
-                                }}
-                              >
-                                <option value="">Select...</option>
-                                {[...employees]
-                                  .sort((a, b) =>
-                                    (a.first_name || "").localeCompare(
-                                      b.first_name || "",
-                                    ),
-                                  )
-                                  .map((emp) => (
-                                    <option
-                                      key={emp.employee_id}
-                                      value={`${emp.first_name} ${emp.last_name}`}
-                                    >
-                                      {emp.first_name} {emp.last_name}
-                                    </option>
-                                  ))}
-                              </select>
+                                onChange={(employeeId) =>
+                                  updateEmployeeFullName(empIndex, employeeId)
+                                }
+                                placeholder="Select..."
+                              />
                             </td>
                           </>
                         )}
