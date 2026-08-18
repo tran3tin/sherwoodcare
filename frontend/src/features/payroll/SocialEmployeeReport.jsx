@@ -342,10 +342,7 @@ export default function SocialEmployeeReport() {
         );
         const displayDate = formatDateToDisplay(activity.date);
 
-        let details = activity.details_of_activity || "";
-        if (details.length > 50) {
-          details = details.substring(0, 50) + "...";
-        }
+        const details = activity.details_of_activity || "";
 
         exportData.push({
           "Employee Co./Last Name": wLast,
