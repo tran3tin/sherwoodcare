@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 import Layout from "../../components/Layout";
@@ -11,6 +11,158 @@ import "./TimeSheetForm.css";
 const DRAFT_KEY = "socialSheetDraft:new";
 
 const normalizeText = (value) => String(value ?? "").trim();
+
+const getEmployeeFullName = (emp) =>
+  normalizeText(`${emp?.first_name || ""} ${emp?.last_name || ""}`);
+
+function SearchableEmployeeSelect({
+  employees,
+  value,
+  onChange,
+  placeholder = "-- Match Employee --",
+}) {
+  const rootRef = useRef(null);
+  const inputRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const selected = useMemo(
+    () =>
+      employees.find((e) => String(e.employee_id) === String(value)) || null,
+    [employees, value],
+  );
+
+  const selectedLabel = selected ? getEmployeeFullName(selected) : "";
+
+  useEffect(() => {
+    if (!open) setQuery(selectedLabel);
+  }, [open, selectedLabel, value]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const onDocMouseDown = (event) => {
+      if (!rootRef.current?.contains(event.target)) {
+        setOpen(false);
+        setQuery(selectedLabel);
+      }
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        setQuery(selectedLabel);
+      }
+    };
+
+    document.addEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, selectedLabel]);
+
+  const filtered = useMemo(() => {
+    const term = normalizeText(query).toLowerCase();
+    if (!term) return employees;
+    return employees.filter((emp) =>
+      getEmployeeFullName(emp).toLowerCase().includes(term),
+    );
+  }, [employees, query]);
+
+  const handleSelect = (emp) => {
+    onChange(emp?.employee_id ?? "");
+    setQuery(getEmployeeFullName(emp));
+    setOpen(false);
+  };
+
+  const handleClear = (event) => {
+    event.stopPropagation();
+    onChange("");
+    setQuery("");
+    setOpen(true);
+    inputRef.current?.focus();
+  };
+
+  return (
+    <div className="employee-combobox" ref={rootRef}>
+      <div className="employee-combobox-control">
+        <input
+          ref={inputRef}
+          type="text"
+          className="employee-combobox-input"
+          value={open ? query : selectedLabel}
+          placeholder={placeholder}
+          onFocus={() => {
+            setOpen(true);
+            setQuery(selectedLabel);
+          }}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            if (!open) setOpen(true);
+          }}
+          onClick={() => setOpen(true)}
+          autoComplete="off"
+          aria-expanded={open}
+          aria-haspopup="listbox"
+        />
+        {(selected || query) && (
+          <button
+            type="button"
+            className="employee-combobox-clear"
+            onClick={handleClear}
+            title="Clear"
+            aria-label="Clear selected employee"
+          >
+            ×
+          </button>
+        )}
+        <button
+          type="button"
+          className="employee-combobox-toggle"
+          onClick={() => {
+            setOpen((prev) => !prev);
+            inputRef.current?.focus();
+          }}
+          tabIndex={-1}
+          aria-label="Toggle employee list"
+        >
+          ▾
+        </button>
+      </div>
+
+      {open && (
+        <div className="employee-combobox-menu" role="listbox">
+          {filtered.length === 0 ? (
+            <div className="employee-combobox-empty">No matches</div>
+          ) : (
+            filtered.map((emp) => {
+              const label = getEmployeeFullName(emp);
+              const isActive =
+                String(emp.employee_id) === String(selected?.employee_id || "");
+              return (
+                <button
+                  key={emp.employee_id}
+                  type="button"
+                  role="option"
+                  aria-selected={isActive}
+                  className={`employee-combobox-option${
+                    isActive ? " is-active" : ""
+                  }`}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => handleSelect(emp)}
+                >
+                  {label}
+                </button>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const parseDraftRows = (draft) => {
   if (!draft) return [];
@@ -98,20 +250,20 @@ const getPayrollCategory = (level, dateStr, timeStr) => {
     // yyyy-mm-dd
     const [y, m, d] = dStr.split("-").map(Number);
     dateObj = new Date(y, m - 1, d);
-  } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dStr)) {
-    // dd/mm/yyyy
-    const [d, m, y] = dStr.split("/").map(Number);
+  } else if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(dStr)) {
+    // dd/mm/yy or dd/mm/yyyy
+    const [d, m, yRaw] = dStr.split("/").map(Number);
+    const y = yRaw < 100 ? 2000 + yRaw : yRaw;
     dateObj = new Date(y, m - 1, d);
   }
 
-  if (!dateObj || isNaN(dateObj.getTime())) return level;
+  if (dateObj && !isNaN(dateObj.getTime())) {
+    const day = dateObj.getDay(); // 0 = Sun, 6 = Sat
+    if (day === 0) return `${level} - Sun`;
+    if (day === 6) return `${level} - Sat`;
+  }
 
-  const day = dateObj.getDay(); // 0 = Sun, 6 = Sat
-
-  if (day === 0) return `${level} - Sun`;
-  if (day === 6) return `${level} - Sat`;
-
-  // Weekday logic
+  // Weekday (or unknown date): afternoon from 12:00
   const normalizedTime = String(timeStr || "")
     .trim()
     .toLowerCase();
@@ -130,12 +282,12 @@ const getPayrollCategory = (level, dateStr, timeStr) => {
     hours = 0;
   }
 
-  // 12:00 to 18:00 -> Level - Afternoon
-  if (hours >= 12 && hours <= 18) {
-    return `${level} - Afternoon`;
+  // Shift starts from 12:00 -> Level - After
+  if (hours >= 12) {
+    return `${level} - After`;
   }
 
-  // 6:00 to 11:59 (implicit else if morning) -> Level
+  // Before 12:00 -> Level
   return level;
 };
 
@@ -296,12 +448,21 @@ export default function SocialEmployeeReport() {
   };
 
   const handleEmployeeChange = (groupName, employeeId) => {
+    if (!employeeId) {
+      setManualMappings((prev) => {
+        const next = { ...prev };
+        delete next[groupName];
+        return next;
+      });
+      return;
+    }
+
     const emp = employees.find(
       (e) => String(e.employee_id) === String(employeeId),
     );
     setManualMappings((prev) => ({
       ...prev,
-      [groupName]: emp,
+      [groupName]: emp || null,
     }));
   };
 
@@ -668,27 +829,16 @@ export default function SocialEmployeeReport() {
                         {idx === 0 && (
                           <>
                             <td rowSpan={group.activities.length}>
-                              <select
-                                className="table-select"
+                              <SearchableEmployeeSelect
+                                employees={employees}
                                 value={effEmp?.employee_id || ""}
-                                onChange={(e) =>
+                                onChange={(employeeId) =>
                                   handleEmployeeChange(
                                     group.employee,
-                                    e.target.value,
+                                    employeeId,
                                   )
                                 }
-                                style={{ width: "100%" }}
-                              >
-                                <option value="">-- Match Employee --</option>
-                                {employees.map((emp) => (
-                                  <option
-                                    key={emp.employee_id}
-                                    value={emp.employee_id}
-                                  >
-                                    {emp.first_name} {emp.last_name}
-                                  </option>
-                                ))}
-                              </select>
+                              />
                             </td>
                             <td rowSpan={group.activities.length}>{wLast}</td>
                             <td rowSpan={group.activities.length}>{wFirst}</td>
