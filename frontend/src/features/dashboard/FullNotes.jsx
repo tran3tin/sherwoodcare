@@ -62,8 +62,8 @@ export default function FullNotes() {
         employeeService.getAll(),
       ]);
 
-      setCustomers(customerResp?.data || []);
-      setEmployees(employeeResp?.data || []);
+      setCustomers(customerResp.data || customerResp || []);
+      setEmployees(employeeResp.data || employeeResp || []);
     } catch (error) {
       console.error("Error loading customers/employees:", error);
       // Not fatal for viewing notes; creation dropdown just won't have data.
@@ -175,38 +175,27 @@ export default function FullNotes() {
     }
 
     try {
-      const service = getNoteService(formData.note_type);
+      const payload = {
+        title: formData.title,
+        content: formData.content,
+        priority: formData.priority,
+        due_date: formData.due_date || "",
+        customer_id: formData.note_type === "customer" ? formData.entity_id : "",
+        employee_id: formData.note_type === "employee" ? formData.entity_id : "",
+      };
 
       if (editingNote) {
+        const service = getNoteService(formData.note_type);
         await service.update(
           editingNote.note_id,
-          { ...formData, is_completed: editingNote.is_completed },
+          { ...payload, is_completed: editingNote.is_completed },
           selectedFile,
           removeAttachment,
         );
         toast.success("Note updated successfully");
       } else {
-        const payload = {
-          title: formData.title,
-          content: formData.content,
-          priority: formData.priority,
-          due_date: formData.due_date || "",
-        };
-
-        if (formData.note_type === "customer") {
-          await service.create(
-            { ...payload, customer_id: formData.entity_id },
-            selectedFile,
-          );
-        } else if (formData.note_type === "employee") {
-          await service.create(
-            { ...payload, employee_id: formData.entity_id },
-            selectedFile,
-          );
-        } else {
-          await service.create(payload, selectedFile);
-        }
-
+        const service = getNoteService(formData.note_type);
+        await service.create(payload, selectedFile);
         toast.success("Note created successfully");
       }
 

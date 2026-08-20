@@ -44,14 +44,14 @@ class GeneralNoteModel {
       attachment_name = null,
     } = noteData;
 
-    const { rows: result } = await db.query(
+    const { insertId } = await db.query(
       `INSERT INTO general_notes
        (title, content, priority, due_date, attachment_url, attachment_name)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [title, content, priority, due_date, attachment_url, attachment_name]
     );
 
-    return { note_id: result.insertId, ...noteData };
+    return { note_id: insertId, ...noteData };
   }
 
   static async update(noteId, noteData) {

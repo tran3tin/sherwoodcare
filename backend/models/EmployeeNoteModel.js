@@ -51,7 +51,7 @@ class EmployeeNoteModel {
       attachment_name = null,
     } = noteData;
 
-    const { rows: result } = await db.query(
+    const { insertId } = await db.query(
       `INSERT INTO employee_notes
        (employee_id, title, content, priority, due_date, attachment_url, attachment_name)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -66,7 +66,7 @@ class EmployeeNoteModel {
       ]
     );
 
-    return { note_id: result.insertId, ...noteData };
+    return { note_id: insertId, ...noteData };
   }
 
   // Update note
