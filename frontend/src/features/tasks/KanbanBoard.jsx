@@ -623,11 +623,8 @@ export default function KanbanBoard() {
 
         {/* Modal */}
         {showModal && (
-          <div className="modal-overlay" onClick={handleCloseModal}>
-            <div
-              className="modal-content task-modal"
-              onClick={(e) => e.stopPropagation()}
-            >
+          <div className="modal-overlay">
+            <div className="modal-content task-modal">
               <div className="modal-header">
                 <h3>{editingTask ? "Edit Task" : "Create New Task"}</h3>
                 <button className="modal-close" onClick={handleCloseModal}>
