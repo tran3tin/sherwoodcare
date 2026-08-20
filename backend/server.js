@@ -15,6 +15,9 @@ const allowedOrigins = [
   "https://sherwoodcare-fontend.onrender.com",
   "https://sherwoodcare.onrender.com",
   "https://myidea.up.railway.app",
+  // Coolify deployments (add the full *.coolify.app / custom domains here)
+  process.env.COMPOSE_ORIGIN, // Coolify sets COMPOSE_ORIGIN for compose-based deploys
+  process.env.PUBLIC_APP_URL, // Coolify sets PUBLIC_APP_URL
   process.env.FRONTEND_URL, // Allow custom frontend URL from env
 ].filter(Boolean); // Remove undefined values
 

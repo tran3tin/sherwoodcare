@@ -182,7 +182,7 @@ class FullNoteModel {
         SELECT
           'other' AS note_type,
           gn.note_id,
-          CAST(NULL AS INT) AS entity_id,
+          CAST(NULL AS SIGNED) AS entity_id,
           '' AS entity_name,
           gn.title,
           gn.content,
