@@ -188,6 +188,11 @@ curl https://sherwoodcare-be-xxxxx.coolify.app/api/health
 
 curl https://sherwoodcare-be-xxxxx.coolify.app/api/db/status
 # → {"ok":true,"client":"mysql","database":"nexgenus"}
+
+# Full Notes / general_notes diagnostics (other type)
+curl https://sherwoodcare-be-xxxxx.coolify.app/api/full-notes/debug
+# → capabilities.generalNotes.exists must be true
+# → tableCounts.general_notes is a number (not error: ...)
 ```
 
 ### Upload file

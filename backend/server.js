@@ -34,6 +34,15 @@ app.use(
       if (process.env.NODE_ENV !== "production") {
         return callback(null, true);
       }
+      // Coolify / self-hosted: allow same-site style custom domains via env list
+      // FRONTEND_URLS=https://a.com,https://b.com
+      const extra = (process.env.FRONTEND_URLS || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (extra.includes(origin)) {
+        return callback(null, true);
+      }
       // Log blocked origin for debugging
       console.warn("⚠️ Blocked by CORS:", origin);
       // Block unknown origins in production

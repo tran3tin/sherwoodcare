@@ -32,10 +32,12 @@ class FullNoteModel {
     const tables = [...new Set(wanted.map((w) => w.table))];
     const columns = [...new Set(wanted.map((w) => w.column))];
 
-    // MySQL: information_schema with IN (?) — mysql2 expands the array param
+    // MySQL: information_schema with IN (?) — mysql2 expands the array param.
+    // IMPORTANT: MySQL 8 (Coolify) often returns TABLE_NAME/COLUMN_NAME uppercase,
+    // while MariaDB local often returns lowercase. Normalize both.
     const { rows } = await db.query(
       `
-        SELECT table_name, column_name
+        SELECT table_name AS tbl, column_name AS col
         FROM information_schema.columns
         WHERE table_schema = DATABASE()
           AND table_name IN (?)
@@ -44,8 +46,15 @@ class FullNoteModel {
       [tables, columns]
     );
 
-    const exists = new Set(rows.map((r) => `${r.table_name}.${r.column_name}`));
-    const has = (table, column) => exists.has(`${table}.${column}`);
+    const exists = new Set(
+      rows.map((r) => {
+        const table = r.tbl ?? r.TBL ?? r.table_name ?? r.TABLE_NAME ?? "";
+        const column = r.col ?? r.COL ?? r.column_name ?? r.COLUMN_NAME ?? "";
+        return `${String(table).toLowerCase()}.${String(column).toLowerCase()}`;
+      })
+    );
+    const has = (table, column) =>
+      exists.has(`${String(table).toLowerCase()}.${String(column).toLowerCase()}`);
 
     const caps = {
       customerNotes: {
@@ -70,6 +79,27 @@ class FullNoteModel {
         lastName: has("employees", "last_name"),
       },
     };
+
+    // Fallback: if information_schema key casing/driver quirks hid general_notes,
+    // probe the table directly so Coolify MySQL 8 still includes "other" notes.
+    if (!caps.generalNotes.exists) {
+      try {
+        await db.query("SELECT note_id FROM general_notes LIMIT 0");
+        caps.generalNotes.exists = true;
+        try {
+          await db.query("SELECT is_pinned, pinned_at FROM general_notes LIMIT 0");
+          caps.generalNotes.isPinned = true;
+          caps.generalNotes.pinnedAt = true;
+        } catch (_) {
+          // pin columns optional
+        }
+        console.warn(
+          "[FullNoteModel] information_schema missed general_notes; direct probe OK"
+        );
+      } catch (_) {
+        // table really missing
+      }
+    }
 
     FullNoteModel._capabilitiesCache = caps;
     FullNoteModel._capabilitiesLoadedAt = now;
@@ -178,6 +208,8 @@ class FullNoteModel {
     ];
 
     if (caps.generalNotes.exists) {
+      // entity_id must match INT type of customer_id/employee_id in UNION.
+      // Prefer SIGNED (MySQL/MariaDB portable); fall back without CAST if needed.
       unionParts.push(`
         SELECT
           'other' AS note_type,
@@ -197,11 +229,25 @@ class FullNoteModel {
           gn.updated_at
         FROM general_notes gn
       `);
+    } else {
+      // Surface this in server logs so Coolify deploy issues are visible.
+      console.warn(
+        "[FullNoteModel] general_notes table/columns not detected — other notes excluded from UNION",
+        {
+          exists: caps.generalNotes.exists,
+          isPinned: caps.generalNotes.isPinned,
+          pinnedAt: caps.generalNotes.pinnedAt,
+        }
+      );
     }
 
     const unionSql = unionParts.join("\n\n        UNION ALL\n\n");
+    // Wrap UNION so WHERE/ORDER can reference alias columns (note_type, is_completed, ...)
+    // MySQL rejects `WHERE n.note_type` against a bare UNION without a derived table.
     const sql = `
-      ${unionSql}
+      SELECT * FROM (
+        ${unionSql}
+      ) AS n
       ${whereClause}
       ORDER BY
         is_pinned DESC,
@@ -209,8 +255,45 @@ class FullNoteModel {
         created_at DESC
     `;
 
-    const { rows } = await db.query(sql, params);
-    return rows;
+    try {
+      const { rows } = await db.query(sql, params);
+      return rows;
+    } catch (err) {
+      const message = (err && err.message) || "";
+      // If CAST AS SIGNED still fails on a rare engine, retry with plain NULL.
+      if (
+        caps.generalNotes.exists &&
+        (message.includes("SIGNED") ||
+          message.includes("CAST") ||
+          message.includes("entity_id"))
+      ) {
+        console.warn(
+          "[FullNoteModel] UNION failed, retrying general_notes without CAST:",
+          message
+        );
+        const fallbackParts = unionParts.map((part) =>
+          part.includes("CAST(NULL AS SIGNED)")
+            ? part.replace(
+                "CAST(NULL AS SIGNED) AS entity_id",
+                "NULL AS entity_id"
+              )
+            : part
+        );
+        const fallbackSql = `
+          SELECT * FROM (
+            ${fallbackParts.join("\n\n        UNION ALL\n\n")}
+          ) AS n
+          ${whereClause}
+          ORDER BY
+            is_pinned DESC,
+            COALESCE(pinned_at, created_at) DESC,
+            created_at DESC
+        `;
+        const { rows } = await db.query(fallbackSql, params);
+        return rows;
+      }
+      throw err;
+    }
   }
 }
 

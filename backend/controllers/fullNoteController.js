@@ -8,8 +8,18 @@ const getAllNotes = async (req, res) => {
     const notes = await FullNoteModel.getAll({ status, type });
     res.json({ success: true, data: notes });
   } catch (error) {
-    console.error("Error fetching full notes:", error);
-    res.status(500).json({ success: false, error: "Failed to fetch notes" });
+    // Log full SQL message — production Coolify logs are the only signal
+    // when general_notes silently disappears from the UNION.
+    console.error(
+      "Error fetching full notes:",
+      error && error.message ? error.message : error,
+      error && error.sql ? `\nSQL: ${error.sql}` : ""
+    );
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch notes",
+      detail: process.env.NODE_ENV === "production" ? undefined : error.message,
+    });
   }
 };
 
