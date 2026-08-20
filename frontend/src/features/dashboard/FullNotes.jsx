@@ -15,6 +15,14 @@ import { customerService } from "../../services/customerService";
 import { employeeService } from "../../services/employeeService";
 import { API_BASE_URL } from "../../config/api";
 
+const isPinnedFlag = (value) => {
+  // MySQL tinyint may arrive as 0/1, true/false, or "0"/"1"
+  if (value === true || value === 1 || value === "1") return true;
+  if (value === false || value === 0 || value === "0" || value == null)
+    return false;
+  return Boolean(Number(value));
+};
+
 export default function FullNotes() {
   const navigate = useNavigate();
 
@@ -396,7 +404,7 @@ export default function FullNotes() {
                 key={`${note.note_type}-${note.note_id}`}
                 className={`note-card ${note.is_completed ? "completed" : ""} ${
                   isOverdue(note.due_date, note.is_completed) ? "overdue" : ""
-                } ${note.is_pinned ? "pinned" : ""}`}
+                } ${isPinnedFlag(note.is_pinned) ? "pinned" : ""}`}
               >
                 <div className="note-checkbox">
                   <input
@@ -410,11 +418,11 @@ export default function FullNotes() {
                   <div className="note-header">
                     <h4 className="note-title">
                       {note.title}
-                      {note.is_pinned && (
+                      {isPinnedFlag(note.is_pinned) ? (
                         <span className="note-pin-badge" title="Pinned">
                           <i className="fas fa-thumbtack"></i>
                         </span>
-                      )}
+                      ) : null}
                     </h4>
                     <span
                       className="note-priority"
@@ -498,14 +506,14 @@ export default function FullNotes() {
                 <div className="note-actions">
                   <button
                     className={`btn-icon btn-pin ${
-                      note.is_pinned ? "active" : ""
+                      isPinnedFlag(note.is_pinned) ? "active" : ""
                     }`}
                     onClick={() => handleTogglePin(note)}
                     disabled={!pinAvailable}
                     title={
                       !pinAvailable
                         ? "Pinning requires database migration"
-                        : note.is_pinned
+                        : isPinnedFlag(note.is_pinned)
                           ? "Unpin"
                           : "Pin"
                     }

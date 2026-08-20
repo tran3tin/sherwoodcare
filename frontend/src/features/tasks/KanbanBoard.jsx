@@ -510,14 +510,14 @@ export default function KanbanBoard() {
                                 <div className="task-actions">
                                   <button
                                     className={`btn-icon ${
-                                      task.is_pinned ? "pinned" : ""
+                                      isPinnedFlag(task.is_pinned) ? "pinned" : ""
                                     }`}
                                     onClick={() => handleTogglePin(task)}
                                     disabled={!pinAvailable}
                                     title={
                                       !pinAvailable
                                         ? "Pinning requires database migration"
-                                        : task.is_pinned
+                                        : isPinnedFlag(task.is_pinned)
                                         ? "Unpin"
                                         : "Pin"
                                     }
@@ -543,14 +543,14 @@ export default function KanbanBoard() {
 
                               <h4 className="task-title">
                                 {task.title}
-                                {task.is_pinned && (
+                                {isPinnedFlag(task.is_pinned) ? (
                                   <span
                                     className="task-pin-badge"
                                     title="Pinned"
                                   >
                                     <i className="fas fa-thumbtack"></i>
                                   </span>
-                                )}
+                                ) : null}
                               </h4>
 
                               {task.description && (
