@@ -53,12 +53,42 @@ export default function KanbanBoard() {
     loadTasks();
   }, []);
 
+  const isPinnedFlag = (value) => {
+    // MySQL tinyint may arrive as 0/1, true/false, or "0"/"1"
+    if (value === true || value === 1 || value === "1") return true;
+    if (value === false || value === 0 || value === "0" || value == null) return false;
+    return Boolean(Number(value));
+  };
+
+  const sortColumnTasks = (list = []) => {
+    // Keep pinned tasks at the top of each column (frontend safety net).
+    // Backend already orders this way; re-sort after local drag/optimistic updates.
+    return [...list].sort((a, b) => {
+      const ap = isPinnedFlag(a.is_pinned) ? 1 : 0;
+      const bp = isPinnedFlag(b.is_pinned) ? 1 : 0;
+      if (bp !== ap) return bp - ap;
+      const aPinAt = a.pinned_at ? new Date(a.pinned_at).getTime() : 0;
+      const bPinAt = b.pinned_at ? new Date(b.pinned_at).getTime() : 0;
+      if (bPinAt !== aPinAt) return bPinAt - aPinAt;
+      const aPos = Number(a.position ?? 0);
+      const bPos = Number(b.position ?? 0);
+      if (aPos !== bPos) return aPos - bPos;
+      return 0;
+    });
+  };
+
   const loadTasks = async () => {
     try {
       setLoading(true);
       const response = await taskService.getAll();
       if (response.success) {
-        setTasks(response.data);
+        const data = response.data || {};
+        setTasks({
+          todo: sortColumnTasks(data.todo),
+          inprogress: sortColumnTasks(data.inprogress),
+          review: sortColumnTasks(data.review),
+          done: sortColumnTasks(data.done),
+        });
       }
     } catch (error) {
       console.error("Error loading tasks:", error);
@@ -94,16 +124,18 @@ export default function KanbanBoard() {
 
     if (sourceColumn === destColumn) {
       sourceTasks.splice(destination.index, 0, movedTask);
-      newTasks[sourceColumn] = sourceTasks;
+      // Keep pinned tasks at the top after manual drag
+      newTasks[sourceColumn] = sortColumnTasks(sourceTasks);
     } else {
       destTasks.splice(destination.index, 0, movedTask);
-      newTasks[sourceColumn] = sourceTasks;
-      newTasks[destColumn] = destTasks;
+      newTasks[sourceColumn] = sortColumnTasks(sourceTasks);
+      newTasks[destColumn] = sortColumnTasks(destTasks);
     }
 
     setTasks(newTasks);
 
     try {
+      // Persist visual order (pinned already sorted first)
       const taskIds = newTasks[destColumn].map((t) => t.task_id);
       await taskService.reorder(destColumn, taskIds);
 
@@ -321,8 +353,35 @@ export default function KanbanBoard() {
 
   const handleTogglePin = async (task) => {
     try {
-      await taskService.togglePin(task.task_id);
-      loadTasks();
+      const response = await taskService.togglePin(task.task_id);
+      const updated = response?.data;
+
+      // Optimistic reorder: flip pin flag and float pinned tasks to top
+      setTasks((prev) => {
+        const columnId = task.status;
+        const next = { ...prev };
+        next[columnId] = sortColumnTasks(
+          (prev[columnId] || []).map((t) =>
+            t.task_id === task.task_id
+              ? {
+                  ...t,
+                  ...(updated || {}),
+                  is_pinned: updated
+                    ? updated.is_pinned
+                    : isPinnedFlag(t.is_pinned)
+                      ? 0
+                      : 1,
+                  pinned_at: updated
+                    ? updated.pinned_at
+                    : isPinnedFlag(t.is_pinned)
+                      ? null
+                      : new Date().toISOString(),
+                }
+              : t
+          )
+        );
+        return next;
+      });
     } catch (error) {
       console.error("Error pinning task:", error);
       const status = error?.response?.status;
@@ -338,6 +397,8 @@ export default function KanbanBoard() {
       }
 
       toast.error(apiMessage || "Failed to pin task");
+      // Resync if optimistic update may be wrong
+      loadTasks();
     }
   };
 

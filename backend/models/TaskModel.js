@@ -31,21 +31,57 @@ class TaskModel {
   }
 
   // Get all tasks with attachments
+  // Pinned tasks float to the top of each column (is_pinned DESC),
+  // then keep manual drag order via position.
   static async getAll() {
-    const { rows } = await db.query(
-      `SELECT * FROM tasks
-       ORDER BY position ASC, created_at DESC`
-    );
-    return await TaskModel.attachFiles(rows);
+    try {
+      const { rows } = await db.query(
+        `SELECT * FROM tasks
+         ORDER BY
+           COALESCE(is_pinned, 0) DESC,
+           pinned_at DESC,
+           position ASC,
+           created_at DESC`
+      );
+      return await TaskModel.attachFiles(rows);
+    } catch (err) {
+      const message = (err && err.message) || "";
+      // Backward-compatible if pin columns not migrated yet
+      if (message.includes("is_pinned") || message.includes("pinned_at")) {
+        const { rows } = await db.query(
+          `SELECT * FROM tasks
+           ORDER BY position ASC, created_at DESC`
+        );
+        return await TaskModel.attachFiles(rows);
+      }
+      throw err;
+    }
   }
 
   // Get tasks by status
   static async getByStatus(status) {
-    const { rows } = await db.query(
-      `SELECT * FROM tasks WHERE status = ? ORDER BY position ASC`,
-      [status]
-    );
-    return rows;
+    try {
+      const { rows } = await db.query(
+        `SELECT * FROM tasks
+         WHERE status = ?
+         ORDER BY
+           COALESCE(is_pinned, 0) DESC,
+           pinned_at DESC,
+           position ASC`,
+        [status]
+      );
+      return rows;
+    } catch (err) {
+      const message = (err && err.message) || "";
+      if (message.includes("is_pinned") || message.includes("pinned_at")) {
+        const { rows } = await db.query(
+          `SELECT * FROM tasks WHERE status = ? ORDER BY position ASC`,
+          [status]
+        );
+        return rows;
+      }
+      throw err;
+    }
   }
 
   // Get single task by ID
@@ -238,28 +274,49 @@ class TaskModel {
 
   // Toggle task pin
   static async togglePin(taskId) {
-    // Check if pin columns exist (MySQL information_schema)
+    // Check if pin columns exist (MySQL information_schema).
+    // MySQL 8 may return TABLE_NAME/COLUMN_NAME uppercase — normalize.
     const { rows: schemaCheck } = await db.query(
-      `SELECT column_name FROM information_schema.columns
+      `SELECT column_name AS col
+       FROM information_schema.columns
        WHERE table_schema = DATABASE() AND table_name = 'tasks'
-       AND column_name IN ('is_pinned', 'pinned_at')`
+         AND column_name IN ('is_pinned', 'pinned_at')`
     );
 
-    if (schemaCheck.length < 2) {
-      const err = new Error(
-        "Pinning is not available until the database is migrated (missing is_pinned/pinned_at columns)."
-      );
-      err.code = "PIN_COLUMNS_MISSING";
-      throw err;
+    const cols = new Set(
+      schemaCheck.map((r) =>
+        String(r.col ?? r.COL ?? r.column_name ?? r.COLUMN_NAME ?? "").toLowerCase()
+      )
+    );
+
+    if (!cols.has("is_pinned") || !cols.has("pinned_at")) {
+      // Direct probe as fallback (same casing quirks as FullNoteModel)
+      try {
+        await db.query("SELECT is_pinned, pinned_at FROM tasks LIMIT 0");
+      } catch (_) {
+        const err = new Error(
+          "Pinning is not available until the database is migrated (missing is_pinned/pinned_at columns)."
+        );
+        err.code = "PIN_COLUMNS_MISSING";
+        throw err;
+      }
     }
 
+    // Read current value first so pinned_at logic is unambiguous across engines
+    const { rows } = await db.query(
+      `SELECT is_pinned FROM tasks WHERE task_id = ?`,
+      [taskId]
+    );
+    if (!rows.length) return false;
+
+    const currentlyPinned = Boolean(rows[0].is_pinned);
     const { rowCount } = await db.query(
       `UPDATE tasks
-       SET is_pinned = NOT is_pinned,
-           pinned_at = CASE WHEN is_pinned THEN NULL ELSE CURRENT_TIMESTAMP END,
+       SET is_pinned = ?,
+           pinned_at = ?,
            updated_at = CURRENT_TIMESTAMP
        WHERE task_id = ?`,
-      [taskId]
+      [currentlyPinned ? 0 : 1, currentlyPinned ? null : new Date(), taskId]
     );
 
     return rowCount > 0;
