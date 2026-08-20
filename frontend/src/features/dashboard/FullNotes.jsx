@@ -46,7 +46,8 @@ export default function FullNotes() {
     try {
       setLoading(true);
       const response = await fullNoteService.getAll();
-      setNotes(response.data || []);
+      const notesData = Array.isArray(response) ? response : response?.data || [];
+      setNotes(notesData);
     } catch (error) {
       console.error("Error loading full notes:", error);
       toast.error("Failed to load notes");
@@ -62,8 +63,11 @@ export default function FullNotes() {
         employeeService.getAll(),
       ]);
 
-      setCustomers(customerResp.data || customerResp || []);
-      setEmployees(employeeResp.data || employeeResp || []);
+      const customerData = Array.isArray(customerResp) ? customerResp : customerResp?.data || [];
+      const employeeData = Array.isArray(employeeResp) ? employeeResp : employeeResp?.data || [];
+
+      setCustomers(customerData);
+      setEmployees(employeeData);
     } catch (error) {
       console.error("Error loading customers/employees:", error);
       // Not fatal for viewing notes; creation dropdown just won't have data.
@@ -184,8 +188,9 @@ export default function FullNotes() {
         employee_id: formData.note_type === "employee" ? formData.entity_id : "",
       };
 
+      const service = getNoteService(formData.note_type);
+
       if (editingNote) {
-        const service = getNoteService(formData.note_type);
         await service.update(
           editingNote.note_id,
           { ...payload, is_completed: editingNote.is_completed },
@@ -194,13 +199,14 @@ export default function FullNotes() {
         );
         toast.success("Note updated successfully");
       } else {
-        const service = getNoteService(formData.note_type);
         await service.create(payload, selectedFile);
         toast.success("Note created successfully");
       }
 
       handleCloseModal();
-      loadNotes();
+      // Small delay to ensure DB commit is visible to subsequent reads
+      await new Promise((r) => setTimeout(r, 250));
+      await loadNotes();
     } catch (error) {
       console.error("Error saving note:", error);
       toast.error("Failed to save note");
@@ -211,14 +217,14 @@ export default function FullNotes() {
     try {
       const service = getNoteService(note.note_type);
       await service.toggleComplete(note.note_id);
-      loadNotes();
+      await loadNotes();
     } catch (error) {
       const status = error?.response?.status;
 
       // If note not found, reload to sync with server (don't log as error - this is expected when data is stale)
       if (status === 404) {
         toast.warning("Note not found. Refreshing list...");
-        loadNotes();
+        await loadNotes();
         return;
       }
 
@@ -232,7 +238,7 @@ export default function FullNotes() {
     try {
       const service = getNoteService(note.note_type);
       await service.togglePin(note.note_id);
-      loadNotes();
+      await loadNotes();
     } catch (error) {
       const status = error?.response?.status;
       const apiMessage = error?.response?.data?.error;
@@ -249,7 +255,7 @@ export default function FullNotes() {
       // If note not found, reload to sync with server (don't log as error - this is expected when data is stale)
       if (status === 404) {
         toast.warning("Note not found. Refreshing list...");
-        loadNotes();
+        await loadNotes();
         return;
       }
 
@@ -266,14 +272,14 @@ export default function FullNotes() {
       const service = getNoteService(note.note_type);
       await service.delete(note.note_id);
       toast.success("Note deleted");
-      loadNotes();
+      await loadNotes();
     } catch (error) {
       const status = error?.response?.status;
 
       // If note not found, reload to sync with server (don't log as error - this is expected when data is stale)
       if (status === 404) {
         toast.warning("Note already deleted. Refreshing list...");
-        loadNotes();
+        await loadNotes();
         return;
       }
 
