@@ -344,8 +344,56 @@
 .sq-quote-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
+}
+
+.sq-quote-hint {
+  flex: 1;
+  min-width: 220px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.sq-btn-reset {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fdba74;
+}
+
+.sq-btn-reset:hover:not(:disabled) {
+  background: #ffedd5;
+}
+
+.sq-btn-reset:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Editable hours / nights on the quote */
+.sq-hours-input {
+  width: 78px;
+  padding: 3px 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  font: inherit;
+  text-align: right;
+}
+
+.sq-hours-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+/* Value typed on the quote, differs from the Daily Service Schedule */
+.sq-hours-input.is-edited {
+  background: #fef9c3;
+  border-color: #eab308;
+  font-weight: 700;
 }
 
 .sq-btn-export {
@@ -569,6 +617,24 @@
     overflow: visible;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  /* Editable hours print as plain numbers */
+  .sq-hours-input,
+  .sq-hours-input.is-edited {
+    border: none;
+    background: transparent;
+    padding: 0;
+    width: 60px;
+    font-weight: inherit;
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  .sq-hours-input::-webkit-outer-spin-button,
+  .sq-hours-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
 
   /* Keep each day table together instead of splitting it across pages */

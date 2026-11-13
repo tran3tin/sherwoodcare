@@ -806,6 +806,35 @@ export default function ServiceQuote() {
   const [irregularRate, setIrregularRate] = useState(150.1);
   const [irregularHours, setIrregularHours] = useState(5.0);
 
+  // Hours typed directly on the Service Quote tab, keyed by
+  // "<service type>|<day|evening>|<day index>" or "sleepover|<day index>".
+  // A key that is absent means "use the Daily Service Schedule value".
+  const [quoteHourOverrides, setQuoteHourOverrides] = useState({});
+
+  const setQuoteHours = useCallback((key, value) => {
+    setQuoteHourOverrides((prev) => ({ ...prev, [key]: value }));
+  }, []);
+
+  // Leaving a quote cell empty hands it back to the schedule value
+  const releaseQuoteHours = useCallback((key) => {
+    setQuoteHourOverrides((prev) => {
+      if (!(key in prev) || String(prev[key]).trim() !== "") return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
+
+  const resetQuoteHours = useCallback(() => {
+    if (
+      !window.confirm(
+        "Discard the hours edited on the quote and use the Daily Service Schedule values again?",
+      )
+    )
+      return;
+    setQuoteHourOverrides({});
+  }, []);
+
   useEffect(() => {
     const findBaseRate = (keyword) => {
       const row = baseRateItems.find((item) =>
@@ -1252,94 +1281,143 @@ export default function ServiceQuote() {
   }, [scheduleRows]);
 
   // ─── Computed: Service Quote data ────────────────────────────────
+  // Hours default to the Daily Service Schedule; a value typed on the quote
+  // (quoteHourOverrides) replaces the schedule value for that day.
   const quoteData = useMemo(() => {
-    const findBaseRate = (keyword) => {
-      const row = baseRateItems.find((item) =>
+    const findBaseItem = (keyword) =>
+      baseRateItems.find((item) =>
         (item.supportItemName || "").toLowerCase().includes(keyword),
       );
-      return parseNum(row?.rate);
+
+    const weekdayDayItem = findBaseItem("weekday daytime");
+    const weekdayEveningItem = findBaseItem("weekday evening");
+    const saturdayItem = findBaseItem("saturday");
+    const sundayItem = findBaseItem("sunday");
+    const sleepoverItem = findBaseItem("night-time sleepover");
+    const sleepoverRate = parseNum(sleepoverItem?.rate);
+
+    const getItemByDay = (period, day) => {
+      if (day === "Saturday") return saturdayItem;
+      if (day === "Sunday") return sundayItem;
+      if (period === "evening") return weekdayEveningItem || weekdayDayItem;
+      return weekdayDayItem;
     };
 
-    const weekdayDayRate = findBaseRate("weekday daytime");
-    const weekdayEveningRate = findBaseRate("weekday evening");
-    const saturdayRate = findBaseRate("saturday");
-    const sundayRate = findBaseRate("sunday");
-    const sleepoverRate = findBaseRate("night-time sleepover");
-
-    const getPricePerHour = (timeOfDay, day) => {
-      if (timeOfDay === "Overnight") return sleepoverRate;
-      if (day === "Saturday") return saturdayRate;
-      if (day === "Sunday") return sundayRate;
-      if (timeOfDay === "Evening") return weekdayEveningRate || weekdayDayRate;
-      return weekdayDayRate;
+    // Returns { hours, edited } for one editable quote cell
+    const resolveHours = (key, scheduleHours) => {
+      const rawValue = quoteHourOverrides[key];
+      if (rawValue === undefined || String(rawValue).trim() === "") {
+        return { hours: scheduleHours, edited: false };
+      }
+      const hours = Math.max(0, parseNum(rawValue));
+      return { hours, edited: hours !== scheduleHours };
     };
 
-    // Group schedule rows by serviceType + time bucket (day/evening)
+    // Schedule hours per service type + time bucket (day/evening)
+    const scheduleHours = {};
+    SERVICE_TYPES.forEach((st) => {
+      scheduleHours[st] = { day: 0, evening: 0, hasDay: false, hasEvening: false };
+    });
+    scheduleRows.forEach((sr) => {
+      const bucket = scheduleHours[sr.serviceType];
+      if (!bucket || sr.timeOfDay === "Overnight") return;
+      const hours = parseNum(sr.hoursPerDay);
+      if (hours <= 0) return;
+      if (sr.timeOfDay === "Evening") {
+        bucket.evening += hours;
+        bucket.hasEvening = true;
+      } else {
+        bucket.day += hours;
+        bucket.hasDay = true;
+      }
+    });
+
     const grouped = {};
     SERVICE_TYPES.forEach((st) => {
-      grouped[st] = {
-        day: { rows: [], totalHrsWeek: 0, totalCost: 0 },
-        evening: { rows: [], totalHrsWeek: 0, totalCost: 0 },
+      grouped[st] = {};
+      ["day", "evening"].forEach((period) => {
+        const visible =
+          period === "evening"
+            ? scheduleHours[st].hasEvening
+            : scheduleHours[st].hasDay;
+        const fromSchedule = round2(scheduleHours[st][period]);
+
+        const days = DAYS.map((day, dayIdx) => {
+          const item = getItemByDay(period, day);
+          const pricePerHour = parseNum(item?.rate);
+          // Same cent-rounded unit price and line amount as the invoice
+          const pricePerHourRatio = getRatioPrice(pricePerHour, st);
+          const key = `${st}|${period}|${dayIdx}`;
+          const { hours, edited } = resolveHours(key, fromSchedule);
+          return {
+            key,
+            day,
+            item,
+            pricePerHour,
+            pricePerHourRatio,
+            scheduleHours: fromSchedule,
+            hours,
+            edited,
+            cost: round2(pricePerHourRatio * hours),
+          };
+        });
+
+        grouped[st][period] = {
+          visible,
+          days,
+          totalHrsWeek: visible ? days.reduce((sum, d) => sum + d.hours, 0) : 0,
+          totalCost: visible
+            ? round2(days.reduce((sum, d) => sum + d.cost, 0))
+            : 0,
+        };
+      });
+    });
+
+    // Sleepover: only the Overnight rows that are ticked (Shared) or carry
+    // hours count, one night per row per day, at that row's own ratio.
+    const overnightRows = scheduleRows.filter(
+      (sr) =>
+        sr.timeOfDay === "Overnight" &&
+        (sr.shared || parseNum(sr.hoursPerDay) > 0),
+    );
+    const overnightPrices = overnightRows.map((sr) => ({
+      serviceType: sr.serviceType || "1:1",
+      unitPrice: getRatioPrice(sleepoverRate, sr.serviceType),
+    }));
+    const sleepoverNights = DAYS.map((day, dayIdx) => {
+      const key = `sleepover|${dayIdx}`;
+      const { hours: nights, edited } = resolveHours(key, 1);
+      return {
+        key,
+        day,
+        scheduleNights: 1,
+        nights,
+        edited,
+        cost: round2(
+          overnightPrices.reduce(
+            (sum, p) => sum + round2(p.unitPrice * nights),
+            0,
+          ),
+        ),
       };
     });
 
-    scheduleRows.forEach((sr) => {
-      const st = sr.serviceType;
-      if (!grouped[st]) return;
-      if (sr.timeOfDay === "Overnight") return;
-
-      const hours = parseNum(sr.hoursPerDay);
-      if (hours <= 0) return;
-      const period = sr.timeOfDay === "Evening" ? "evening" : "day";
-
-      const dayData = DAYS.map((day) => {
-        const pricePerHour = getPricePerHour(sr.timeOfDay, day);
-
-        // Same cent-rounded unit price and line amount as the invoice
-        const ratioPrice = getRatioPrice(pricePerHour, st);
-        const cost = round2(ratioPrice * hours);
-
-        return {
-          day,
-          pricePerHour,
-          pricePerHourRatio: ratioPrice,
-          hours,
-          cost,
-        };
-      });
-
-      const weekTotal = dayData.reduce((sum, d) => sum + d.cost, 0);
-      grouped[st][period].rows.push({
-        ...sr,
-        dayData,
-        weekTotal,
-      });
-      grouped[st][period].totalHrsWeek += hours * 7;
-      grouped[st][period].totalCost += weekTotal;
-    });
-
-    // Sleepover comes from the "Overnight" rows of the schedule: one night
-    // per row per day, shared at that row's own ratio (same as the invoice).
-    const overnightRows = scheduleRows.filter(
-      (sr) => sr.timeOfDay === "Overnight",
-    );
-    const sleepoverConvertedRate = round2(
-      overnightRows.reduce(
-        (sum, sr) => sum + getRatioPrice(sleepoverRate, sr.serviceType),
-        0,
-      ),
-    );
-    const sleepoverNightsPerWeek = overnightRows.length ? 7 : 0;
-
     const sleepover = {
-      serviceTypes: [
-        ...new Set(overnightRows.map((sr) => sr.serviceType || "1:1")),
-      ].join(", "),
+      visible: overnightRows.length > 0,
+      item: sleepoverItem,
+      prices: overnightPrices,
+      serviceTypes: [...new Set(overnightPrices.map((p) => p.serviceType))].join(
+        ", ",
+      ),
       pricePerNight: sleepoverRate,
-      rate: sleepoverConvertedRate,
-      nightsPerWeek: sleepoverNightsPerWeek,
-      costPerNight: sleepoverConvertedRate,
-      weekTotal: round2(sleepoverConvertedRate * sleepoverNightsPerWeek),
+      rate: round2(overnightPrices.reduce((sum, p) => sum + p.unitPrice, 0)),
+      nights: sleepoverNights,
+      nightsPerWeek: overnightRows.length
+        ? sleepoverNights.reduce((sum, n) => sum + n.nights, 0)
+        : 0,
+      weekTotal: overnightRows.length
+        ? round2(sleepoverNights.reduce((sum, n) => sum + n.cost, 0))
+        : 0,
     };
 
     // Public holiday / Irregular
@@ -1349,13 +1427,17 @@ export default function ServiceQuote() {
     // Grand totals
     let totalWeekly = 0;
     let totalWeeklyHours = 0;
+    let hasEdits = sleepover.visible && sleepoverNights.some((n) => n.edited);
     Object.values(grouped).forEach((g) => {
-      totalWeekly += (g.day?.totalCost || 0) + (g.evening?.totalCost || 0);
-      totalWeeklyHours +=
-        (g.day?.totalHrsWeek || 0) + (g.evening?.totalHrsWeek || 0);
+      ["day", "evening"].forEach((period) => {
+        if (!g[period].visible) return;
+        totalWeekly += g[period].totalCost;
+        totalWeeklyHours += g[period].totalHrsWeek;
+        if (g[period].days.some((d) => d.edited)) hasEdits = true;
+      });
     });
 
-    const estimatedWeekly = totalWeekly;
+    const estimatedWeekly = round2(totalWeekly);
     const estimatedSleepoverWeekly = sleepover.weekTotal;
     const estimatedFortnightly =
       (estimatedWeekly + estimatedSleepoverWeekly) * 2;
@@ -1372,6 +1454,7 @@ export default function ServiceQuote() {
     return {
       grouped,
       sleepover,
+      hasEdits,
       phTotal,
       irrTotal,
       estimatedWeekly,
@@ -1390,6 +1473,7 @@ export default function ServiceQuote() {
   }, [
     scheduleRows,
     baseRateItems,
+    quoteHourOverrides,
     publicHolidayRate,
     publicHolidayHours,
     irregularRate,
@@ -1397,93 +1481,68 @@ export default function ServiceQuote() {
   ]);
 
   // ─── Computed: Invoice rows (Mon-Sun) ───────────────────────────────
+  // Built from the quote, so hours edited on the quote reach the invoice and
+  // the invoice total always equals the quote's weekly total.
   const invoiceData = useMemo(() => {
-    const findBaseItem = (keyword) =>
-      baseRateItems.find((item) =>
-        (item.supportItemName || "").toLowerCase().includes(keyword),
-      );
-
-    const weekdayDayItem = findBaseItem("weekday daytime");
-    const weekdayEveningItem = findBaseItem("weekday evening");
-    const saturdayItem = findBaseItem("saturday");
-    const sundayItem = findBaseItem("sunday");
-    const sleepoverItem = findBaseItem("night-time sleepover");
-
-    const getItemByDay = (timeOfDay, dayName) => {
-      if (timeOfDay === "Overnight") return sleepoverItem;
-      if (dayName === "Saturday") return saturdayItem;
-      if (dayName === "Sunday") return sundayItem;
-      if (timeOfDay === "Evening") return weekdayEveningItem || weekdayDayItem;
-      return weekdayDayItem;
-    };
-
-    const getSortRank = (row) => {
-      if (row.timeOfDay === "Overnight") return 5;
-      const orderMap = {
-        "1:1": 0,
-        "Group (1:45)": 1,
-        "Group (2:45)": 2,
-        "Group (3:45)": 3,
-        "Group (4:45)": 4,
-      };
-      return orderMap[row.serviceType] ?? 4;
-    };
-
     const weekDates = getMondayToSunday();
     const rows = [];
 
     weekDates.forEach((date, dayIdx) => {
-      const dayName = DAYS[dayIdx];
-      const groupedDayRows = new Map();
-
-      scheduleRows.forEach((row) => {
-        const isOvernight = row.timeOfDay === "Overnight";
-        // Sleepover is priced per night, so an overnight row is always one
-        // night regardless of the hours entered for it.
-        const units = isOvernight ? 1 : parseNum(row.hoursPerDay);
-
+      const dayLines = new Map();
+      const addLine = (sortRank, ratioGroup, item, units, unitPrice, amount) => {
         if (units <= 0) return;
-        if (!isOvernight && !SERVICE_TYPES.includes(row.serviceType)) return;
-
-        const baseItem = getItemByDay(row.timeOfDay, dayName);
-        const baseRate = parseNum(baseItem?.rate);
-        const unitPrice = getRatioPrice(baseRate, row.serviceType);
-        const amount = round2(units * unitPrice);
-
-        const ratioGroup = row.serviceType || "1:1";
-        const itemCode = baseItem?.supportItemNumber || "";
-        const groupKey = `${ratioGroup}__${itemCode}`;
-        const existing = groupedDayRows.get(groupKey);
-
+        const itemCode = item?.supportItemNumber || "";
+        const lineKey = `${ratioGroup}__${itemCode}`;
+        const existing = dayLines.get(lineKey);
         if (existing) {
           existing.units += units;
           existing.amount = round2(existing.amount + amount);
           return;
         }
-
-        groupedDayRows.set(groupKey, {
-          sortRank: getSortRank(row),
-          ratioGroup,
+        dayLines.set(lineKey, {
+          sortRank,
           date,
           dateLabel: fmtDate(date),
           units,
           itemCode,
-          description:
-            `${baseItem?.supportItemName || row.description || ""} (${ratioGroup})`.trim(),
+          description: `${item?.supportItemName || ""} (${ratioGroup})`.trim(),
           unitPrice,
           taxCode: "FRE",
           amount,
         });
+      };
+
+      SERVICE_TYPES.forEach((st, typeIdx) => {
+        ["day", "evening"].forEach((period) => {
+          const group = quoteData.grouped[st][period];
+          if (!group.visible) return;
+          const d = group.days[dayIdx];
+          addLine(typeIdx, st, d.item, d.hours, d.pricePerHourRatio, d.cost);
+        });
       });
 
-      Array.from(groupedDayRows.values())
+      if (quoteData.sleepover.visible) {
+        const nights = quoteData.sleepover.nights[dayIdx].nights;
+        quoteData.sleepover.prices.forEach((p) =>
+          addLine(
+            SERVICE_TYPES.length,
+            p.serviceType,
+            quoteData.sleepover.item,
+            nights,
+            p.unitPrice,
+            round2(p.unitPrice * nights),
+          ),
+        );
+      }
+
+      Array.from(dayLines.values())
         .sort(
           (a, b) =>
             a.sortRank - b.sortRank ||
             (a.itemCode || "").localeCompare(b.itemCode || "") ||
             (a.description || "").localeCompare(b.description || ""),
         )
-        .forEach(({ sortRank, ratioGroup, ...item }) => rows.push(item));
+        .forEach(({ sortRank, ...item }) => rows.push(item));
     });
 
     return {
@@ -1491,7 +1550,7 @@ export default function ServiceQuote() {
       rows,
       totalAmount: round2(rows.reduce((sum, r) => sum + r.amount, 0)),
     };
-  }, [scheduleRows, baseRateItems]);
+  }, [quoteData]);
 
   // ─── Computed: column arrays ───────────────────────────────────────
   const schAllCols = useMemo(
@@ -1607,32 +1666,18 @@ export default function ServiceQuote() {
     SERVICE_TYPES.forEach((st) => {
       ["day", "evening"].forEach((period) => {
         const group = quoteData.grouped?.[st]?.[period];
-        if (!group?.rows?.length) return;
+        if (!group?.visible) return;
 
-        DAYS.forEach((day, dayIdx) => {
-          let totalHrs = 0;
-          let totalCost = 0;
-          let pricePerHour = 0;
-          let pricePerHourRatio = 0;
-
-          group.rows.forEach((row) => {
-            const dd = row.dayData?.[dayIdx];
-            if (!dd) return;
-            totalHrs += dd.hours || 0;
-            totalCost += dd.cost || 0;
-            pricePerHour = dd.pricePerHour || 0;
-            pricePerHourRatio = dd.pricePerHourRatio || 0;
-          });
-
+        group.days.forEach((d) => {
           breakdownRows.push({
             Regis: "107",
             "Service Type": st,
             Period: period === "evening" ? "Evening" : "Day",
-            Day: day,
-            "Price/Hour": Number(pricePerHour.toFixed(2)),
-            "Price/Hour/Ratio": Number(pricePerHourRatio.toFixed(2)),
-            "Hours/Day": Number(totalHrs.toFixed(2)),
-            Cost: Number(totalCost.toFixed(2)),
+            Day: d.day,
+            "Price/Hour": Number(d.pricePerHour.toFixed(2)),
+            "Price/Hour/Ratio": Number(d.pricePerHourRatio.toFixed(2)),
+            "Hours/Day": Number(d.hours.toFixed(2)),
+            Cost: Number(d.cost.toFixed(2)),
           });
         });
 
@@ -1649,18 +1694,22 @@ export default function ServiceQuote() {
       });
     });
 
-    if (quoteData.sleepover?.nightsPerWeek > 0) breakdownRows.push({
-      Regis: "107",
-      "Service Type": quoteData.sleepover.serviceTypes,
-      Period: "Overnight",
-      Day: "Sleepover weekly",
-      "Price/Hour": Number(
-        (quoteData.sleepover?.pricePerNight || 0).toFixed(2),
-      ),
-      "Price/Hour/Ratio": Number((quoteData.sleepover?.rate || 0).toFixed(2)),
-      "Hours/Day": Number((quoteData.sleepover?.nightsPerWeek || 0).toFixed(2)),
-      Cost: Number((quoteData.sleepover?.weekTotal || 0).toFixed(2)),
-    });
+    if (quoteData.sleepover?.visible) {
+      breakdownRows.push({
+        Regis: "107",
+        "Service Type": quoteData.sleepover.serviceTypes,
+        Period: "Overnight",
+        Day: "Sleepover weekly",
+        "Price/Hour": Number(
+          (quoteData.sleepover.pricePerNight || 0).toFixed(2),
+        ),
+        "Price/Hour/Ratio": Number((quoteData.sleepover.rate || 0).toFixed(2)),
+        "Hours/Day": Number(
+          (quoteData.sleepover.nightsPerWeek || 0).toFixed(2),
+        ),
+        Cost: Number((quoteData.sleepover.weekTotal || 0).toFixed(2)),
+      });
+    }
 
     breakdownRows.push({
       Regis: "",
@@ -1845,6 +1894,27 @@ export default function ServiceQuote() {
     const safeClient = (clientName || "client").replace(/[^a-z0-9_-]/gi, "_");
     doc.save(`Service_Invoice_${safeClient}_${datePart}.pdf`);
   }, [invoiceData, clientName, planNumber]);
+
+  // Editable hours / nights cell of the quote. Shows the schedule value until
+  // the user types one; an empty cell falls back to the schedule on blur.
+  const renderQuoteHoursInput = (cell, scheduleValue, step = 0.25) => (
+    <input
+      type="number"
+      min="0"
+      step={step}
+      className={`sq-hours-input${cell.edited ? " is-edited" : ""}`}
+      value={
+        quoteHourOverrides[cell.key] ?? String(Number(cell.hours.toFixed(2)))
+      }
+      onChange={(e) => setQuoteHours(cell.key, e.target.value)}
+      onBlur={() => releaseQuoteHours(cell.key)}
+      title={
+        cell.edited
+          ? `Edited. Daily Service Schedule value: ${fmt(scheduleValue)}`
+          : "From the Daily Service Schedule. Type to override."
+      }
+    />
+  );
 
   // ─── Render ──────────────────────────────────────────────────────
   return (
@@ -2745,6 +2815,18 @@ export default function ServiceQuote() {
         {activeTab === "quote" && (
           <div className="sq-panel">
             <div className="sq-quote-actions">
+              <span className="sq-quote-hint">
+                Hours can be edited here. Edited cells are highlighted; clear a
+                cell or use Reset to go back to the Daily Service Schedule.
+              </span>
+              <button
+                className="sq-btn sq-btn-reset"
+                onClick={resetQuoteHours}
+                disabled={!quoteData.hasEdits}
+                title="Use the hours from the Daily Service Schedule again"
+              >
+                <i className="fas fa-undo"></i> Reset hours
+              </button>
               <button
                 className="sq-btn sq-btn-export"
                 onClick={handleExportExcel}
@@ -2779,7 +2861,7 @@ export default function ServiceQuote() {
               {SERVICE_TYPES.flatMap((st) =>
                 ["day", "evening"].map((period) => {
                   const group = quoteData.grouped[st]?.[period];
-                  if (!group || group.rows.length === 0) return null;
+                  if (!group || !group.visible) return null;
 
                   return (
                     <div key={`${st}-${period}`} className="sq-quote-section">
@@ -2805,35 +2887,23 @@ export default function ServiceQuote() {
                           </tr>
                         </thead>
                         <tbody>
-                          {DAYS.map((day) => {
-                            const dayIdx = DAYS.indexOf(day);
-                            let totalHrs = 0;
-                            let totalCost = 0;
-                            let pricePerHour = 0;
-                            let priceRatio = 0;
-
-                            group.rows.forEach((r) => {
-                              const dd = r.dayData[dayIdx];
-                              totalHrs += dd.hours;
-                              totalCost += dd.cost;
-                              pricePerHour = dd.pricePerHour;
-                              priceRatio = dd.pricePerHourRatio;
-                            });
-
-                            return (
-                              <tr key={day}>
-                                <td className="sq-day-cell">{day}</td>
-                                <td className="sq-money">
-                                  ${fmt(pricePerHour)}
-                                </td>
-                                <td className="sq-money">${fmt(priceRatio)}</td>
-                                <td>hrs / Day</td>
-                                <td className="sq-right">{fmt(totalHrs)}</td>
-                                <td className="sq-money">$</td>
-                                <td className="sq-money">{fmt(totalCost)}</td>
-                              </tr>
-                            );
-                          })}
+                          {group.days.map((d) => (
+                            <tr key={d.day}>
+                              <td className="sq-day-cell">{d.day}</td>
+                              <td className="sq-money">
+                                ${fmt(d.pricePerHour)}
+                              </td>
+                              <td className="sq-money">
+                                ${fmt(d.pricePerHourRatio)}
+                              </td>
+                              <td>hrs / Day</td>
+                              <td className="sq-right">
+                                {renderQuoteHoursInput(d, d.scheduleHours)}
+                              </td>
+                              <td className="sq-money">$</td>
+                              <td className="sq-money">{fmt(d.cost)}</td>
+                            </tr>
+                          ))}
                           <tr className="sq-subtotal-row">
                             <td></td>
                             <td></td>
@@ -2852,8 +2922,8 @@ export default function ServiceQuote() {
                 }),
               )}
 
-              {/* Sleepover section */}
-              {quoteData.sleepover.nightsPerWeek > 0 && (
+              {/* Sleepover section: only when an Overnight row is ticked */}
+              {quoteData.sleepover.visible && (
                 <div className="sq-quote-section">
                   <div className="sq-quote-section-header sq-sleepover-header">
                     <span className="sq-section-regis">107</span>
@@ -2872,15 +2942,15 @@ export default function ServiceQuote() {
                         <th>Price/night</th>
                         <th>Rate</th>
                         <th>Units</th>
+                        <th>Nights</th>
                         <th></th>
                         <th>$</th>
-                        <th></th>
                       </tr>
                     </thead>
                     <tbody>
-                      {DAYS.map((day) => (
-                        <tr key={day}>
-                          <td className="sq-day-cell">{day}</td>
+                      {quoteData.sleepover.nights.map((n) => (
+                        <tr key={n.day}>
+                          <td className="sq-day-cell">{n.day}</td>
                           <td className="sq-money">
                             ${fmt(quoteData.sleepover.pricePerNight || 0)}
                           </td>
@@ -2888,11 +2958,15 @@ export default function ServiceQuote() {
                             ${fmt(quoteData.sleepover.rate || 0)}
                           </td>
                           <td>per night</td>
-                          <td className="sq-right">1.00</td>
-                          <td className="sq-money">$</td>
-                          <td className="sq-money">
-                            {fmt(quoteData.sleepover.rate || 0)}
+                          <td className="sq-right">
+                            {renderQuoteHoursInput(
+                              { ...n, hours: n.nights },
+                              n.scheduleNights,
+                              1,
+                            )}
                           </td>
+                          <td className="sq-money">$</td>
+                          <td className="sq-money">{fmt(n.cost)}</td>
                         </tr>
                       ))}
                       <tr className="sq-subtotal-row">
