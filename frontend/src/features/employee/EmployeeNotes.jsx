@@ -6,7 +6,10 @@ import { employeeNoteService } from "../../services/employeeNoteService";
 import { employeeService } from "../../services/employeeService";
 import "../../assets/styles/list.css";
 import "../customer/CustomerNotes.css";
-import { API_BASE_URL } from "../../config/api";
+import NoteAttachmentsField, {
+  NoteAttachmentLinks,
+  getNoteAttachments,
+} from "../../components/NoteAttachmentsField";
 
 export default function EmployeeNotes() {
   const { employeeId } = useParams();
@@ -17,8 +20,10 @@ export default function EmployeeNotes() {
   const [showModal, setShowModal] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
   const [filter, setFilter] = useState("all"); // all, pending, completed
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [removeAttachment, setRemoveAttachment] = useState(false);
+  // Attachments: any number of files per note
+  const [selectedFiles, setSelectedFiles] = useState([]); // new, not uploaded yet
+  const [existingAttachments, setExistingAttachments] = useState([]); // saved { id, url, name }
+  const [removeAttachmentIds, setRemoveAttachmentIds] = useState([]);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -73,16 +78,18 @@ export default function EmployeeNotes() {
         due_date: "",
       });
     }
-    setSelectedFile(null);
-    setRemoveAttachment(false);
+    setSelectedFiles([]);
+    setExistingAttachments(getNoteAttachments(note));
+    setRemoveAttachmentIds([]);
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingNote(null);
-    setSelectedFile(null);
-    setRemoveAttachment(false);
+    setSelectedFiles([]);
+    setExistingAttachments([]);
+    setRemoveAttachmentIds([]);
   };
 
   const handleSubmit = async (e) => {
@@ -98,14 +105,14 @@ export default function EmployeeNotes() {
         await employeeNoteService.update(
           editingNote.note_id,
           { ...formData, is_completed: editingNote.is_completed },
-          selectedFile,
-          removeAttachment
+          selectedFiles,
+          removeAttachmentIds
         );
         toast.success("Note updated successfully");
       } else {
         await employeeNoteService.create(
           { ...formData, employee_id: employeeId },
-          selectedFile
+          selectedFiles
         );
         toast.success("Note created successfully");
       }
@@ -114,7 +121,7 @@ export default function EmployeeNotes() {
       loadNotes();
     } catch (error) {
       console.error("Error saving note:", error);
-      toast.error("Failed to save note");
+      toast.error(error?.response?.data?.error || "Failed to save note");
     }
   };
 
@@ -141,16 +148,11 @@ export default function EmployeeNotes() {
     }
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.warning("File size must be less than 10MB");
-        return;
-      }
-      setSelectedFile(file);
-      setRemoveAttachment(false);
-    }
+  const handleRemoveExistingAttachment = (attachment) => {
+    setExistingAttachments((prev) =>
+      prev.filter((a) => a.id !== attachment.id),
+    );
+    setRemoveAttachmentIds((prev) => [...prev, attachment.id]);
   };
 
   const filteredNotes = notes.filter((note) => {
@@ -313,17 +315,7 @@ export default function EmployeeNotes() {
                       </span>
                     )}
 
-                    {note.attachment_url && (
-                      <a
-                        href={`${API_BASE_URL}${note.attachment_url}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="note-attachment"
-                      >
-                        <i className="fas fa-paperclip"></i>
-                        {note.attachment_name || "Attachment"}
-                      </a>
-                    )}
+                    <NoteAttachmentLinks note={note} />
 
                     <span className="note-created">
                       Created: {formatDate(note.created_at)}
@@ -430,43 +422,12 @@ export default function EmployeeNotes() {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Attachment (Image/File - Max 10MB)</label>
-                <input
-                  type="file"
-                  onChange={handleFileChange}
-                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
-                />
-                {selectedFile && (
-                  <div className="selected-file">
-                    <i className="fas fa-file"></i> {selectedFile.name}
-                    <button type="button" onClick={() => setSelectedFile(null)}>
-                      <i className="fas fa-times"></i>
-                    </button>
-                  </div>
-                )}
-
-                {editingNote?.attachment_url && !selectedFile && (
-                  <div className="existing-attachment">
-                    <a
-                      href={`${API_BASE_URL}${editingNote.attachment_url}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <i className="fas fa-paperclip"></i>
-                      {editingNote.attachment_name || "Current attachment"}
-                    </a>
-                    <label className="remove-attachment">
-                      <input
-                        type="checkbox"
-                        checked={removeAttachment}
-                        onChange={(e) => setRemoveAttachment(e.target.checked)}
-                      />
-                      Remove attachment
-                    </label>
-                  </div>
-                )}
-              </div>
+              <NoteAttachmentsField
+                existing={existingAttachments}
+                onRemoveExisting={handleRemoveExistingAttachment}
+                files={selectedFiles}
+                onFilesChange={setSelectedFiles}
+              />
 
               <div className="modal-actions">
                 <button

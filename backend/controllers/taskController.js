@@ -2,6 +2,7 @@ const TaskModel = require("../models/TaskModel");
 const multer = require("multer");
 const path = require("path");
 const { subdir } = require("../config/upload");
+const { deleteStoredFile } = require("../utils/noteAttachments");
 
 // Coolify / local disk under UPLOAD_DIR/task-attachments
 const storage = multer.diskStorage({
@@ -279,13 +280,9 @@ const deleteTask = async (req, res) => {
       return res.status(404).json({ success: false, error: "Task not found" });
     }
 
-    // Delete attachment file if exists
-    if (task.attachment_url) {
-      const filePath = path.join(__dirname, "../public", task.attachment_url);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    }
+    // Delete the stored files (legacy single attachment + attachment rows)
+    deleteStoredFile(task.attachment_url);
+    (task.attachments || []).forEach((att) => deleteStoredFile(att.url));
 
     const deleted = await TaskModel.delete(taskId);
 

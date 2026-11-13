@@ -1,56 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const multer = require("multer");
-const path = require("path");
-const { subdir } = require("../config/upload");
+const { noteUpload } = require("../utils/noteAttachments");
 const customerNoteController = require("../controllers/customerNoteController");
 
-// Coolify / local disk under UPLOAD_DIR/customer-notes
-const uploadDir = subdir("customer-notes");
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, `note-${uniqueSuffix}${ext}`);
-  },
-});
-
-const fileFilter = (req, file, cb) => {
-  // Allow images and common document types
-  const allowedTypes = [
-    "image/jpeg",
-    "image/png",
-    "image/gif",
-    "image/webp",
-    "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.ms-excel",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "text/plain",
-  ];
-
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(
-      new Error("Invalid file type. Only images and documents are allowed."),
-      false
-    );
-  }
-};
-
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
-});
+// Any number of files per note (10MB each), stored on local disk under
+// UPLOAD_DIR/customer-notes
+const upload = noteUpload("customer-notes");
 
 // Routes
 router.get(
@@ -61,12 +16,12 @@ router.get("/customer/:customerId/count", customerNoteController.getNotesCount);
 router.get("/:noteId", customerNoteController.getNoteById);
 router.post(
   "/",
-  upload.single("attachment"),
+  upload,
   customerNoteController.createNote
 );
 router.put(
   "/:noteId",
-  upload.single("attachment"),
+  upload,
   customerNoteController.updateNote
 );
 router.patch("/:noteId/toggle", customerNoteController.toggleNoteComplete);

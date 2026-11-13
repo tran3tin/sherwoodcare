@@ -32,7 +32,7 @@ router.get("/:articleId", trainingArticleController.getArticleById);
 router.post(
   "/",
   upload.fields([
-    { name: "attachments", maxCount: 20 },
+    { name: "attachments" },
     { name: "attachment", maxCount: 1 },
   ]),
   trainingArticleController.createArticle,
@@ -40,7 +40,7 @@ router.post(
 router.put(
   "/:articleId",
   upload.fields([
-    { name: "attachments", maxCount: 20 },
+    { name: "attachments" },
     { name: "attachment", maxCount: 1 },
   ]),
   trainingArticleController.updateArticle,

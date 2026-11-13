@@ -1,0 +1,89 @@
+/* Multi-file attachment picker used by the note forms */
+.note-attachments-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px dashed #93c5fd;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.note-attachments-add:hover {
+  background: #dbeafe;
+}
+
+.note-attachments-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-attachments-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  font-size: 13px;
+}
+
+.note-attachments-list li.is-new {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.note-attachments-list li > i {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.note-attachments-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #1e293b;
+}
+
+a.note-attachments-name {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+a.note-attachments-name:hover {
+  text-decoration: underline;
+}
+
+.note-attachments-size {
+  color: #94a3b8;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.note-attachments-list li button {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #ef4444;
+  cursor: pointer;
+}
+
+.note-attachments-list li button:hover {
+  background: #fee2e2;
+}

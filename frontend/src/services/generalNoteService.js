@@ -1,6 +1,7 @@
 import axios from "axios";
 
 import { API_BASE_WITH_API_PREFIX } from "../config/api";
+import { appendNoteAttachments } from "./noteAttachmentForm";
 
 const API_URL = API_BASE_WITH_API_PREFIX;
 
@@ -17,8 +18,8 @@ export const generalNoteService = {
     return response.data;
   },
 
-  // Create new note (with optional file attachment)
-  create: async (noteData, file = null) => {
+  // Create new note (with any number of file attachments)
+  create: async (noteData, files = null) => {
     const formData = new FormData();
     formData.append("title", noteData.title);
     formData.append("content", noteData.content || "");
@@ -26,9 +27,7 @@ export const generalNoteService = {
     if (noteData.due_date) {
       formData.append("due_date", noteData.due_date);
     }
-    if (file) {
-      formData.append("attachment", file);
-    }
+    appendNoteAttachments(formData, files);
 
     const response = await axios.post(`${API_URL}/general-notes`, formData, {
       headers: {
@@ -38,8 +37,14 @@ export const generalNoteService = {
     return response.data;
   },
 
-  // Update note (with optional file attachment)
-  update: async (noteId, noteData, file = null, removeAttachment = false) => {
+  // Update note: `files` are added to the note, `removeAttachmentIds` are
+  // the saved attachments to delete
+  update: async (
+    noteId,
+    noteData,
+    files = null,
+    removeAttachmentIds = [],
+  ) => {
     const formData = new FormData();
     formData.append("title", noteData.title);
     formData.append("content", noteData.content || "");
@@ -48,12 +53,7 @@ export const generalNoteService = {
     if (noteData.due_date) {
       formData.append("due_date", noteData.due_date);
     }
-    if (file) {
-      formData.append("attachment", file);
-    }
-    if (removeAttachment) {
-      formData.append("remove_attachment", "true");
-    }
+    appendNoteAttachments(formData, files, removeAttachmentIds);
 
     const response = await axios.put(
       `${API_URL}/general-notes/${noteId}`,

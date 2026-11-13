@@ -216,6 +216,8 @@ export default function KanbanBoard() {
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
+    // Clear the input so further picks (even of the same file) always register
+    e.target.value = "";
     if (files.length === 0) return;
 
     const newFiles = [];

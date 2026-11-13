@@ -1,62 +1,18 @@
 const express = require("express");
 const router = express.Router();
-const multer = require("multer");
-const path = require("path");
-const { subdir } = require("../config/upload");
+const { noteUpload } = require("../utils/noteAttachments");
 const generalNoteController = require("../controllers/generalNoteController");
 
-// Coolify / local disk under UPLOAD_DIR/general-notes
-const uploadDir = subdir("general-notes");
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, `note-${uniqueSuffix}${ext}`);
-  },
-});
-
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = [
-    "image/jpeg",
-    "image/png",
-    "image/gif",
-    "image/webp",
-    "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.ms-excel",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "text/plain",
-  ];
-
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(
-      new Error("Invalid file type. Only images and documents are allowed."),
-      false
-    );
-  }
-};
-
-const upload = multer({
-  storage,
-  fileFilter,
-  limits: {
-    fileSize: 10 * 1024 * 1024,
-  },
-});
+// Any number of files per note (10MB each), stored on local disk under
+// UPLOAD_DIR/general-notes
+const upload = noteUpload("general-notes");
 
 router.get("/", generalNoteController.getAllNotes);
 router.get("/:noteId", generalNoteController.getNoteById);
-router.post("/", upload.single("attachment"), generalNoteController.createNote);
+router.post("/", upload, generalNoteController.createNote);
 router.put(
   "/:noteId",
-  upload.single("attachment"),
+  upload,
   generalNoteController.updateNote
 );
 router.patch("/:noteId/toggle", generalNoteController.toggleNoteComplete);

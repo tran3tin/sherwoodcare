@@ -294,6 +294,19 @@ CREATE TABLE IF NOT EXISTS task_attachments (
   CONSTRAINT fk_task_attachments_task FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Unlimited attachments for customer / employee / general notes.
+-- note_type: 'customer' | 'employee' | 'general'. The legacy single
+-- attachment_url / attachment_name columns on the note tables are still read.
+CREATE TABLE IF NOT EXISTS note_attachments (
+  attachment_id INT AUTO_INCREMENT PRIMARY KEY,
+  note_type VARCHAR(20) NOT NULL,
+  note_id INT NOT NULL,
+  file_url TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_note_attachments_note (note_type, note_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS training_articles (
   article_id INT AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(255) NOT NULL,

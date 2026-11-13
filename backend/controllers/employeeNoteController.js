@@ -1,13 +1,24 @@
 const EmployeeNoteModel = require("../models/EmployeeNoteModel");
-const path = require("path");
-const fs = require("fs");
+const NoteAttachmentModel = require("../models/NoteAttachmentModel");
+const {
+  uploadedFiles,
+  applyAttachmentChanges,
+  deleteAllAttachments,
+} = require("../utils/noteAttachments");
+
+const NOTE_TYPE = "employee";
+const UPLOAD_FOLDER = "employee-notes";
+
+// Adds the `attachments` array ({ id, url, name }) to a note or list of notes
+const withAttachments = (notes) =>
+  NoteAttachmentModel.attachTo(notes, NOTE_TYPE);
 
 // Get all notes for an employee
 const getNotesByEmployeeId = async (req, res) => {
   try {
     const { employeeId } = req.params;
     const notes = await EmployeeNoteModel.getByEmployeeId(employeeId);
-    res.json({ success: true, data: notes });
+    res.json({ success: true, data: await withAttachments(notes) });
   } catch (error) {
     console.error("Error fetching employee notes:", error);
     res.status(500).json({ success: false, error: "Failed to fetch notes" });
@@ -24,7 +35,7 @@ const getNoteById = async (req, res) => {
       return res.status(404).json({ success: false, error: "Note not found" });
     }
 
-    res.json({ success: true, data: note });
+    res.json({ success: true, data: await withAttachments(note) });
   } catch (error) {
     console.error("Error fetching note:", error);
     res.status(500).json({ success: false, error: "Failed to fetch note" });
@@ -42,14 +53,6 @@ const createNote = async (req, res) => {
         .json({ success: false, error: "Employee ID and title are required" });
     }
 
-    let attachment_url = null;
-    let attachment_name = null;
-
-    // Handle file upload
-    if (req.file) {
-      attachment_url = `/uploads/employee-notes/${req.file.filename}`;
-      attachment_name = req.file.originalname;
-    }
 
     const noteData = {
       employee_id,
@@ -57,12 +60,18 @@ const createNote = async (req, res) => {
       content: content || "",
       priority: priority || "medium",
       due_date: due_date || null,
-      attachment_url,
-      attachment_name,
     };
 
-    const newNote = await EmployeeNoteModel.create(noteData);
-    res.status(201).json({ success: true, data: newNote });
+    const created = await EmployeeNoteModel.create(noteData);
+    await NoteAttachmentModel.add(
+      NOTE_TYPE,
+      created.note_id,
+      uploadedFiles(req, UPLOAD_FOLDER)
+    );
+    const newNote = await EmployeeNoteModel.getById(created.note_id);
+    res
+      .status(201)
+      .json({ success: true, data: await withAttachments(newNote) });
   } catch (error) {
     console.error("Error creating note:", error);
     res.status(500).json({ success: false, error: "Failed to create note" });
@@ -81,43 +90,14 @@ const updateNote = async (req, res) => {
       return res.status(404).json({ success: false, error: "Note not found" });
     }
 
-    let attachment_url = existingNote.attachment_url;
-    let attachment_name = existingNote.attachment_name;
-
-    // Handle new file upload
-    if (req.file) {
-      // Delete old file if exists
-      if (existingNote.attachment_url) {
-        const oldFilePath = path.join(
-          __dirname,
-          "..",
-          "public",
-          existingNote.attachment_url
-        );
-        if (fs.existsSync(oldFilePath)) {
-          fs.unlinkSync(oldFilePath);
-        }
-      }
-      attachment_url = `/uploads/employee-notes/${req.file.filename}`;
-      attachment_name = req.file.originalname;
-    }
-
-    // Check if user wants to remove attachment
-    if (req.body.remove_attachment === "true") {
-      if (existingNote.attachment_url) {
-        const oldFilePath = path.join(
-          __dirname,
-          "..",
-          "public",
-          existingNote.attachment_url
-        );
-        if (fs.existsSync(oldFilePath)) {
-          fs.unlinkSync(oldFilePath);
-        }
-      }
-      attachment_url = null;
-      attachment_name = null;
-    }
+    // Remove the attachments the user deleted, then add the new uploads.
+    // Existing files are kept: a note can hold any number of attachments.
+    const { attachment_url, attachment_name } = await applyAttachmentChanges(
+      req,
+      NOTE_TYPE,
+      UPLOAD_FOLDER,
+      existingNote
+    );
 
     const noteData = {
       title,
@@ -138,7 +118,7 @@ const updateNote = async (req, res) => {
     }
 
     const updatedNote = await EmployeeNoteModel.getById(noteId);
-    res.json({ success: true, data: updatedNote });
+    res.json({ success: true, data: await withAttachments(updatedNote) });
   } catch (error) {
     console.error("Error updating note:", error);
     res.status(500).json({ success: false, error: "Failed to update note" });
@@ -157,7 +137,7 @@ const toggleNoteComplete = async (req, res) => {
     }
 
     const updatedNote = await EmployeeNoteModel.getById(noteId);
-    res.json({ success: true, data: updatedNote });
+    res.json({ success: true, data: await withAttachments(updatedNote) });
   } catch (error) {
     console.error("Error toggling note:", error);
     res.status(500).json({ success: false, error: "Failed to toggle note" });
@@ -176,7 +156,7 @@ const toggleNotePin = async (req, res) => {
     }
 
     const updatedNote = await EmployeeNoteModel.getById(noteId);
-    res.json({ success: true, data: updatedNote });
+    res.json({ success: true, data: await withAttachments(updatedNote) });
   } catch (error) {
     if (error && error.code === "PIN_COLUMNS_MISSING") {
       return res.status(409).json({
@@ -201,18 +181,7 @@ const deleteNote = async (req, res) => {
       return res.status(404).json({ success: false, error: "Note not found" });
     }
 
-    // Delete attachment file if exists
-    if (note.attachment_url) {
-      const filePath = path.join(
-        __dirname,
-        "..",
-        "public",
-        note.attachment_url
-      );
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    }
+    await deleteAllAttachments(NOTE_TYPE, note);
 
     const deleted = await EmployeeNoteModel.delete(noteId);
 
