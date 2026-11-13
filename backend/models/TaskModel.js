@@ -31,15 +31,14 @@ class TaskModel {
   }
 
   // Get all tasks with attachments
-  // Pinned tasks float to the top of each column (is_pinned DESC),
-  // then keep manual drag order via position.
+  // Pinned tasks float to the top of each column (is_pinned DESC); inside the
+  // pinned and the unpinned group the manual drag order (position) applies.
   static async getAll() {
     try {
       const { rows } = await db.query(
         `SELECT * FROM tasks
          ORDER BY
            COALESCE(is_pinned, 0) DESC,
-           pinned_at DESC,
            position ASC,
            created_at DESC`
       );
@@ -66,7 +65,6 @@ class TaskModel {
          WHERE status = ?
          ORDER BY
            COALESCE(is_pinned, 0) DESC,
-           pinned_at DESC,
            position ASC`,
         [status]
       );

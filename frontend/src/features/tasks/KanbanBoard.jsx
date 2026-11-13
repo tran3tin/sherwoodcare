@@ -61,21 +61,25 @@ export default function KanbanBoard() {
   };
 
   const sortColumnTasks = (list = []) => {
-    // Keep pinned tasks at the top of each column (frontend safety net).
-    // Backend already orders this way; re-sort after local drag/optimistic updates.
+    // Pinned tasks stay at the top of each column; inside the pinned and the
+    // unpinned group the order is the manual drag order (position).
+    // Must match the ORDER BY in TaskModel.getAll.
     return [...list].sort((a, b) => {
       const ap = isPinnedFlag(a.is_pinned) ? 1 : 0;
       const bp = isPinnedFlag(b.is_pinned) ? 1 : 0;
       if (bp !== ap) return bp - ap;
-      const aPinAt = a.pinned_at ? new Date(a.pinned_at).getTime() : 0;
-      const bPinAt = b.pinned_at ? new Date(b.pinned_at).getTime() : 0;
-      if (bPinAt !== aPinAt) return bPinAt - aPinAt;
       const aPos = Number(a.position ?? 0);
       const bPos = Number(b.position ?? 0);
       if (aPos !== bPos) return aPos - bPos;
       return 0;
     });
   };
+
+  // After a drop the list is already in the order the user wants, but each
+  // task still carries its old `position`. Renumber before sorting, otherwise
+  // the sort puts the card straight back where it came from.
+  const applyDropOrder = (list = []) =>
+    sortColumnTasks(list.map((t, index) => ({ ...t, position: index })));
 
   const loadTasks = async () => {
     try {
@@ -119,17 +123,17 @@ export default function KanbanBoard() {
     const destTasks =
       sourceColumn === destColumn ? sourceTasks : [...newTasks[destColumn]];
 
-    const [movedTask] = sourceTasks.splice(source.index, 1);
-    movedTask.status = destColumn;
+    const [removed] = sourceTasks.splice(source.index, 1);
+    if (!removed) return;
+    const movedTask = { ...removed, status: destColumn };
 
     if (sourceColumn === destColumn) {
       sourceTasks.splice(destination.index, 0, movedTask);
-      // Keep pinned tasks at the top after manual drag
-      newTasks[sourceColumn] = sortColumnTasks(sourceTasks);
+      newTasks[sourceColumn] = applyDropOrder(sourceTasks);
     } else {
       destTasks.splice(destination.index, 0, movedTask);
-      newTasks[sourceColumn] = sortColumnTasks(sourceTasks);
-      newTasks[destColumn] = sortColumnTasks(destTasks);
+      newTasks[sourceColumn] = applyDropOrder(sourceTasks);
+      newTasks[destColumn] = applyDropOrder(destTasks);
     }
 
     setTasks(newTasks);
