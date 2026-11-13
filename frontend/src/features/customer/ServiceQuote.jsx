@@ -775,6 +775,28 @@ const CELL_STYLE = {
   display: "block",
 };
 
+// Numeric input bound to a number. Keeps the text being typed locally so the
+// field can be emptied or hold "7." mid-typing; commits the parsed number on
+// every change and tidies the text on blur.
+function NumberField({ value, onChange, step = "0.01", className, title }) {
+  const [draft, setDraft] = useState(null); // null = not being edited
+  return (
+    <input
+      type="number"
+      min="0"
+      step={step}
+      className={className}
+      title={title}
+      value={draft ?? String(value)}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        onChange(Math.max(0, parseNum(e.target.value)));
+      }}
+      onBlur={() => setDraft(null)}
+    />
+  );
+}
+
 // ─── Component ───────────────────────────────────────────────────────────
 export default function ServiceQuote() {
   const [activeTab, setActiveTab] = useState("schedule");
@@ -2765,46 +2787,34 @@ export default function ServiceQuote() {
             <div className="sq-ph-grid">
               <div className="sq-field">
                 <label>Public Holiday Rate ($/hr)</label>
-                <input
-                  type="number"
+                <NumberField
                   step="0.01"
                   value={publicHolidayRate}
-                  onChange={(e) =>
-                    setPublicHolidayRate(parseNum(e.target.value))
-                  }
+                  onChange={setPublicHolidayRate}
                 />
               </div>
               <div className="sq-field">
                 <label>Public Holiday Hours/Year</label>
-                <input
-                  type="number"
+                <NumberField
                   step="0.5"
                   value={publicHolidayHours}
-                  onChange={(e) =>
-                    setPublicHolidayHours(parseNum(e.target.value))
-                  }
+                  onChange={setPublicHolidayHours}
                 />
               </div>
               <div className="sq-field">
                 <label>Irregular Rate ($/hr)</label>
-                <input
-                  type="number"
+                <NumberField
                   step="0.01"
                   value={irregularRate}
-                  onChange={(e) =>
-                    setIrregularRate(parseNum(e.target.value))
-                  }
+                  onChange={setIrregularRate}
                 />
               </div>
               <div className="sq-field">
                 <label>Irregular Hours/Year</label>
-                <input
-                  type="number"
+                <NumberField
                   step="0.5"
                   value={irregularHours}
-                  onChange={(e) =>
-                    setIrregularHours(parseNum(e.target.value))
-                  }
+                  onChange={setIrregularHours}
                 />
               </div>
             </div>
@@ -2996,17 +3006,49 @@ export default function ServiceQuote() {
                   <tbody>
                     <tr>
                       <td>Public holiday</td>
-                      <td className="sq-money">${fmt(publicHolidayRate)}</td>
+                      <td className="sq-money">
+                        $
+                        <NumberField
+                          className="sq-hours-input"
+                          value={publicHolidayRate}
+                          onChange={setPublicHolidayRate}
+                          title="Rate per hour"
+                        />
+                      </td>
                       <td>Hrs / year</td>
-                      <td className="sq-right">{fmt(publicHolidayHours)}</td>
+                      <td className="sq-right">
+                        <NumberField
+                          className="sq-hours-input"
+                          step="0.5"
+                          value={publicHolidayHours}
+                          onChange={setPublicHolidayHours}
+                          title="Hours per year"
+                        />
+                      </td>
                       <td className="sq-money">$</td>
                       <td className="sq-money">{fmt(quoteData.phTotal)}</td>
                     </tr>
                     <tr>
                       <td>Irregular supports</td>
-                      <td className="sq-money">${fmt(irregularRate)}</td>
+                      <td className="sq-money">
+                        $
+                        <NumberField
+                          className="sq-hours-input"
+                          value={irregularRate}
+                          onChange={setIrregularRate}
+                          title="Rate per hour"
+                        />
+                      </td>
                       <td>Hrs / year</td>
-                      <td className="sq-right">{fmt(irregularHours)}</td>
+                      <td className="sq-right">
+                        <NumberField
+                          className="sq-hours-input"
+                          step="0.5"
+                          value={irregularHours}
+                          onChange={setIrregularHours}
+                          title="Hours per year"
+                        />
+                      </td>
                       <td className="sq-money">$</td>
                       <td className="sq-money">{fmt(quoteData.irrTotal)}</td>
                     </tr>
