@@ -511,6 +511,52 @@ const isGridPaste = (e, parsed) => {
   return false;
 };
 
+// ─── Time Frame → hours ─────────────────────────────────────────────────
+// "8am - 9.30am" → 1.5, "9.30am - 11am & 1pm - 2pm" → 2.5,
+// "9pm - 7am next day" → 10. Text without a clock range
+// ("approx. 2 hrs per week") → 0.
+const TIME_RANGE_RE =
+  /(\d{1,2})(?:[.:](\d{2}))?\s*(am|pm)?\s*(?:-|–|—|to)\s*(\d{1,2})(?:[.:](\d{2}))?\s*(am|pm)?/gi;
+
+const toMinutes = (hour, minute, meridiem) => {
+  let h = parseInt(hour, 10);
+  const m = parseInt(minute || "0", 10);
+  if (h > 24 || m > 59) return null;
+  if (meridiem) {
+    if (h > 12) return null;
+    h = (h % 12) + (meridiem.toLowerCase() === "pm" ? 12 : 0);
+  }
+  return h * 60 + m;
+};
+
+const parseTimeFrameHours = (timeFrame) => {
+  let total = 0;
+  const text = String(timeFrame || "");
+  for (const m of text.matchAll(TIME_RANGE_RE)) {
+    const [, h1, min1, mer1, h2, min2, mer2] = m;
+    // Need am/pm on at least one side, or it is not a clock range ("1-1.5 hour")
+    if (!mer1 && !mer2) continue;
+    const end = toMinutes(h2, min2, mer2 || mer1);
+    let start = toMinutes(h1, min1, mer1 || mer2);
+    if (start === null || end === null) continue;
+    // "11 - 1pm": the start borrowed "pm" but is really in the morning
+    if (!mer1 && start >= end) {
+      start = toMinutes(h1, min1, mer2.toLowerCase() === "pm" ? "am" : "pm");
+    }
+    let minutes = end - start;
+    if (minutes <= 0) minutes += 24 * 60; // crosses midnight
+    total += minutes;
+  }
+  return Math.round((total / 60) * 100) / 100;
+};
+
+// A ticked row with no hours yet takes its hours from the Time Frame
+const fillHoursFromTimeFrame = (row) => {
+  if (!row.shared || parseNum(row.hoursPerDay) > 0) return row;
+  const hours = parseTimeFrameHours(row.timeFrame);
+  return hours > 0 ? { ...row, hoursPerDay: hours } : row;
+};
+
 const autoResize = (el) => {
   if (!el) return;
   el.style.height = "auto";
@@ -894,6 +940,26 @@ export default function ServiceQuote() {
         if (key.startsWith("extra_")) {
           return { ...r, _extra: { ...r._extra, [key]: value } };
         }
+        // Ticking a row includes it in the quote: its Hrs/Day comes from the
+        // Time Frame (unless hours were already typed). Unticking removes it.
+        if (key === "shared") {
+          return value
+            ? fillHoursFromTimeFrame({ ...r, shared: true })
+            : { ...r, shared: false, hoursPerDay: 0 };
+        }
+        // Editing the Time Frame of a ticked row keeps Hrs/Day in step, as
+        // long as the hours were not overridden by hand.
+        if (key === "timeFrame" && r.shared) {
+          const current = parseNum(r.hoursPerDay);
+          const wasAuto =
+            current === 0 || current === parseTimeFrameHours(r.timeFrame);
+          const hours = parseTimeFrameHours(value);
+          return {
+            ...r,
+            timeFrame: value,
+            hoursPerDay: wasAuto && hours > 0 ? hours : r.hoursPerDay,
+          };
+        }
         return { ...r, [key]: value };
       }),
     );
@@ -1040,7 +1106,11 @@ export default function ServiceQuote() {
             else row[key] = v;
           });
         });
-        return next;
+        return next.map((row, i) =>
+          i >= startRow && i < startRow + parsed.length
+            ? fillHoursFromTimeFrame(row)
+            : row,
+        );
       });
     },
     [scheduleExtraCols, emptyScheduleRow],
@@ -1169,7 +1239,7 @@ export default function ServiceQuote() {
     let totalDay = 0;
 
     scheduleRows.forEach((r) => {
-      const h = parseFloat(r.hoursPerDay) || 0;
+      const h = parseNum(r.hoursPerDay);
       totalDay += h;
       if (byType[r.serviceType]) {
         if (r.timeOfDay === "Day") byType[r.serviceType].day += h;
@@ -1892,6 +1962,11 @@ export default function ServiceQuote() {
             <p style={{ fontSize: "12px", color: "#888", marginBottom: "8px" }}>
               Tip: Copy cells from Excel and paste directly into any cell. Arrow
               keys and Tab navigate between cells.
+              <br />
+              Tick <strong>Shared</strong> to include an item in the Service
+              Quote: Hrs/Day is filled from the Time Frame (e.g. 8am - 9.30am =
+              1.5) and can be overridden. Only rows with Hrs/Day above 0 appear
+              in the quote and invoice.
             </p>
 
             {/* Schedule table */}
