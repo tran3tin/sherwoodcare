@@ -1,6 +1,7 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -388,10 +389,41 @@ const DEFAULT_RATE_TABLE = [
 
 // ─── Utility helpers ─────────────────────────────────────────────────────
 const getRatio = (serviceType) => {
-  const m = serviceType.match(/\((\d+):(\d+)\)/);
+  const m = String(serviceType || "").match(/\((\d+):(\d+)\)/);
   if (!m) return 1; // 1:1
-  return parseInt(m[2]) / parseInt(m[1]); // e.g. "Group (2:45)" → 45/2
+  const staff = parseInt(m[1], 10);
+  const clients = parseInt(m[2], 10);
+  if (!staff || !clients) return 1;
+  return clients / staff; // e.g. "Group (2:45)" → 45/2
 };
+
+// Parse numbers typed or pasted from Excel: "$1,234.50", " 70.23 ", "1.5 hrs"
+const parseNum = (value) => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const n = parseFloat(String(value ?? "").replace(/[$,\s]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+};
+
+// Money is always rounded to cents so quote, invoice and exports agree
+const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+// Price charged to one participant per hour (or per night) for a service type
+const getRatioPrice = (rate, serviceType) =>
+  round2(rate / getRatio(serviceType));
+
+// Case/space-insensitive match of pasted text against a list of options
+const matchOption = (options, value, fallback) => {
+  const norm = (s) => String(s).toLowerCase().replace(/\s+/g, "");
+  return options.find((o) => norm(o) === norm(value)) ?? fallback;
+};
+
+const RATE_NUMBER_KEYS = [
+  "dailyHours",
+  "weekdayRate",
+  "saturdayRate",
+  "sundayRate",
+  "phRate",
+];
 
 const fmt = (n) =>
   n.toLocaleString("en-AU", {
@@ -462,6 +494,21 @@ const parseClipboard = (str) => {
   }
   if (rows.length && rows[rows.length - 1].every((v) => v === "")) rows.pop();
   return rows;
+};
+
+// More than one cell on the clipboard → spread it over the grid.
+// A single value is inserted at the caret like a normal paste (trimmed, since
+// Excel appends a line break to a copied cell) instead of replacing the cell.
+const isGridPaste = (e, parsed) => {
+  if (parsed.length > 1 || (parsed[0]?.length ?? 0) > 1) return true;
+  e.preventDefault();
+  const el = e.target;
+  const text = (parsed[0]?.[0] ?? "").trim();
+  if (text && typeof el.setRangeText === "function") {
+    el.setRangeText(text, el.selectionStart, el.selectionEnd, "end");
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  return false;
 };
 
 const autoResize = (el) => {
@@ -718,7 +765,7 @@ export default function ServiceQuote() {
       const row = baseRateItems.find((item) =>
         (item.supportItemName || "").toLowerCase().includes(keyword),
       );
-      return parseFloat(row?.rate) || 0;
+      return parseNum(row?.rate);
     };
 
     const weekdayDayRate = findBaseRate("weekday daytime");
@@ -728,40 +775,68 @@ export default function ServiceQuote() {
     const publicHolidayRateFromBase = findBaseRate("public holiday");
     const sleepoverRate = findBaseRate("night-time sleepover");
 
+    // A support item code that exists in "Price per hours" always wins.
+    const rateByCode = (code) => {
+      const key = String(code || "").trim();
+      if (!key) return null;
+      const item = baseRateItems.find(
+        (it) => String(it.supportItemNumber || "").trim() === key,
+      );
+      return item ? parseNum(item.rate) : null;
+    };
+
     setRateTable((prev) =>
       prev.map((row) => {
         const name = (row.supportItemName || "").toLowerCase();
+        const isSleepover = name.includes("night-time sleepover");
+        // Only rows priced off the self-care items are auto-filled by name.
+        // Anything else (e.g. Personal Domestic Activities, pasted or custom
+        // rows) keeps the rates entered in the table.
+        const isAutoFilled =
+          isSleepover ||
+          name.includes("self-care") ||
+          name.includes("shared living");
 
-        if (name.includes("night-time sleepover")) {
-          return {
-            ...row,
-            weekdayRate: sleepoverRate,
-            saturdayRate: sleepoverRate,
-            sundayRate: sleepoverRate,
-            phRate: sleepoverRate,
-          };
-        }
-
-        const weekdayRate = name.includes("weekday evening")
-          ? weekdayEveningRate || weekdayDayRate
-          : weekdayDayRate;
-
-        return {
-          ...row,
-          weekdayRate,
-          saturdayRate,
-          sundayRate,
-          phRate: publicHolidayRateFromBase,
+        const fallback = {
+          weekdayRate: isSleepover
+            ? sleepoverRate
+            : name.includes("weekday evening")
+              ? weekdayEveningRate || weekdayDayRate
+              : weekdayDayRate,
+          saturdayRate: isSleepover ? sleepoverRate : saturdayRate,
+          sundayRate: isSleepover ? sleepoverRate : sundayRate,
+          phRate: isSleepover ? sleepoverRate : publicHolidayRateFromBase,
         };
+
+        const next = { ...row };
+        [
+          ["weekdayRate", "weekdayCode"],
+          ["saturdayRate", "saturdayCode"],
+          ["sundayRate", "sundayCode"],
+          ["phRate", "phCode"],
+        ].forEach(([rateKey, codeKey]) => {
+          const byCode = rateByCode(row[codeKey]);
+          if (byCode !== null) next[rateKey] = byCode;
+          else if (isAutoFilled) next[rateKey] = fallback[rateKey];
+        });
+        return next;
       }),
     );
   }, [baseRateItems]);
+
+  // Scope the print stylesheet to this page only (see ServiceQuote.css)
+  useEffect(() => {
+    if (activeTab !== "quote") return undefined;
+    document.body.classList.add("sq-print-quote");
+    return () => document.body.classList.remove("sq-print-quote");
+  }, [activeTab]);
 
   // Add Column modal: null | 'schedule' | 'rate'
   const [addColTarget, setAddColTarget] = useState(null);
   const [newColLabel, setNewColLabel] = useState("");
 
   const quoteRef = useRef(null);
+  const containerRef = useRef(null);
 
   // ── Empty row factories ──────────────────────────────────────────────────
   const emptyScheduleRow = useCallback(
@@ -933,9 +1008,9 @@ export default function ServiceQuote() {
   // ── Direct-cell paste ────────────────────────────────────────────────────
   const handleSchedulePaste = useCallback(
     (e, startRow, startColIdx) => {
-      e.preventDefault();
       const parsed = parseClipboard(e.clipboardData.getData("text"));
-      if (!parsed.length) return;
+      if (!isGridPaste(e, parsed)) return;
+      e.preventDefault();
       const allKeys = [
         ...SCH_FIXED_KEYS,
         ...scheduleExtraCols.map((c) => c.key),
@@ -950,15 +1025,16 @@ export default function ServiceQuote() {
             if (!key) return;
             const v = (val ?? "").trim();
             const row = next[startRow + ri];
-            if (key === "staff") row.staff = parseInt(v) || 0;
-            else if (key === "hoursPerDay")
-              row.hoursPerDay = parseFloat(v) || 0;
+            if (key === "staff") row.staff = Math.round(parseNum(v));
+            else if (key === "hoursPerDay") row.hoursPerDay = parseNum(v);
             else if (key === "shared")
-              row.shared = ["true", "yes", "1", "x"].includes(v.toLowerCase());
+              row.shared = ["true", "yes", "y", "1", "x"].includes(
+                v.toLowerCase(),
+              );
             else if (key === "timeOfDay")
-              row.timeOfDay = TIME_OF_DAY_OPTIONS.includes(v) ? v : "Day";
+              row.timeOfDay = matchOption(TIME_OF_DAY_OPTIONS, v, "Day");
             else if (key === "serviceType")
-              row.serviceType = SERVICE_TYPES.includes(v) ? v : "1:1";
+              row.serviceType = matchOption(SERVICE_TYPES, v, "1:1");
             else if (key.startsWith("extra_"))
               row._extra = { ...row._extra, [key]: v };
             else row[key] = v;
@@ -971,14 +1047,18 @@ export default function ServiceQuote() {
   );
 
   const handleRatePaste = useCallback(
-    (e, startRow, startColIdx) => {
-      e.preventDefault();
+    (e, startRow, startKey) => {
       const parsed = parseClipboard(e.clipboardData.getData("text"));
-      if (!parsed.length) return;
+      if (!isGridPaste(e, parsed)) return;
+      e.preventDefault();
+      // Pasted columns follow the Excel layout (rate, code, rate, code ...),
+      // which is not the on-screen column order, so start from the cell's key.
       const allKeys = [
         ...RT_FIXED_KEYS,
         ...rateTableExtraCols.map((c) => c.key),
       ];
+      const startColIdx = allKeys.indexOf(startKey);
+      if (startColIdx < 0) return;
       setRateTable((prev) => {
         const next = prev.map((r) => ({ ...r }));
         while (next.length < startRow + parsed.length)
@@ -989,16 +1069,7 @@ export default function ServiceQuote() {
             if (!key) return;
             const v = (val ?? "").trim();
             const row = next[startRow + ri];
-            if (
-              [
-                "dailyHours",
-                "weekdayRate",
-                "saturdayRate",
-                "sundayRate",
-                "phRate",
-              ].includes(key)
-            )
-              row[key] = parseFloat(v) || 0;
+            if (RATE_NUMBER_KEYS.includes(key)) row[key] = parseNum(v);
             else if (key.startsWith("extra_"))
               row._extra = { ...row._extra, [key]: v };
             else row[key] = v;
@@ -1012,9 +1083,9 @@ export default function ServiceQuote() {
 
   const handleBaseRatePaste = useCallback(
     (e, startRow, startColIdx) => {
-      e.preventDefault();
       const parsed = parseClipboard(e.clipboardData.getData("text"));
-      if (!parsed.length) return;
+      if (!isGridPaste(e, parsed)) return;
+      e.preventDefault();
 
       setBaseRateItems((prev) => {
         const next = prev.map((r) => ({ ...r }));
@@ -1028,7 +1099,7 @@ export default function ServiceQuote() {
             if (!key) return;
             const raw = (val ?? "").trim();
             next[startRow + ri][key] =
-              key === "rate" ? parseFloat(raw) || 0 : raw;
+              key === "rate" ? parseNum(raw) : raw;
           });
         });
 
@@ -1041,42 +1112,53 @@ export default function ServiceQuote() {
   // ── Keyboard navigation ──────────────────────────────────────────────────
   const handleCellKeyDown = useCallback(
     (e, prefix, rowIdx, colIdx, totalCols, totalRows, addMore) => {
-      if (e.key === "ArrowDown") {
+      const cell = (r, c) => document.getElementById(`${prefix}-${r}-${c}`);
+      // Only swallow the key when there is a cell to move to; otherwise the
+      // browser's own behaviour applies and focus never gets stuck.
+      const moveTo = (el) => {
+        if (!el) return;
         e.preventDefault();
-        if (rowIdx < totalRows - 1)
-          document.getElementById(`${prefix}-${rowIdx + 1}-${colIdx}`)?.focus();
+        el.focus();
+      };
+      const isArrow = e.key === "ArrowDown" || e.key === "ArrowUp";
+      // Arrow keys change the value of a dropdown; leave them alone there.
+      if (isArrow && e.target.tagName === "SELECT") return;
+
+      if (e.key === "ArrowDown") {
+        if (rowIdx < totalRows - 1) moveTo(cell(rowIdx + 1, colIdx));
         else {
+          e.preventDefault();
           addMore(10);
-          setTimeout(
-            () =>
-              document
-                .getElementById(`${prefix}-${rowIdx + 1}-${colIdx}`)
-                ?.focus(),
-            30,
-          );
+          setTimeout(() => cell(rowIdx + 1, colIdx)?.focus(), 30);
         }
       } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        if (rowIdx > 0)
-          document.getElementById(`${prefix}-${rowIdx - 1}-${colIdx}`)?.focus();
+        if (rowIdx > 0) moveTo(cell(rowIdx - 1, colIdx));
       } else if (e.key === "Tab" && !e.shiftKey) {
-        e.preventDefault();
-        if (colIdx < totalCols - 1)
-          document.getElementById(`${prefix}-${rowIdx}-${colIdx + 1}`)?.focus();
-        else if (rowIdx < totalRows - 1)
-          document.getElementById(`${prefix}-${rowIdx + 1}-0`)?.focus();
+        if (colIdx < totalCols - 1) moveTo(cell(rowIdx, colIdx + 1));
+        else if (rowIdx < totalRows - 1) moveTo(cell(rowIdx + 1, 0));
       } else if (e.key === "Tab" && e.shiftKey) {
-        e.preventDefault();
-        if (colIdx > 0)
-          document.getElementById(`${prefix}-${rowIdx}-${colIdx - 1}`)?.focus();
-        else if (rowIdx > 0)
-          document
-            .getElementById(`${prefix}-${rowIdx - 1}-${totalCols - 1}`)
-            ?.focus();
+        if (colIdx > 0) moveTo(cell(rowIdx, colIdx - 1));
+        else if (rowIdx > 0) moveTo(cell(rowIdx - 1, totalCols - 1));
       }
     },
     [],
   );
+
+  // Cells are one-line textareas that grow with their content. Re-measure
+  // whenever the data or the visible tab changes so default, pasted and
+  // auto-filled text is never clipped.
+  useLayoutEffect(() => {
+    containerRef.current
+      ?.querySelectorAll("textarea")
+      .forEach((el) => autoResize(el));
+  }, [
+    activeTab,
+    scheduleRows,
+    baseRateItems,
+    rateTable,
+    scheduleExtraCols,
+    rateTableExtraCols,
+  ]);
 
   // ─── Computed: summary hours ─────────────────────────────────────
   const summaryHours = useMemo(() => {
@@ -1105,7 +1187,7 @@ export default function ServiceQuote() {
       const row = baseRateItems.find((item) =>
         (item.supportItemName || "").toLowerCase().includes(keyword),
       );
-      return parseFloat(row?.rate) || 0;
+      return parseNum(row?.rate);
     };
 
     const weekdayDayRate = findBaseRate("weekday daytime");
@@ -1136,16 +1218,16 @@ export default function ServiceQuote() {
       if (!grouped[st]) return;
       if (sr.timeOfDay === "Overnight") return;
 
-      const hours = parseFloat(sr.hoursPerDay) || 0;
-      const ratioMultiplier = 1 / getRatio(st);
-      if (!hours) return;
+      const hours = parseNum(sr.hoursPerDay);
+      if (hours <= 0) return;
       const period = sr.timeOfDay === "Evening" ? "evening" : "day";
 
       const dayData = DAYS.map((day) => {
         const pricePerHour = getPricePerHour(sr.timeOfDay, day);
 
-        const ratioPrice = pricePerHour * ratioMultiplier;
-        const cost = pricePerHour * ratioMultiplier * hours;
+        // Same cent-rounded unit price and line amount as the invoice
+        const ratioPrice = getRatioPrice(pricePerHour, st);
+        const cost = round2(ratioPrice * hours);
 
         return {
           day,
@@ -1166,22 +1248,33 @@ export default function ServiceQuote() {
       grouped[st][period].totalCost += weekTotal;
     });
 
-    const sleepoverRatio = getRatio("Group (2:45)");
-    const sleepoverConvertedRate = parseFloat(
-      (sleepoverRate / sleepoverRatio).toFixed(2),
+    // Sleepover comes from the "Overnight" rows of the schedule: one night
+    // per row per day, shared at that row's own ratio (same as the invoice).
+    const overnightRows = scheduleRows.filter(
+      (sr) => sr.timeOfDay === "Overnight",
     );
+    const sleepoverConvertedRate = round2(
+      overnightRows.reduce(
+        (sum, sr) => sum + getRatioPrice(sleepoverRate, sr.serviceType),
+        0,
+      ),
+    );
+    const sleepoverNightsPerWeek = overnightRows.length ? 7 : 0;
 
     const sleepover = {
+      serviceTypes: [
+        ...new Set(overnightRows.map((sr) => sr.serviceType || "1:1")),
+      ].join(", "),
       pricePerNight: sleepoverRate,
       rate: sleepoverConvertedRate,
-      nightsPerWeek: 7,
+      nightsPerWeek: sleepoverNightsPerWeek,
       costPerNight: sleepoverConvertedRate,
-      weekTotal: sleepoverConvertedRate * 7,
+      weekTotal: round2(sleepoverConvertedRate * sleepoverNightsPerWeek),
     };
 
     // Public holiday / Irregular
-    const phTotal = publicHolidayRate * publicHolidayHours;
-    const irrTotal = irregularRate * irregularHours;
+    const phTotal = round2(publicHolidayRate * publicHolidayHours);
+    const irrTotal = round2(irregularRate * irregularHours);
 
     // Grand totals
     let totalWeekly = 0;
@@ -1275,17 +1368,17 @@ export default function ServiceQuote() {
 
       scheduleRows.forEach((row) => {
         const isOvernight = row.timeOfDay === "Overnight";
-        const units = isOvernight
-          ? parseFloat(row.hoursPerDay) || 1
-          : parseFloat(row.hoursPerDay) || 0;
+        // Sleepover is priced per night, so an overnight row is always one
+        // night regardless of the hours entered for it.
+        const units = isOvernight ? 1 : parseNum(row.hoursPerDay);
 
         if (units <= 0) return;
+        if (!isOvernight && !SERVICE_TYPES.includes(row.serviceType)) return;
 
         const baseItem = getItemByDay(row.timeOfDay, dayName);
-        const baseRate = parseFloat(baseItem?.rate) || 0;
-        const ratio = getRatio(row.serviceType || "1:1");
-        const unitPrice = ratio ? baseRate / ratio : 0;
-        const amount = units * unitPrice;
+        const baseRate = parseNum(baseItem?.rate);
+        const unitPrice = getRatioPrice(baseRate, row.serviceType);
+        const amount = round2(units * unitPrice);
 
         const ratioGroup = row.serviceType || "1:1";
         const itemCode = baseItem?.supportItemNumber || "";
@@ -1294,7 +1387,7 @@ export default function ServiceQuote() {
 
         if (existing) {
           existing.units += units;
-          existing.amount += amount;
+          existing.amount = round2(existing.amount + amount);
           return;
         }
 
@@ -1326,7 +1419,7 @@ export default function ServiceQuote() {
     return {
       weekDates,
       rows,
-      totalAmount: rows.reduce((sum, r) => sum + r.amount, 0),
+      totalAmount: round2(rows.reduce((sum, r) => sum + r.amount, 0)),
     };
   }, [scheduleRows, baseRateItems]);
 
@@ -1486,9 +1579,9 @@ export default function ServiceQuote() {
       });
     });
 
-    breakdownRows.push({
+    if (quoteData.sleepover?.nightsPerWeek > 0) breakdownRows.push({
       Regis: "107",
-      "Service Type": "Group (2:45)",
+      "Service Type": quoteData.sleepover.serviceTypes,
       Period: "Overnight",
       Day: "Sleepover weekly",
       "Price/Hour": Number(
@@ -1689,7 +1782,7 @@ export default function ServiceQuote() {
       title="Service Quote"
       breadcrumb={["Home", "Customer", "Service Quote"]}
     >
-      <div className="sq-container">
+      <div className="sq-container" ref={containerRef}>
         {/* Client info */}
         <div className="sq-client-bar">
           <div className="sq-field">
@@ -1864,10 +1957,23 @@ export default function ServiceQuote() {
                           ? (row._extra?.[col.key] ?? "")
                           : row[col.key];
 
+                        const onCellKeyDown = (e) =>
+                          handleCellKeyDown(
+                            e,
+                            "sch",
+                            rowIdx,
+                            colIdx,
+                            schAllCols.length,
+                            scheduleRows.length,
+                            addScheduleRows,
+                          );
+
                         if (col.type === "select") {
                           return (
                             <td key={col.key} style={TD_STYLE}>
                               <select
+                                id={`sch-${rowIdx}-${colIdx}`}
+                                onKeyDown={onCellKeyDown}
                                 value={val}
                                 onChange={(e) =>
                                   updateScheduleCell(
@@ -1903,6 +2009,8 @@ export default function ServiceQuote() {
                             >
                               <input
                                 type="checkbox"
+                                id={`sch-${rowIdx}-${colIdx}`}
+                                onKeyDown={onCellKeyDown}
                                 checked={!!val}
                                 onChange={(e) =>
                                   updateScheduleCell(
@@ -1935,7 +2043,7 @@ export default function ServiceQuote() {
                                   updateScheduleCell(
                                     rowIdx,
                                     col.key,
-                                    parseFloat(e.target.value) || 0,
+                                    parseNum(e.target.value),
                                   );
                                 }
                               }}
@@ -2217,7 +2325,7 @@ export default function ServiceQuote() {
                                 updateBaseRateCell(
                                   rowIdx,
                                   col.key,
-                                  parseFloat(e.target.value) || 0,
+                                  parseNum(e.target.value),
                                 );
                               }
                             }}
@@ -2395,11 +2503,11 @@ export default function ServiceQuote() {
                                   updateRateCell(
                                     rowIdx,
                                     col.key,
-                                    parseFloat(e.target.value) || 0,
+                                    parseNum(e.target.value),
                                   );
                                 }}
                                 onPaste={(e) =>
-                                  handleRatePaste(e, rowIdx, colIdx)
+                                  handleRatePaste(e, rowIdx, col.key)
                                 }
                                 onKeyDown={(e) =>
                                   handleCellKeyDown(
@@ -2456,12 +2564,12 @@ export default function ServiceQuote() {
                                   updateRateCell(
                                     rowIdx,
                                     col.key,
-                                    parseFloat(e.target.value) || 0,
+                                    parseNum(e.target.value),
                                   );
                                 }
                               }}
                               onPaste={(e) =>
-                                handleRatePaste(e, rowIdx, colIdx)
+                                handleRatePaste(e, rowIdx, col.key)
                               }
                               onKeyDown={(e) =>
                                 handleCellKeyDown(
@@ -2517,7 +2625,7 @@ export default function ServiceQuote() {
                   step="0.01"
                   value={publicHolidayRate}
                   onChange={(e) =>
-                    setPublicHolidayRate(parseFloat(e.target.value) || 0)
+                    setPublicHolidayRate(parseNum(e.target.value))
                   }
                 />
               </div>
@@ -2528,7 +2636,7 @@ export default function ServiceQuote() {
                   step="0.5"
                   value={publicHolidayHours}
                   onChange={(e) =>
-                    setPublicHolidayHours(parseFloat(e.target.value) || 0)
+                    setPublicHolidayHours(parseNum(e.target.value))
                   }
                 />
               </div>
@@ -2539,7 +2647,7 @@ export default function ServiceQuote() {
                   step="0.01"
                   value={irregularRate}
                   onChange={(e) =>
-                    setIrregularRate(parseFloat(e.target.value) || 0)
+                    setIrregularRate(parseNum(e.target.value))
                   }
                 />
               </div>
@@ -2550,7 +2658,7 @@ export default function ServiceQuote() {
                   step="0.5"
                   value={irregularHours}
                   onChange={(e) =>
-                    setIrregularHours(parseFloat(e.target.value) || 0)
+                    setIrregularHours(parseNum(e.target.value))
                   }
                 />
               </div>
@@ -2670,14 +2778,16 @@ export default function ServiceQuote() {
               )}
 
               {/* Sleepover section */}
-              {quoteData.sleepover.rate > 0 && (
+              {quoteData.sleepover.nightsPerWeek > 0 && (
                 <div className="sq-quote-section">
                   <div className="sq-quote-section-header sq-sleepover-header">
                     <span className="sq-section-regis">107</span>
                     <span>
                       Assistance With Self-Care Activities (INACTIVE SLEEPOVER)
                     </span>
-                    <span className="sq-section-type">Group (2:45)</span>
+                    <span className="sq-section-type">
+                      {quoteData.sleepover.serviceTypes}
+                    </span>
                   </div>
 
                   <table className="sq-quote-table">
@@ -2714,8 +2824,10 @@ export default function ServiceQuote() {
                         <td></td>
                         <td></td>
                         <td></td>
-                        <td>Hrs/ week</td>
-                        <td className="sq-right">7.00</td>
+                        <td>Nights/ week</td>
+                        <td className="sq-right">
+                          {fmt(quoteData.sleepover.nightsPerWeek)}
+                        </td>
                         <td className="sq-money">$</td>
                         <td className="sq-money">
                           {fmt(quoteData.sleepover.weekTotal)}

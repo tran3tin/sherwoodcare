@@ -546,23 +546,35 @@
 }
 
 /* ═══ Print styles ═══════════════════════════════════════════ */
+/* Scoped to body.sq-print-quote (set while the Service Quote tab is open).
+   This stylesheet stays loaded after leaving the page, so unscoped rules
+   would blank out the printout of every other screen in the app. */
 @media print {
-  body * {
+  body.sq-print-quote * {
     visibility: hidden;
   }
 
-  #service-quote-print,
-  #service-quote-print * {
+  body.sq-print-quote #service-quote-print,
+  body.sq-print-quote #service-quote-print * {
     visibility: visible;
   }
 
-  #service-quote-print {
+  body.sq-print-quote #service-quote-print {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
     border: none;
     box-shadow: none;
+    overflow: visible;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Keep each day table together instead of splitting it across pages */
+  .sq-quote-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .sq-quote-actions,
